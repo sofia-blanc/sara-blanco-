@@ -1,0 +1,17 @@
+# Entornos virtuales y Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Secretos y credenciales (se configuran en Streamlit Cloud Secrets)
+.streamlit/secrets.toml
+.env
+*CONTRASEÑA*
+*PASSWORD*
+
+# Archivos temporales de test
+test_supabase.py
