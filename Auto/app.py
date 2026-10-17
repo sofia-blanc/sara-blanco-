@@ -11,7 +11,7 @@ import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Configuración de página de Streamlit sin emojis
+# Configuración de página de Streamlit
 st.set_page_config(
     page_title="AutoOS - Sistema Operativo Vehicular",
     layout="wide",
@@ -44,36 +44,46 @@ from modules.memory_storage import (
 )
 from modules.ui_components import (
     aplicar_estilos_cockpit, render_banner_semaforo,
-    crear_gauge_bateria, crear_gauge_circular, render_tarjeta_dispositivo,
-    render_acceso_denegado
+    render_card_telemetria, render_tarjeta_dispositivo,
+    render_acceso_denegado, obtener_paleta
 )
 
-# Aplicar temas visuales (paleta personalizada para claro y oscuro)
-aplicar_estilos_cockpit()
-
-# Estado del sistema
-usuario_actual = obtener_usuario_actual()
-rol_actual     = usuario_actual.get("rol", "guest")
-semaforo       = calcular_semaforo_general()
-db             = get_db()
-bateria        = obtener_estado_bateria()
-resumen_dev    = obtener_resumen_dispositivos()
-cpu_total      = calcular_uso_cpu_total()
-memoria_info   = obtener_uso_memoria()
-info_rol       = ROLES_INFO.get(rol_actual, {})
-
-# Helpers de permisos por rol
-es_admin     = rol_actual == "admin"
-es_conductor = rol_actual == "user"
-es_pasajero  = rol_actual == "guest"
-
-
 # ====================================================================
-# BARRA LATERAL (CONTROL DE SESIÓN Y CREDENCIALES)
+# BARRA LATERAL (CONTROL DE SESIÓN, TEMA Y CREDENCIALES)
 # ====================================================================
 with st.sidebar:
     st.markdown("### AutoOS Cockpit v2.4")
     st.caption("Sistema Operativo para Vehículo Inteligente")
+
+    st.markdown("---")
+    st.markdown("#### Configuración Visual")
+    tema_seleccionado = st.radio(
+        "Modo de Interfaz:",
+        options=["Oscuro (Purple Night)", "Claro (Soft Dove)"],
+        index=0,
+        horizontal=True
+    )
+    modo_tema = "claro" if "Claro" in tema_seleccionado else "oscuro"
+
+    # Aplicar estilos con el tema seleccionado (elimina barra blanca de Streamlit)
+    aplicar_estilos_cockpit(modo_tema)
+    paleta = obtener_paleta(modo_tema)
+
+    # Estado del sistema
+    usuario_actual = obtener_usuario_actual()
+    rol_actual     = usuario_actual.get("rol", "guest")
+    semaforo       = calcular_semaforo_general()
+    db             = get_db()
+    bateria        = obtener_estado_bateria()
+    resumen_dev    = obtener_resumen_dispositivos()
+    cpu_total      = calcular_uso_cpu_total()
+    memoria_info   = obtener_uso_memoria()
+    info_rol       = ROLES_INFO.get(rol_actual, {})
+
+    # Helpers de permisos por rol
+    es_admin     = rol_actual == "admin"
+    es_conductor = rol_actual == "user"
+    es_pasajero  = rol_actual == "guest"
 
     st.markdown("---")
     st.markdown("#### Control de Usuario Activo")
@@ -126,16 +136,24 @@ with st.sidebar:
 
 
 # ====================================================================
-# ENCABEZADO Y SEMÁFORO GENERAL
+# ENCABEZADO Y HUD VEHICULAR
 # ====================================================================
 col_head1, col_head2 = st.columns([3, 1])
 with col_head1:
     st.title("AutoOS Dashboard")
     st.caption("Plataforma de Simulación del Sistema Operativo Vehicular & Control de Seguridad")
 with col_head2:
-    st.metric("Reloj de Sistema", datetime.datetime.now().strftime("%H:%M:%S"), delta="RTOS Synced")
+    hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
+    st.markdown(f"""
+        <div class="reloj-hud">
+            <div class="reloj-label">Reloj de Sistema</div>
+            <div class="reloj-time">{hora_actual}</div>
+            <div class="reloj-tag">RTOS Synced</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-render_banner_semaforo(semaforo)
+# Renderizar el Semáforo General de AutoOS
+render_banner_semaforo(semaforo, modo_tema)
 
 
 # ====================================================================
@@ -158,15 +176,52 @@ tab_cockpit, tab_seguridad, tab_dispositivos, tab_bateria, tab_incidentes, tab_p
 with tab_cockpit:
     st.subheader("Indicadores de Telemetría en Tiempo Real")
 
+    # Indicadores circulares SVG elegantes (sin recorte de texto)
     col_g1, col_g2, col_g3, col_g4 = st.columns(4)
     with col_g1:
-        st.plotly_chart(crear_gauge_circular(cpu_total, "Uso Total de CPU", "%", 100.0, "#BF40FA"), use_container_width=True)
+        render_card_telemetria(
+            titulo="Uso Total de CPU",
+            valor=cpu_total,
+            unidad="%",
+            subtexto="4 Cores activos · RTOS",
+            color_acento="#BF40FA",
+            max_val=100.0,
+            modo=modo_tema
+        )
     with col_g2:
-        st.plotly_chart(crear_gauge_circular(memoria_info["pct_usado"], "Uso de RAM", "%", 100.0, "#4928C2"), use_container_width=True)
+        render_card_telemetria(
+            titulo="Uso de Memoria RAM",
+            valor=memoria_info["pct_usado"],
+            unidad="%",
+            subtexto=f"{memoria_info['procesos_mb']} MB / 16 GB",
+            color_acento="#4928C2",
+            max_val=100.0,
+            modo=modo_tema
+        )
     with col_g3:
-        st.plotly_chart(crear_gauge_bateria(bateria["soc_pct"], bateria["temp_c"]), use_container_width=True)
+        color_bat = paleta['success'] if bateria["soc_pct"] > 25 else (paleta['warning'] if bateria["soc_pct"] > 12 else paleta['danger'])
+        render_card_telemetria(
+            titulo="Batería HV (BMS)",
+            valor=bateria["soc_pct"],
+            unidad="%",
+            subtexto=f"{bateria['temp_c']} °C · {bateria['voltaje_v']} V",
+            color_acento=color_bat,
+            max_val=100.0,
+            modo=modo_tema
+        )
     with col_g4:
-        st.plotly_chart(crear_gauge_circular(resumen_dev["salud_promedio"], "Salud Dispositivos", "%", 100.0, "#34d399"), use_container_width=True)
+        color_salud = paleta['success'] if resumen_dev["salud_promedio"] >= 90 else paleta['warning']
+        render_card_telemetria(
+            titulo="Salud Dispositivos",
+            valor=resumen_dev["salud_promedio"],
+            unidad="%",
+            subtexto=f"{resumen_dev['operativos']}/{resumen_dev['total']} Sensores Operativos",
+            color_acento=color_salud,
+            max_val=100.0,
+            modo=modo_tema
+        )
+
+    st.write("") # Espaciador
 
     col_res1, col_res2, col_res3 = st.columns(3)
     with col_res1:
@@ -174,9 +229,9 @@ with tab_cockpit:
             <div class="auto-card">
                 <h4>Hardware y Periféricos</h4>
                 <div>Total dispositivos: <b>{resumen_dev['total']}</b></div>
-                <div style="color: #34d399;">Operativos: <b>{resumen_dev['operativos']}</b></div>
-                <div style="color: #fbbf24;">Degradados: <b>{resumen_dev['degradados']}</b></div>
-                <div style="color: #f87171;">Fallas / Desconectados: <b>{resumen_dev['fallas'] + resumen_dev['desconectados']}</b></div>
+                <div style="color: {paleta['success']};">Operativos: <b>{resumen_dev['operativos']}</b></div>
+                <div style="color: {paleta['warning']};">Degradados: <b>{resumen_dev['degradados']}</b></div>
+                <div style="color: {paleta['danger']};">Fallas / Desconectados: <b>{resumen_dev['fallas'] + resumen_dev['desconectados']}</b></div>
             </div>
         """, unsafe_allow_html=True)
     with col_res2:
@@ -207,7 +262,7 @@ with tab_cockpit:
                     <div>Usuario: <b>{usuario_actual['nombre_completo']}</b></div>
                     <div>Rol: <b>{info_rol.get('etiqueta')}</b></div>
                     <div>Nivel de acceso: <b>{info_rol.get('nivel')}/10</b></div>
-                    <div style="color: var(--text-muted);">{info_rol.get('descripcion', '')[:60]}...</div>
+                    <div style="color: {paleta['text_muted']};">{info_rol.get('descripcion', '')[:60]}...</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -301,7 +356,7 @@ with tab_dispositivos:
     cols_tarjetas = st.columns(2)
     for idx, dev in enumerate(dispositivos_filtrados):
         with cols_tarjetas[idx % 2]:
-            render_tarjeta_dispositivo(dev)
+            render_tarjeta_dispositivo(dev, modo_tema)
 
     st.markdown("---")
 
@@ -424,8 +479,8 @@ with tab_incidentes:
         for paso in res["pasos"]:
             st.markdown(f"""
                 <div class="fase-step">
-                    <div style="font-weight: 700; color: #BF40FA; font-size: 14px;">{paso['fase']}</div>
-                    <div style="color: #E3D9FC; font-size: 13px; margin-top: 4px;">{paso['accion']}</div>
+                    <div style="font-weight: 700; color: {paleta['accent_primary']}; font-size: 14px;">{paso['fase']}</div>
+                    <div style="color: {paleta['text_primary']}; font-size: 13px; margin-top: 4px;">{paso['accion']}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -488,16 +543,19 @@ with tab_procesos:
                 })
 
         df_gantt = pd.DataFrame(datos_gantt)
+        
+        # Mapa de colores adaptativo según tema
+        mapa_colores_gantt = {
+            "Ejecutando": paleta['accent_primary'],
+            "Listo":      paleta['accent_second'],
+            "Bloqueado":  paleta['warning'],
+            "Terminado":  paleta['text_muted']
+        }
         fig_gantt = px.timeline(
             df_gantt,
             x_start="Inicio", x_end="Fin",
             y="Proceso", color="Estado",
-            color_discrete_map={
-                "Ejecutando": "#BF40FA",
-                "Listo":      "#4928C2",
-                "Bloqueado":  "#fbbf24",
-                "Terminado":  "#5B2A62"
-            }
+            color_discrete_map=mapa_colores_gantt
         )
         fig_gantt.update_yaxes(autorange="reversed")
         fig_gantt.update_layout(
@@ -505,7 +563,7 @@ with tab_procesos:
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#E3D9FC"
+            font_color=paleta['text_primary']
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
@@ -518,19 +576,19 @@ with tab_procesos:
             fig_pie = px.pie(
                 conteo_estados,
                 values="Cantidad", names="Estado",
-                hole=0.45, color="Estado",
+                hole=0.48, color="Estado",
                 color_discrete_map={
-                    "ejecutando": "#BF40FA",
-                    "listo":      "#4928C2",
-                    "bloqueado":  "#fbbf24",
-                    "terminado":  "#5B2A62"
+                    "ejecutando": paleta['accent_primary'],
+                    "listo":      paleta['accent_second'],
+                    "bloqueado":  paleta['warning'],
+                    "terminado":  paleta['text_muted']
                 }
             )
             fig_pie.update_layout(
                 height=280,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
-                font_color="#E3D9FC"
+                font_color=paleta['text_primary']
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -571,7 +629,6 @@ with tab_procesos:
                             st.error(msg)
 
             elif es_conductor:
-                # El conductor solo puede pausar/reanudar procesos no críticos
                 if not p.get("critico"):
                     nuevo_st = "bloqueado" if p["estado"] == "ejecutando" else "ejecutando"
                     label_st = "Pausar" if p["estado"] == "ejecutando" else "Reanudar"
@@ -608,24 +665,24 @@ with tab_memoria:
         fig_mem.add_trace(go.Bar(
             name="Kernel (Reservado)",
             y=["Memoria RAM"], x=[memoria_info["kernel_mb"]],
-            orientation="h", marker_color="#f87171"
+            orientation="h", marker_color=paleta['danger']
         ))
         fig_mem.add_trace(go.Bar(
             name="Procesos",
             y=["Memoria RAM"], x=[memoria_info["procesos_mb"]],
-            orientation="h", marker_color="#4928C2"
+            orientation="h", marker_color=paleta['accent_second']
         ))
         fig_mem.add_trace(go.Bar(
             name="Libre",
             y=["Memoria RAM"], x=[memoria_info["libre_mb"]],
-            orientation="h", marker_color="#BF40FA"
+            orientation="h", marker_color=paleta['accent_primary']
         ))
         fig_mem.update_layout(
             barmode="stack", height=160,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font_color="#E3D9FC",
+            font_color=paleta['text_primary'],
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig_mem, use_container_width=True)
