@@ -48,31 +48,35 @@ from modules.ui_components import (
     render_acceso_denegado, obtener_paleta, render_reloj_en_vivo
 )
 
+# Mapeo de identificadores de procesos a nombres descriptivos automotrices
+MAPA_NOMBRES_PROCESOS = {
+    "bms_thermal_monitor": "Monitor Térmico BMS",
+    "adas_collision_avoidance": "Sistema Anticolisión ADAS",
+    "can_bus_gateway_daemon": "Gateway de Comunicación CAN",
+    "gnss_navigation_engine": "Motor de Navegación GPS",
+    "telemetry_cloud_sync": "Telemetría y Enlace Nube",
+    "hvac_thermal_controller": "Control Climatización HVAC",
+    "infotainment_media_player": "Audio e Infoentretenimiento",
+    "voice_assistant_agent": "Asistente de Voz en Cabina"
+}
+
+def formatear_nombre_proceso(nombre: str) -> str:
+    """Convierte el identificador técnico de proceso a un nombre descriptivo automotriz legible."""
+    if nombre in MAPA_NOMBRES_PROCESOS:
+        return MAPA_NOMBRES_PROCESOS[nombre]
+    return nombre.replace("_", " ").title()
+
 # ====================================================================
-# BARRA LATERAL (CONTROL DE SESIÓN, TEMA Y CREDENCIALES)
+# BARRA LATERAL (CONTROL DE SESIÓN Y CREDENCIALES)
 # ====================================================================
 with st.sidebar:
     st.markdown("### AutoOS Cockpit v2.4")
     st.caption("Sistema Operativo para Vehículo Inteligente")
 
-    st.markdown("---")
-    st.markdown("#### Configuración Visual")
-    tema_seleccionado = st.radio(
-        "Modo de Interfaz:",
-        options=["Sincronizar con Streamlit (Auto)", "Oscuro (Purple Night)", "Claro (Soft Dove)"],
-        index=0,
-        horizontal=False
-    )
-    if "Claro" in tema_seleccionado:
-        modo_tema = "claro"
-    elif "Oscuro" in tema_seleccionado:
-        modo_tema = "oscuro"
-    else:
-        modo_tema = "auto"
-
-    # Aplicar estilos con el tema seleccionado
-    aplicar_estilos_cockpit(modo_tema)
-    paleta = obtener_paleta("claro" if modo_tema == "claro" else "oscuro")
+    # Aplicar estilos con sincronización nativa de Streamlit (Light / Dark)
+    aplicar_estilos_cockpit()
+    modo_tema = "auto"
+    paleta = obtener_paleta("oscuro")
 
     # Estado del sistema
     usuario_actual = obtener_usuario_actual()
@@ -565,8 +569,10 @@ with tab_procesos:
         for i, proc in enumerate(procesos_actuales):
             offset   = (len(procesos_actuales) - i) * 6
             duracion = 4 if proc["estado"] == "ejecutando" else 2
+            nombre_legible = formatear_nombre_proceso(proc["nombre"])
+            etiqueta_proc = f"PID {proc['pid']}: {nombre_legible}"
             datos_gantt.append({
-                "Proceso": f"PID {proc['pid']}: {proc['nombre']}",
+                "Proceso": etiqueta_proc,
                 "Inicio":  ahora_gantt - datetime.timedelta(seconds=offset + duracion),
                 "Fin":     ahora_gantt - datetime.timedelta(seconds=offset),
                 "Estado":  proc["estado"].capitalize(),
@@ -574,7 +580,7 @@ with tab_procesos:
             })
             if proc["estado"] == "ejecutando":
                 datos_gantt.append({
-                    "Proceso": f"PID {proc['pid']}: {proc['nombre']}",
+                    "Proceso": etiqueta_proc,
                     "Inicio":  ahora_gantt - datetime.timedelta(seconds=3),
                     "Fin":     ahora_gantt,
                     "Estado":  "Ejecutando",
@@ -584,22 +590,13 @@ with tab_procesos:
         df_gantt = pd.DataFrame(datos_gantt)
         
         # Paleta de estados adaptativa con alto contraste y Playfair Display
-        if modo_tema == "oscuro":
-            mapa_colores_gantt = {
-                "Ejecutando": "#BF40FA",  # Hyper Magenta
-                "Listo":      "#4928C2",  # Ultrasonic Blue
-                "Bloqueado":  "#E3D9FC",  # Periwinkle
-                "Terminado":  "#5B2A62"   # Velvet Purple
-            }
-            grid_color = "rgba(227, 217, 252, 0.15)"
-        else:
-            mapa_colores_gantt = {
-                "Ejecutando": "#391214",  # Dark Sienna
-                "Listo":      "#52423D",  # Spiced Hot Chocolate
-                "Bloqueado":  "#887D77",  # Moon Rock
-                "Terminado":  "#A8A096"   # Soft Dove Muted
-            }
-            grid_color = "rgba(22, 15, 12, 0.15)"
+        mapa_colores_gantt = {
+            "Ejecutando": "#BF40FA",  # Hyper Magenta
+            "Listo":      "#4928C2",  # Ultrasonic Blue
+            "Bloqueado":  "#B8A8DC",  # Lavanda suave
+            "Terminado":  "#6B7280"   # Gris Slate
+        }
+        grid_color = "rgba(168, 160, 150, 0.22)"
 
         fig_gantt = px.timeline(
             df_gantt,
@@ -609,23 +606,23 @@ with tab_procesos:
         )
         fig_gantt.update_yaxes(
             autorange="reversed",
-            tickfont=dict(color=paleta['text_primary'], size=13, family="Playfair Display"),
-            title_font=dict(color=paleta['text_primary'], size=14, family="Playfair Display"),
+            tickfont=dict(size=12, family="Playfair Display"),
+            title_font=dict(size=13, family="Playfair Display"),
             gridcolor=grid_color
         )
         fig_gantt.update_xaxes(
-            tickfont=dict(color=paleta['text_primary'], size=12, family="Playfair Display"),
-            title_font=dict(color=paleta['text_primary'], size=13, family="Playfair Display"),
+            tickfont=dict(size=11, family="Playfair Display"),
+            title_font=dict(size=12, family="Playfair Display"),
             gridcolor=grid_color
         )
         fig_gantt.update_layout(
-            height=280,
+            height=290,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(family="Playfair Display", color=paleta['text_primary']),
+            font=dict(family="Playfair Display"),
             legend=dict(
-                font=dict(family="Playfair Display", color=paleta['text_primary'], size=12),
+                font=dict(family="Playfair Display", size=12),
                 orientation="h",
                 yanchor="bottom",
                 y=1.02,
@@ -639,23 +636,18 @@ with tab_procesos:
         st.markdown("##### Distribución por Estado")
         df_proc = pd.DataFrame(procesos_actuales)
         if not df_proc.empty and "estado" in df_proc.columns:
-            conteo_estados = df_proc["estado"].value_counts().reset_index()
+            df_proc_copia = df_proc.copy()
+            df_proc_copia["Estado"] = df_proc_copia["estado"].astype(str).str.capitalize()
+            conteo_estados = df_proc_copia["Estado"].value_counts().reset_index()
             conteo_estados.columns = ["Estado", "Cantidad"]
-            # Paleta circular de estados adaptativa
-            if modo_tema == "oscuro":
-                mapa_colores_pie = {
-                    "ejecutando": "#BF40FA",  # Hyper Magenta
-                    "listo":      "#4928C2",  # Ultrasonic Blue
-                    "bloqueado":  "#E3D9FC",  # Periwinkle
-                    "terminado":  "#5B2A62"   # Velvet Purple
-                }
-            else:
-                mapa_colores_pie = {
-                    "ejecutando": "#391214",  # Dark Sienna
-                    "listo":      "#52423D",  # Spiced Hot Chocolate
-                    "bloqueado":  "#887D77",  # Moon Rock
-                    "terminado":  "#A8A096"   # Soft Dove Muted
-                }
+            
+            # Paleta circular de estados adaptativa con nombres capitalizados
+            mapa_colores_pie = {
+                "Ejecutando": "#BF40FA",  # Hyper Magenta
+                "Listo":      "#4928C2",  # Ultrasonic Blue
+                "Bloqueado":  "#B8A8DC",  # Lavanda suave
+                "Terminado":  "#6B7280"   # Gris Slate
+            }
 
             fig_pie = px.pie(
                 conteo_estados,
@@ -669,13 +661,13 @@ with tab_procesos:
                 textfont=dict(color="#FFFFFF", size=13, family="Playfair Display")
             )
             fig_pie.update_layout(
-                height=280,
+                height=290,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                font=dict(family="Playfair Display", color=paleta['text_primary']),
+                font=dict(family="Playfair Display"),
                 legend=dict(
-                    font=dict(family="Playfair Display", color=paleta['text_primary'], size=12),
+                    font=dict(family="Playfair Display", size=12),
                     orientation="h",
                     yanchor="bottom",
                     y=-0.15,
@@ -692,7 +684,8 @@ with tab_procesos:
         col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns([2, 1, 1, 1, 2])
         with col_p1:
             critico_tag = "[ASIL-D]" if p.get("critico") else "[Estándar]"
-            st.write(f"**PID {p['pid']}**: `{p['nombre']}` {critico_tag}")
+            nombre_legible = formatear_nombre_proceso(p['nombre'])
+            st.write(f"**PID {p['pid']}**: **{nombre_legible}** (`{p['nombre']}`) {critico_tag}")
         with col_p2:
             st.write(f"Prioridad: **{p['prioridad']}**")
         with col_p3:

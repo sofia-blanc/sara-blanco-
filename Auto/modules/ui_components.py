@@ -148,8 +148,14 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
            SISTEMA DE VARIABLES CSS (SINCRONIZACIÓN NATIVA CON STREAMLIT)
            ============================================================ */
         :root,
+        html,
+        body,
+        .stApp,
         [data-base-theme="dark"],
-        .stApp[data-base-theme="dark"] {
+        .stApp[data-base-theme="dark"],
+        [data-theme="dark"],
+        .stApp[data-theme="dark"],
+        .st-theme-dark {
             --bg-base: #040607;
             --bg-surface: #0D0714;
             --bg-card: #180E24;
@@ -171,10 +177,46 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
             --shadow: 0 4px 24px rgba(191, 64, 250, 0.22);
         }
 
-        /* Cuando el usuario cambia al Modo Claro en el menú de Streamlit */
-        [data-base-theme="light"],
+        /* Preferencia nativa de sistema operativo en Modo Claro */
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme="dark"]):not([data-base-theme="dark"]),
+            html:not([data-theme="dark"]):not([data-base-theme="dark"]),
+            body:not([data-theme="dark"]):not([data-base-theme="dark"]),
+            .stApp:not([data-theme="dark"]):not([data-base-theme="dark"]) {
+                --bg-base: #C0BAB3;
+                --bg-surface: #D5CFC9;
+                --bg-card: #E3DDD7;
+                --bg-card-hover: #EDE7E1;
+                --border: #A8A096;
+                --border-accent: #391214;
+                --accent-primary: #391214;
+                --accent-second: #52423D;
+                --text-primary: #160F0C;
+                --text-secondary: #391214;
+                --text-muted: #52423D;
+                --success: #15803d;
+                --warning: #b45309;
+                --danger: #b91c1c;
+                --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%);
+                --tab-active-text: #FFFFFF;
+                --gauge-bg: #D0C9C2;
+                --gauge-text: #160F0C;
+                --shadow: 0 4px 18px rgba(57, 18, 20, 0.14);
+            }
+        }
+
+        /* Cuando el usuario o Streamlit activa el Modo Claro */
+        :root[data-theme="light"],
+        :root[data-base-theme="light"],
+        html[data-theme="light"],
+        html[data-base-theme="light"],
+        body[data-theme="light"],
+        body[data-base-theme="light"],
+        .stApp[data-theme="light"],
         .stApp[data-base-theme="light"],
-        [data-theme="light"] {
+        [data-theme="light"],
+        [data-base-theme="light"],
+        .st-theme-light {
             --bg-base: #C0BAB3 !important;
             --bg-surface: #D5CFC9 !important;
             --bg-card: #E3DDD7 !important;
@@ -695,13 +737,148 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         /* ============================================================
            PLOTLY TEXT STYLING NATIVO
            ============================================================ */
-        .stPlotlyChart .js-plotly-plot text {
+        .stPlotlyChart .js-plotly-plot text,
+        .stPlotlyChart .xtick text,
+        .stPlotlyChart .ytick text,
+        .stPlotlyChart .legendtext,
+        .stPlotlyChart .g-title text,
+        .stPlotlyChart .pielabel text {
             font-family: 'Playfair Display', Georgia, serif !important;
             fill: var(--text-primary) !important;
+            color: var(--text-primary) !important;
+        }
+        .stPlotlyChart .gridpath {
+            stroke: var(--border) !important;
+            stroke-opacity: 0.25 !important;
         }
         </style>
     """
     st.markdown(css_cockpit, unsafe_allow_html=True)
+    inyectar_sincronizador_tema()
+
+
+def inyectar_sincronizador_tema():
+    """
+    Inyecta un micro-script invisible que monitorea en tiempo real
+    el selector nativo de tema de Streamlit (menú de 3 puntos -> Settings -> Light/Dark),
+    sincronizando los atributos data-theme en el documento padre para activar
+    instantáneamente la paleta Soft Dove (Modo Claro) o Purple Night (Modo Oscuro).
+    """
+    script_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body { margin: 0; padding: 0; display: none; }
+        </style>
+    </head>
+    <body>
+    <script>
+    (function() {
+        function detectStreamlitTheme() {
+            try {
+                const pWin = window.parent;
+                const pDoc = window.parent.document;
+                if (!pWin || !pDoc) return "dark";
+
+                // 1. Revisar localStorage de Streamlit
+                const keys = ['streamlit:theme', 'stActiveTheme', 'theme'];
+                for (let k of keys) {
+                    const raw = pWin.localStorage.getItem(k);
+                    if (raw) {
+                        try {
+                            const parsed = JSON.parse(raw);
+                            const base = (parsed.base || parsed.name || parsed.theme || '').toLowerCase();
+                            if (base === 'light') return 'light';
+                            if (base === 'dark') return 'dark';
+                        } catch(e) {
+                            const str = String(raw).toLowerCase();
+                            if (str.includes('light')) return 'light';
+                            if (str.includes('dark')) return 'dark';
+                        }
+                    }
+                }
+
+                // 2. Revisar color de toolbar nativo de Streamlit
+                const toolbar = pDoc.querySelector('[data-testid="stToolbar"]') || pDoc.querySelector('header');
+                if (toolbar) {
+                    const color = pWin.getComputedStyle(toolbar).color;
+                    const match = color ? color.match(/\\d+/g) : null;
+                    if (match && match.length >= 3) {
+                        const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                        if (brightness < 120) return 'light';
+                        if (brightness > 180) return 'dark';
+                    }
+                }
+
+                // 3. Preferencia del sistema operativo
+                if (pWin.matchMedia && pWin.matchMedia('(prefers-color-scheme: light)').matches) {
+                    return 'light';
+                }
+                return 'dark';
+            } catch(e) {
+                return 'dark';
+            }
+        }
+
+        function sincronizar() {
+            try {
+                const tema = detectStreamlitTheme();
+                const pDoc = window.parent.document;
+                if (!pDoc) return;
+
+                const root = pDoc.documentElement;
+                const body = pDoc.body;
+                const stApp = pDoc.querySelector('.stApp');
+
+                if (root && root.getAttribute('data-theme') !== tema) {
+                    root.setAttribute('data-theme', tema);
+                    root.setAttribute('data-base-theme', tema);
+                }
+                if (body && body.getAttribute('data-theme') !== tema) {
+                    body.setAttribute('data-theme', tema);
+                    body.setAttribute('data-base-theme', tema);
+                }
+                if (stApp && stApp.getAttribute('data-theme') !== tema) {
+                    stApp.setAttribute('data-theme', tema);
+                    stApp.setAttribute('data-base-theme', tema);
+                    if (tema === 'light') {
+                        stApp.classList.add('st-theme-light');
+                        stApp.classList.remove('st-theme-dark');
+                    } else {
+                        stApp.classList.add('st-theme-dark');
+                        stApp.classList.remove('st-theme-light');
+                    }
+                }
+            } catch(err) {}
+        }
+
+        // Ocultar este micro-frame completamente
+        try {
+            if (window.frameElement) {
+                window.frameElement.style.display = 'none';
+                window.frameElement.style.height = '0px';
+                window.frameElement.style.width = '0px';
+                window.frameElement.style.border = 'none';
+                if (window.frameElement.parentElement) {
+                    window.frameElement.parentElement.style.display = 'none';
+                    window.frameElement.parentElement.style.height = '0px';
+                }
+            }
+        } catch(e) {}
+
+        sincronizar();
+        if (window.parent) {
+            window.parent.addEventListener('storage', sincronizar);
+        }
+        setInterval(sincronizar, 250);
+    })();
+    </script>
+    </body>
+    </html>
+    """
+    components.html(script_html, height=0)
 
 
 def render_reloj_en_vivo(modo: str = "oscuro"):
@@ -796,22 +973,30 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
             function syncTheme() {{
                 try {{
                     const parentDoc = window.parent.document;
+                    if (!parentDoc) return;
+                    const root = parentDoc.documentElement;
                     const stApp = parentDoc.querySelector('.stApp');
-                    if (stApp) {{
-                        const theme = stApp.getAttribute('data-base-theme');
-                        const isLight = theme === 'light' || stApp.classList.contains('forced-light');
-                        if (isLight) {{
-                            document.body.classList.add('theme-light');
-                        }} else {{
-                            document.body.classList.remove('theme-light');
-                        }}
+                    const theme = (root ? root.getAttribute('data-theme') : null) || 
+                                  (stApp ? stApp.getAttribute('data-theme') : null) ||
+                                  (stApp ? stApp.getAttribute('data-base-theme') : null);
+                    
+                    let isLight = theme === 'light';
+                    if (!theme && window.parent.localStorage) {{
+                        const raw = window.parent.localStorage.getItem('streamlit:theme');
+                        if (raw && raw.toLowerCase().includes('light')) isLight = true;
+                    }}
+
+                    if (isLight) {{
+                        document.body.classList.add('theme-light');
+                    }} else {{
+                        document.body.classList.remove('theme-light');
                     }}
                 }} catch(e) {{}}
             }}
             updateClock();
             syncTheme();
             setInterval(updateClock, 1000);
-            setInterval(syncTheme, 500);
+            setInterval(syncTheme, 300);
         </script>
     </body>
     </html>
