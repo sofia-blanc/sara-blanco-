@@ -45,7 +45,7 @@ from modules.memory_storage import (
 from modules.ui_components import (
     aplicar_estilos_cockpit, render_banner_semaforo,
     render_card_telemetria, render_tarjeta_dispositivo,
-    render_acceso_denegado, obtener_paleta
+    render_acceso_denegado, obtener_paleta, render_reloj_en_vivo
 )
 
 # ====================================================================
@@ -143,14 +143,7 @@ with col_head1:
     st.title("AutoOS Dashboard")
     st.caption("Plataforma de Simulación del Sistema Operativo Vehicular & Control de Seguridad")
 with col_head2:
-    hora_actual = datetime.datetime.now().strftime("%H:%M:%S")
-    st.markdown(f"""
-        <div class="reloj-hud">
-            <div class="reloj-label">Reloj de Sistema</div>
-            <div class="reloj-time">{hora_actual}</div>
-            <div class="reloj-tag">RTOS Synced</div>
-        </div>
-    """, unsafe_allow_html=True)
+    render_reloj_en_vivo(modo_tema)
 
 # Renderizar el Semáforo General de AutoOS
 render_banner_semaforo(semaforo, modo_tema)
@@ -544,26 +537,55 @@ with tab_procesos:
 
         df_gantt = pd.DataFrame(datos_gantt)
         
-        # Mapa de colores adaptativo según tema
-        mapa_colores_gantt = {
-            "Ejecutando": paleta['accent_primary'],
-            "Listo":      paleta['accent_second'],
-            "Bloqueado":  paleta['warning'],
-            "Terminado":  paleta['text_muted']
-        }
+        # Paleta de estados adaptativa con alto contraste y Playfair Display
+        if modo_tema == "oscuro":
+            mapa_colores_gantt = {
+                "Ejecutando": "#BF40FA",  # Hyper Magenta
+                "Listo":      "#4928C2",  # Ultrasonic Blue
+                "Bloqueado":  "#E3D9FC",  # Periwinkle
+                "Terminado":  "#5B2A62"   # Velvet Purple
+            }
+            grid_color = "rgba(227, 217, 252, 0.15)"
+        else:
+            mapa_colores_gantt = {
+                "Ejecutando": "#391214",  # Dark Sienna
+                "Listo":      "#52423D",  # Spiced Hot Chocolate
+                "Bloqueado":  "#887D77",  # Moon Rock
+                "Terminado":  "#A8A096"   # Soft Dove Muted
+            }
+            grid_color = "rgba(22, 15, 12, 0.15)"
+
         fig_gantt = px.timeline(
             df_gantt,
             x_start="Inicio", x_end="Fin",
             y="Proceso", color="Estado",
             color_discrete_map=mapa_colores_gantt
         )
-        fig_gantt.update_yaxes(autorange="reversed")
+        fig_gantt.update_yaxes(
+            autorange="reversed",
+            tickfont=dict(color=paleta['text_primary'], size=13, family="Playfair Display"),
+            title_font=dict(color=paleta['text_primary'], size=14, family="Playfair Display"),
+            gridcolor=grid_color
+        )
+        fig_gantt.update_xaxes(
+            tickfont=dict(color=paleta['text_primary'], size=12, family="Playfair Display"),
+            title_font=dict(color=paleta['text_primary'], size=13, family="Playfair Display"),
+            gridcolor=grid_color
+        )
         fig_gantt.update_layout(
             height=280,
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font_color=paleta['text_primary']
+            font=dict(family="Playfair Display", color=paleta['text_primary']),
+            legend=dict(
+                font=dict(family="Playfair Display", color=paleta['text_primary'], size=12),
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
         st.plotly_chart(fig_gantt, use_container_width=True)
 
@@ -573,22 +595,47 @@ with tab_procesos:
         if not df_proc.empty and "estado" in df_proc.columns:
             conteo_estados = df_proc["estado"].value_counts().reset_index()
             conteo_estados.columns = ["Estado", "Cantidad"]
+            # Paleta circular de estados adaptativa
+            if modo_tema == "oscuro":
+                mapa_colores_pie = {
+                    "ejecutando": "#BF40FA",  # Hyper Magenta
+                    "listo":      "#4928C2",  # Ultrasonic Blue
+                    "bloqueado":  "#E3D9FC",  # Periwinkle
+                    "terminado":  "#5B2A62"   # Velvet Purple
+                }
+            else:
+                mapa_colores_pie = {
+                    "ejecutando": "#391214",  # Dark Sienna
+                    "listo":      "#52423D",  # Spiced Hot Chocolate
+                    "bloqueado":  "#887D77",  # Moon Rock
+                    "terminado":  "#A8A096"   # Soft Dove Muted
+                }
+
             fig_pie = px.pie(
                 conteo_estados,
                 values="Cantidad", names="Estado",
                 hole=0.48, color="Estado",
-                color_discrete_map={
-                    "ejecutando": paleta['accent_primary'],
-                    "listo":      paleta['accent_second'],
-                    "bloqueado":  paleta['warning'],
-                    "terminado":  paleta['text_muted']
-                }
+                color_discrete_map=mapa_colores_pie
+            )
+            fig_pie.update_traces(
+                textposition='inside',
+                textinfo='percent',
+                textfont=dict(color="#FFFFFF", size=13, family="Playfair Display")
             )
             fig_pie.update_layout(
                 height=280,
                 margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor="rgba(0,0,0,0)",
-                font_color=paleta['text_primary']
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Playfair Display", color=paleta['text_primary']),
+                legend=dict(
+                    font=dict(family="Playfair Display", color=paleta['text_primary'], size=12),
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.15,
+                    xanchor="center",
+                    x=0.5
+                )
             )
             st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -682,9 +729,14 @@ with tab_memoria:
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            font_color=paleta['text_primary'],
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            font=dict(family="Playfair Display", color=paleta['text_primary']),
+            legend=dict(
+                font=dict(family="Playfair Display", color=paleta['text_primary']),
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            )
         )
+        fig_mem.update_xaxes(tickfont=dict(family="Playfair Display", color=paleta['text_primary']))
+        fig_mem.update_yaxes(tickfont=dict(family="Playfair Display", color=paleta['text_primary']))
         st.plotly_chart(fig_mem, use_container_width=True)
 
     with col_m2:
