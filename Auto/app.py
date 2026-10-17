@@ -181,22 +181,37 @@ with tab_cockpit:
     # Indicadores circulares SVG elegantes (sin recorte de texto)
     col_g1, col_g2, col_g3, col_g4 = st.columns(4)
     with col_g1:
+        # CPU: verde cuando bajo (disponible), rojo cuando alto (saturado)
+        if cpu_total < 40:
+            color_cpu = "#22c55e"   # verde — disponible
+        elif cpu_total < 70:
+            color_cpu = "#f59e0b"   # amarillo — moderado
+        else:
+            color_cpu = "#ef4444"   # rojo — saturado
         render_card_telemetria(
             titulo="Uso Total de CPU",
             valor=cpu_total,
             unidad="%",
             subtexto="4 Cores activos · RTOS",
-            color_acento="#BF40FA",
+            color_acento=color_cpu,
             max_val=100.0,
             modo=modo_tema
         )
     with col_g2:
+        # RAM: verde cuando baja (disponible), rojo cuando alta (saturada)
+        ram_pct = memoria_info["pct_usado"]
+        if ram_pct < 40:
+            color_ram = "#22c55e"   # verde — disponible
+        elif ram_pct < 70:
+            color_ram = "#f59e0b"   # amarillo — moderado
+        else:
+            color_ram = "#ef4444"   # rojo — saturado
         render_card_telemetria(
             titulo="Uso de Memoria RAM",
-            valor=memoria_info["pct_usado"],
+            valor=ram_pct,
             unidad="%",
             subtexto=f"{memoria_info['procesos_mb']} MB / 16 GB",
-            color_acento="#4928C2",
+            color_acento=color_ram,
             max_val=100.0,
             modo=modo_tema
         )
@@ -225,48 +240,146 @@ with tab_cockpit:
 
     st.write("") # Espaciador
 
-    col_res1, col_res2, col_res3 = st.columns(3)
-    with col_res1:
+    st.markdown("#### Estado General del Sistema Vehicular")
+
+    # --- Fila 1: GPS / Navegación · Cámara y Visión · Sensores · Comunicación ---
+    col_sys1, col_sys2, col_sys3, col_sys4 = st.columns(4)
+
+    # GPS y Navegación
+    _gps = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_GPS_01"), {})
+    _nav_proc = next((p for p in db["procesos"] if p["nombre"] == "gnss_navigation_engine"), {})
+    _gps_ok = _gps.get("estado") == "operativo"
+    with col_sys1:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>GPS y Navegación</h4>
+                <div style="color: {'#22c55e' if _gps_ok else '#ef4444'};">
+                    Receptor: <b>{'Operativo' if _gps_ok else 'Fallo'}</b>
+                </div>
+                <div>Satelites: <b>{_gps.get('datos_telemetria', {}).get('satelites', '—')}</b></div>
+                <div>HDOP: <b>{_gps.get('datos_telemetria', {}).get('hdop', '—')}</b></div>
+                <div>Motor Nav: <b>{_nav_proc.get('estado', '—').capitalize()}</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Cámara y Visión Artificial
+    _cam = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_CAM_FRONT"), {})
+    _cam_ok = _cam.get("estado") == "operativo"
+    _cam_tel = _cam.get("datos_telemetria", {})
+    with col_sys2:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Cámara y Visión ADAS</h4>
+                <div style="color: {'#22c55e' if _cam_ok else '#ef4444'};">
+                    Estado: <b>{'Operativa' if _cam_ok else 'Fallo'}</b>
+                </div>
+                <div>Resolución: <b>{_cam_tel.get('resolucion', '—')}</b></div>
+                <div>FPS: <b>{_cam_tel.get('fps', '—')}</b></div>
+                <div>Oclusión: <b>{'No' if not _cam_tel.get('oclusion') else 'Detectada'}</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Sensores (LiDAR + Radar)
+    _lidar = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_LIDAR_01"), {})
+    _radar = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_RADAR_01"), {})
+    _lidar_ok = _lidar.get("estado") == "operativo"
+    _radar_ok = _radar.get("estado") == "operativo"
+    with col_sys3:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Sensores de Percepción</h4>
+                <div style="color: {'#22c55e' if _lidar_ok else '#ef4444'};">
+                    LiDAR 360°: <b>{'Operativo' if _lidar_ok else 'Fallo'}</b>
+                </div>
+                <div>Puntos/seg: <b>{_lidar.get('datos_telemetria', {}).get('puntos_seg', '—'):,}</b></div>
+                <div style="color: {'#22c55e' if _radar_ok else '#ef4444'};">
+                    Radar 77GHz: <b>{'Operativo' if _radar_ok else 'Fallo'}</b>
+                </div>
+                <div>Objetos: <b>{_radar.get('datos_telemetria', {}).get('objetos_trackeados', '—')} rastreados</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Comunicación V2X / 5G
+    _com = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_COM_V2X"), {})
+    _com_ok = _com.get("estado") == "operativo"
+    _com_tel = _com.get("datos_telemetria", {})
+    with col_sys4:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Comunicación 5G / V2X</h4>
+                <div style="color: {'#22c55e' if _com_ok else '#ef4444'};">
+                    Enlace: <b>{'Activo' if _com_ok else 'Desconectado'}</b>
+                </div>
+                <div>Latencia: <b>{_com_tel.get('latencia_ms', '—')} ms</b></div>
+                <div>Señal: <b>{_com_tel.get('senal_dbm', '—')} dBm</b></div>
+                <div>Backend: <b>{_com_tel.get('enlace', '—')}</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- Fila 2: Multimedia · Batería · Procesos Críticos · Hardware general ---
+    col_sys5, col_sys6, col_sys7, col_sys8 = st.columns(4)
+
+    # Multimedia / Infoentretenimiento
+    _info = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_INFOTAINMENT"), {})
+    _info_ok = _info.get("estado") == "operativo"
+    _info_tel = _info.get("datos_telemetria", {})
+    _media_proc = next((p for p in db["procesos"] if p["nombre"] == "infotainment_media_player"), {})
+    with col_sys5:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Multimedia e Infoentretenimiento</h4>
+                <div style="color: {'#22c55e' if _info_ok else '#ef4444'};">
+                    Pantalla: <b>{'Operativa' if _info_ok else 'Fallo'}</b>
+                </div>
+                <div>Brillo: <b>{_info_tel.get('brillo_pct', '—')}%</b></div>
+                <div>Audio: <b>{_info_tel.get('audio_vol_pct', '—')}%</b></div>
+                <div>Proceso: <b>{_media_proc.get('estado', '—').capitalize()}</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Batería BMS
+    _bms_dev = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_BATTERY_BMS"), {})
+    _bms_ok = _bms_dev.get("estado") == "operativo"
+    with col_sys6:
+        color_bat_icon = "#22c55e" if bateria["soc_pct"] > 25 else ("#f59e0b" if bateria["soc_pct"] > 12 else "#ef4444")
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Batería HV (BMS)</h4>
+                <div style="color: {'#22c55e' if _bms_ok else '#ef4444'};">
+                    BMS: <b>{'Operativo' if _bms_ok else 'Fallo'}</b>
+                </div>
+                <div style="color: {color_bat_icon};">SoC: <b>{bateria['soc_pct']}%</b></div>
+                <div>Tensión: <b>{bateria['voltaje_v']} V</b></div>
+                <div>Temperatura: <b>{bateria['temp_c']} °C</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Procesos Críticos (ASIL-D)
+    _criticos = [p for p in db["procesos"] if p.get("critico")]
+    _criticos_ok = all(p["estado"] in ("ejecutando", "listo") for p in _criticos)
+    with col_sys7:
+        st.markdown(f"""
+            <div class="auto-card">
+                <h4>Procesos Críticos ASIL-D</h4>
+                <div style="color: {'#22c55e' if _criticos_ok else '#ef4444'};">
+                    Estado general: <b>{'Nominal' if _criticos_ok else 'Alerta'}</b>
+                </div>
+                {"".join(f'<div>{formatear_nombre_proceso(p["nombre"])}: <b>{p["estado"].capitalize()}</b></div>' for p in _criticos)}
+                <div>CPU RTOS: <b>{cpu_total}%</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Hardware General
+    with col_sys8:
         st.markdown(f"""
             <div class="auto-card">
                 <h4>Hardware y Periféricos</h4>
-                <div>Total dispositivos: <b>{resumen_dev['total']}</b></div>
-                <div style="color: {paleta['success']};">Operativos: <b>{resumen_dev['operativos']}</b></div>
-                <div style="color: {paleta['warning']};">Degradados: <b>{resumen_dev['degradados']}</b></div>
-                <div style="color: {paleta['danger']};">Fallas / Desconectados: <b>{resumen_dev['fallas'] + resumen_dev['desconectados']}</b></div>
+                <div>Total: <b>{resumen_dev['total']} dispositivos</b></div>
+                <div style="color: #22c55e;">Operativos: <b>{resumen_dev['operativos']}</b></div>
+                <div style="color: #f59e0b;">Degradados: <b>{resumen_dev['degradados']}</b></div>
+                <div style="color: #ef4444;">Fallas: <b>{resumen_dev['fallas'] + resumen_dev['desconectados']}</b></div>
             </div>
         """, unsafe_allow_html=True)
-    with col_res2:
-        st.markdown(f"""
-            <div class="auto-card">
-                <h4>Procesos Vehiculares</h4>
-                <div>Procesos totales: <b>{len(db['procesos'])}</b></div>
-                <div>Ejecutando: <b>{sum(1 for p in db['procesos'] if p['estado'] == 'ejecutando')}</b></div>
-                <div>Críticos (ASIL): <b>{sum(1 for p in db['procesos'] if p.get('critico'))}</b></div>
-                <div>Carga CPU: <b>{cpu_total}%</b></div>
-            </div>
-        """, unsafe_allow_html=True)
-    with col_res3:
-        if es_admin:
-            st.markdown(f"""
-                <div class="auto-card">
-                    <h4>Seguridad y Acceso</h4>
-                    <div>Usuario: <b>{usuario_actual['nombre_completo']}</b></div>
-                    <div>Rol: <b>{info_rol.get('etiqueta')}</b></div>
-                    <div>Bloqueados hoy: <b>{sum(1 for a in db['auditoria'] if not a['autorizado'])}</b></div>
-                    <div>Políticas RLS: <b>100% activas</b></div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div class="auto-card">
-                    <h4>Sesión Activa</h4>
-                    <div>Usuario: <b>{usuario_actual['nombre_completo']}</b></div>
-                    <div>Rol: <b>{info_rol.get('etiqueta')}</b></div>
-                    <div>Nivel de acceso: <b>{info_rol.get('nivel')}/10</b></div>
-                    <div style="color: {paleta['text_muted']};">{info_rol.get('descripcion', '')[:60]}...</div>
-                </div>
-            """, unsafe_allow_html=True)
 
     st.markdown("#### Alertas y Eventos Críticos Activos")
     eventos_criticos = obtener_eventos_criticos_activos()

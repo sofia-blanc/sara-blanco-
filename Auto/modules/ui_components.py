@@ -416,6 +416,36 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         }
 
         /* ============================================================
+           ELIMINAR LA LÍNEA ROJA INFERIOR AL SELECCIONAR PESTAÑAS
+           ============================================================ */
+        [data-testid="stTabs"] [data-baseweb="tab-highlight"],
+        [data-baseweb="tab-highlight"],
+        [data-testid="stTabs"] [data-baseweb="tab-border"],
+        [data-baseweb="tab-border"],
+        [data-testid="stTabs"] [role="tablist"] > div:not([role="tab"]),
+        [data-testid="stTabs"] [role="tablist"] div[style*="bottom"],
+        [data-testid="stTabs"] [role="tablist"] div[style*="rgb(255, 75, 75)"],
+        [data-testid="stTabs"] [role="tablist"] div[style*="#ff4b4b"],
+        [data-testid="stTabs"] [role="tab"]::after,
+        [data-testid="stTabs"] [role="tab"]::before {
+            display: none !important;
+            height: 0px !important;
+            min-height: 0px !important;
+            max-height: 0px !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            border-bottom: none !important;
+            outline: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+        [data-testid="stTabs"] [role="tab"] {
+            border-bottom: none !important;
+        }
+
+        /* ============================================================
            TARJETAS DEL COCKPIT (CARDS)
            ============================================================ */
         .auto-card {
