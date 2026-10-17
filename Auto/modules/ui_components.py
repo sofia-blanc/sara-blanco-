@@ -82,16 +82,118 @@ def obtener_paleta(modo: str = "oscuro") -> Dict[str, str]:
         }
 
 
-def aplicar_estilos_cockpit(modo: str = "oscuro"):
+def aplicar_estilos_cockpit(modo: str = "auto"):
     """
     Inyecta CSS con fuente Playfair Display para todo el sitio,
-    y asegura que las pestañas activas tengan texto claro y legible.
+    utiliza CSS variables para soportar de forma nativa e inmediata el selector
+    de Modo Claro / Modo Oscuro de Streamlit (menú de 3 puntos), y
+    proporciona pestañas anchas y elegantes con amplio espacio horizontal.
     """
-    p = obtener_paleta(modo)
+    # Si el usuario eligió forzar explícitamente un tema en el sidebar
+    override_css = ""
+    if modo == "claro":
+        override_css = """
+        :root, .stApp {
+            --bg-base: #C0BAB3 !important;
+            --bg-surface: #D5CFC9 !important;
+            --bg-card: #E3DDD7 !important;
+            --bg-card-hover: #EDE7E1 !important;
+            --border: #A8A096 !important;
+            --border-accent: #391214 !important;
+            --accent-primary: #391214 !important;
+            --accent-second: #52423D !important;
+            --text-primary: #160F0C !important;
+            --text-secondary: #391214 !important;
+            --text-muted: #52423D !important;
+            --success: #15803d !important;
+            --warning: #b45309 !important;
+            --danger: #b91c1c !important;
+            --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            --tab-active-text: #FFFFFF !important;
+            --gauge-bg: #D0C9C2 !important;
+            --gauge-text: #160F0C !important;
+            --shadow: 0 4px 18px rgba(57, 18, 20, 0.14) !important;
+        }
+        """
+    elif modo == "oscuro":
+        override_css = """
+        :root, .stApp {
+            --bg-base: #040607 !important;
+            --bg-surface: #0D0714 !important;
+            --bg-card: #180E24 !important;
+            --bg-card-hover: #241438 !important;
+            --border: #331E4D !important;
+            --border-accent: #BF40FA !important;
+            --accent-primary: #BF40FA !important;
+            --accent-second: #4928C2 !important;
+            --text-primary: #E3D9FC !important;
+            --text-secondary: #B8A8DC !important;
+            --text-muted: #8D7AA8 !important;
+            --success: #34d399 !important;
+            --warning: #fbbf24 !important;
+            --danger: #f87171 !important;
+            --tab-active-bg: linear-gradient(135deg, #BF40FA 0%, #4928C2 100%) !important;
+            --tab-active-text: #FFFFFF !important;
+            --gauge-bg: #12091C !important;
+            --gauge-text: #E3D9FC !important;
+            --shadow: 0 4px 24px rgba(191, 64, 250, 0.22) !important;
+        }
+        """
 
-    st.markdown(f"""
-        <style>
+    css_cockpit = f"<style>\n{override_css}\n" + """
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+        /* ============================================================
+           SISTEMA DE VARIABLES CSS (SINCRONIZACIÓN NATIVA CON STREAMLIT)
+           ============================================================ */
+        :root,
+        [data-base-theme="dark"],
+        .stApp[data-base-theme="dark"] {
+            --bg-base: #040607;
+            --bg-surface: #0D0714;
+            --bg-card: #180E24;
+            --bg-card-hover: #241438;
+            --border: #331E4D;
+            --border-accent: #BF40FA;
+            --accent-primary: #BF40FA;
+            --accent-second: #4928C2;
+            --text-primary: #E3D9FC;
+            --text-secondary: #B8A8DC;
+            --text-muted: #8D7AA8;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --tab-active-bg: linear-gradient(135deg, #BF40FA 0%, #4928C2 100%);
+            --tab-active-text: #FFFFFF;
+            --gauge-bg: #12091C;
+            --gauge-text: #E3D9FC;
+            --shadow: 0 4px 24px rgba(191, 64, 250, 0.22);
+        }
+
+        /* Cuando el usuario cambia al Modo Claro en el menú de Streamlit */
+        [data-base-theme="light"],
+        .stApp[data-base-theme="light"],
+        [data-theme="light"] {
+            --bg-base: #C0BAB3 !important;
+            --bg-surface: #D5CFC9 !important;
+            --bg-card: #E3DDD7 !important;
+            --bg-card-hover: #EDE7E1 !important;
+            --border: #A8A096 !important;
+            --border-accent: #391214 !important;
+            --accent-primary: #391214 !important;
+            --accent-second: #52423D !important;
+            --text-primary: #160F0C !important;
+            --text-secondary: #391214 !important;
+            --text-muted: #52423D !important;
+            --success: #15803d !important;
+            --warning: #b45309 !important;
+            --danger: #b91c1c !important;
+            --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            --tab-active-text: #FFFFFF !important;
+            --gauge-bg: #D0C9C2 !important;
+            --gauge-text: #160F0C !important;
+            --shadow: 0 4px 18px rgba(57, 18, 20, 0.14) !important;
+        }
 
         /* ============================================================
            TIPOGRAFÍA PLAYFAIR DISPLAY PARA TODA LA PÁGINA WEB
@@ -99,436 +201,476 @@ def aplicar_estilos_cockpit(modo: str = "oscuro"):
         html, body, [class*="css"], .stApp, 
         h1, h2, h3, h4, h5, h6, 
         p, span, div, label, button, input, select, textarea,
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {{
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
             font-family: 'Playfair Display', Georgia, serif !important;
-        }}
+        }
 
         /* ============================================================
            HEADER TRANSPARENTE DE STREAMLIT (BUGFIX BARRA BLANCA)
            ============================================================ */
         header[data-testid="stHeader"],
-        [data-testid="stHeader"] {{
+        [data-testid="stHeader"] {
             background: transparent !important;
             background-color: transparent !important;
-            color: {p['text_primary']} !important;
-        }}
-        [data-testid="stToolbar"] {{
-            color: {p['text_primary']} !important;
-        }}
-        .stApp {{
-            background-color: {p['bg_base']} !important;
-            color: {p['text_primary']} !important;
-        }}
-        .main .block-container {{
+            color: var(--text-primary) !important;
+        }
+        [data-testid="stToolbar"] {
+            color: var(--text-primary) !important;
+        }
+        .stApp {
+            background-color: var(--bg-base) !important;
+            color: var(--text-primary) !important;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .main .block-container {
             padding-top: 1rem !important;
             padding-bottom: 2.5rem !important;
             max-width: 1400px;
-        }}
+        }
 
         /* ============================================================
            SIDEBAR
            ============================================================ */
-        [data-testid="stSidebar"] {{
-            background-color: {p['bg_surface']} !important;
-            border-right: 1px solid {p['border']} !important;
-        }}
+        [data-testid="stSidebar"] {
+            background-color: var(--bg-surface) !important;
+            border-right: 1px solid var(--border) !important;
+        }
         [data-testid="stSidebar"] h1,
         [data-testid="stSidebar"] h2,
         [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] h4 {{
-            color: {p['text_primary']} !important;
-        }}
+        [data-testid="stSidebar"] h4 {
+            color: var(--text-primary) !important;
+        }
         [data-testid="stSidebar"] p,
         [data-testid="stSidebar"] span,
-        [data-testid="stSidebar"] label {{
-            color: {p['text_secondary']} !important;
-        }}
+        [data-testid="stSidebar"] label {
+            color: var(--text-secondary) !important;
+        }
 
         /* ============================================================
-           ENCABEZADOS
+           ENCABEZADOS Y TEXTOS
            ============================================================ */
-        h1, h2, h3, h4, h5 {{
-            color: {p['text_primary']} !important;
+        h1, h2, h3, h4, h5 {
+            color: var(--text-primary) !important;
             font-weight: 700 !important;
             letter-spacing: -0.3px;
-        }}
-        p, span, label, li {{
-            color: {p['text_secondary']};
-        }}
-        code {{
+        }
+        p, span, label, li {
+            color: var(--text-secondary);
+        }
+        code {
             background: rgba(191, 64, 250, 0.12) !important;
-            color: {p['accent_primary']} !important;
+            color: var(--accent-primary) !important;
             padding: 2px 6px !important;
             border-radius: 4px !important;
             font-size: 13px !important;
-        }}
+        }
 
         /* ============================================================
-           PESTAÑAS (TABS) — TEXTO CLARO AL SELECCIONAR
+           PESTAÑAS (TABS) — TAMAÑO HORIZONTAL AMPLIO Y ELEGANTE
            ============================================================ */
-        [data-testid="stTabs"] [role="tablist"] {{
-            background-color: {p['bg_surface']} !important;
-            border-radius: 14px !important;
-            padding: 6px !important;
-            gap: 6px !important;
-            border: 1px solid {p['border']} !important;
-            margin-bottom: 22px !important;
-        }}
+        [data-testid="stTabs"] [role="tablist"] {
+            background-color: var(--bg-surface) !important;
+            border-radius: 16px !important;
+            padding: 8px 12px !important;
+            gap: 12px !important;
+            border: 1px solid var(--border) !important;
+            margin-bottom: 24px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            overflow-x: auto !important;
+        }
         /* Pestañas NO seleccionadas */
-        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]),
-        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
-        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span {{
+        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) {
             background: transparent !important;
-            color: {p['text_primary']} !important;
-            font-size: 14px !important;
+            color: var(--text-primary) !important;
+            font-size: 14.5px !important;
             font-weight: 600 !important;
-            border-radius: 10px !important;
-            padding: 8px 18px !important;
+            border-radius: 12px !important;
+            padding: 10px 28px !important;
+            min-width: 120px !important;
             border: none !important;
-            opacity: 0.85 !important;
-            transition: all 0.2s ease !important;
-        }}
-        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]):hover,
-        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]):hover p {{
+            opacity: 0.8 !important;
+            transition: all 0.25s ease !important;
+            text-align: center !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
+        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span {
+            color: var(--text-primary) !important;
+            font-weight: 600 !important;
+            font-size: 14.5px !important;
+        }
+        [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]):hover {
             opacity: 1 !important;
-            background: rgba(191, 64, 250, 0.1) !important;
-        }}
-        /* Pestaña SELECCIONADA — TEXTO BLANCO / CLARO SIEMPRE */
-        [data-testid="stTabs"] [role="tab"][aria-selected="true"],
-        [data-testid="stTabs"] [role="tab"][aria-selected="true"] p,
-        [data-testid="stTabs"] [role="tab"][aria-selected="true"] span,
-        [data-testid="stTabs"] [role="tab"][aria-selected="true"] div {{
-            background: {p['tab_active_bg']} !important;
+            background: rgba(191, 64, 250, 0.12) !important;
+            transform: translateY(-1px);
+        }
+        /* Pestaña SELECCIONADA — TAMAÑO HORIZONTAL AMPLIO CON RESPIRACIÓN Y BRILLO */
+        [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+            background: var(--tab-active-bg) !important;
             color: #FFFFFF !important;
             font-weight: 800 !important;
-            border-radius: 10px !important;
-            box-shadow: {p['shadow']} !important;
+            border-radius: 12px !important;
+            padding: 11px 38px !important;
+            min-width: 145px !important;
+            box-shadow: var(--shadow), 0 0 16px rgba(191, 64, 250, 0.35) !important;
             opacity: 1 !important;
-        }}
+            border: none !important;
+            text-align: center !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            letter-spacing: 0.4px !important;
+        }
+        [data-testid="stTabs"] [role="tab"][aria-selected="true"] p,
+        [data-testid="stTabs"] [role="tab"][aria-selected="true"] span,
+        [data-testid="stTabs"] [role="tab"][aria-selected="true"] div {
+            color: #FFFFFF !important;
+            font-weight: 800 !important;
+            font-size: 15px !important;
+            letter-spacing: 0.4px !important;
+        }
 
         /* ============================================================
            TARJETAS DEL COCKPIT (CARDS)
            ============================================================ */
-        .auto-card {{
-            background: {p['bg_card']};
-            border: 1px solid {p['border']};
+        .auto-card {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 14px;
             padding: 20px 22px;
             margin-bottom: 16px;
-            box-shadow: {p['shadow']};
+            box-shadow: var(--shadow);
             transition: transform 0.2s ease, border-color 0.2s ease;
-        }}
-        .auto-card:hover {{
-            border-color: {p['accent_primary']};
+        }
+        .auto-card:hover {
+            border-color: var(--accent-primary) !important;
             transform: translateY(-2px);
-        }}
-        .auto-card h4 {{
+        }
+        .auto-card h4 {
             margin: 0 0 12px 0 !important;
             font-size: 16px !important;
             font-weight: 700 !important;
-            color: {p['text_primary']} !important;
-        }}
-        .auto-card div {{
+            color: var(--text-primary) !important;
+        }
+        .auto-card div {
             font-size: 13.5px;
-            color: {p['text_secondary']};
+            color: var(--text-secondary);
             line-height: 1.85;
-        }}
+        }
 
         /* ============================================================
            TARJETA TELEMETRÍA ULTRA-ESTÉTICA (SIN RECORTE DE TEXTO)
            ============================================================ */
-        .gauge-card {{
-            background: {p['bg_card']};
-            border: 1px solid {p['border']};
+        .gauge-card {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 16px;
             padding: 18px 16px;
             text-align: center;
-            box-shadow: {p['shadow']};
+            box-shadow: var(--shadow);
             transition: all 0.25s ease;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
             min-height: 210px;
-        }}
-        .gauge-card:hover {{
-            border-color: {p['accent_primary']};
+        }
+        .gauge-card:hover {
+            border-color: var(--accent-primary) !important;
             transform: translateY(-2px);
-        }}
-        .gauge-header {{
+        }
+        .gauge-header {
             font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: {p['text_primary']};
+            color: var(--text-primary) !important;
             margin-bottom: 10px;
-        }}
-        .gauge-ring-container {{
+        }
+        .gauge-ring-container {
             position: relative;
             width: 110px;
             height: 110px;
             display: flex;
             align-items: center;
             justify-content: center;
-        }}
-        .gauge-center-text {{
+        }
+        .gauge-center-text {
             position: absolute;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-        }}
-        .gauge-center-value {{
+        }
+        .gauge-center-value {
             font-size: 25px;
             font-weight: 800;
-            color: {p['text_primary']};
+            color: var(--text-primary) !important;
             line-height: 1;
-        }}
-        .gauge-center-unit {{
+        }
+        .gauge-center-unit {
             font-size: 11px;
             font-weight: 600;
-            color: {p['text_muted']};
+            color: var(--text-muted) !important;
             margin-top: 2px;
-        }}
-        .gauge-subtext {{
+        }
+        .gauge-subtext {
             font-size: 12px;
-            color: {p['text_secondary']};
+            color: var(--text-secondary) !important;
             margin-top: 8px;
             font-weight: 600;
-        }}
+        }
+        .gauge-bg-ring {
+            stroke: var(--gauge-bg) !important;
+        }
 
         /* ============================================================
            SEMÁFORO VEHICULAR ELEGANTE (BARRA HUD)
            ============================================================ */
-        .semaforo-hud {{
-            background: {p['bg_card']};
-            border: 1px solid {p['border']};
+        .semaforo-hud {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 14px;
             padding: 18px 24px;
             margin-bottom: 22px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: {p['shadow']};
-        }}
-        .semaforo-hud-left {{
+            box-shadow: var(--shadow) !important;
+        }
+        .semaforo-hud-left {
             display: flex;
             align-items: center;
             gap: 16px;
-        }}
-        .semaforo-beacon {{
+        }
+        .semaforo-beacon {
             width: 14px;
             height: 14px;
             border-radius: 50%;
             display: inline-block;
-        }}
-        .beacon-verde {{
-            background-color: {p['success']};
-            box-shadow: 0 0 12px {p['success']};
-        }}
-        .beacon-amarillo {{
-            background-color: {p['warning']};
-            box-shadow: 0 0 12px {p['warning']};
-        }}
-        .beacon-rojo {{
-            background-color: {p['danger']};
-            box-shadow: 0 0 14px {p['danger']};
+        }
+        .beacon-verde {
+            background-color: var(--success);
+            box-shadow: 0 0 12px var(--success);
+        }
+        .beacon-amarillo {
+            background-color: var(--warning);
+            box-shadow: 0 0 12px var(--warning);
+        }
+        .beacon-rojo {
+            background-color: var(--danger);
+            box-shadow: 0 0 14px var(--danger);
             animation: pulse-hud 1.8s infinite;
-        }}
-        @keyframes pulse-hud {{
-            0%, 100% {{ transform: scale(1); opacity: 1; }}
-            50% {{ transform: scale(1.3); opacity: 0.7; }}
-        }}
-        .semaforo-title {{
+        }
+        @keyframes pulse-hud {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        .semaforo-title {
             font-size: 17px;
             font-weight: 800;
-            color: {p['text_primary']};
+            color: var(--text-primary) !important;
             letter-spacing: 0.2px;
-        }}
-        .semaforo-msg {{
+        }
+        .semaforo-msg {
             font-size: 13px;
-            color: {p['text_secondary']};
+            color: var(--text-secondary) !important;
             margin-top: 3px;
-        }}
-        .semaforo-hud-right {{
+        }
+        .semaforo-hud-right {
             display: flex;
             gap: 14px;
             align-items: center;
-        }}
-        .semaforo-pill {{
-            background: rgba(0, 0, 0, 0.12);
-            border: 1px solid {p['border']};
+        }
+        .semaforo-pill {
+            background: rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 8px;
             padding: 7px 14px;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            color: {p['text_muted']};
-        }}
-        .semaforo-pill b {{
-            color: {p['text_primary']};
+            color: var(--text-muted) !important;
+        }
+        .semaforo-pill b {
+            color: var(--text-primary) !important;
             font-weight: 800;
-        }}
+        }
 
         /* ============================================================
            BADGES DE HARDWARE
            ============================================================ */
-        .badge-operativo {{
+        .badge-operativo {
             background: rgba(34, 197, 94, 0.15);
-            color: {p['success']};
+            color: var(--success);
             padding: 4px 11px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
             border: 1px solid rgba(34, 197, 94, 0.3);
             text-transform: uppercase;
-        }}
-        .badge-degradado {{
+        }
+        .badge-degradado {
             background: rgba(245, 158, 11, 0.15);
-            color: {p['warning']};
+            color: var(--warning);
             padding: 4px 11px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
             border: 1px solid rgba(245, 158, 11, 0.3);
             text-transform: uppercase;
-        }}
-        .badge-falla {{
+        }
+        .badge-falla {
             background: rgba(239, 68, 68, 0.15);
-            color: {p['danger']};
+            color: var(--danger);
             padding: 4px 11px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
             border: 1px solid rgba(239, 68, 68, 0.3);
             text-transform: uppercase;
-        }}
-        .badge-desconectado {{
+        }
+        .badge-desconectado {
             background: rgba(120, 120, 120, 0.15);
-            color: {p['text_muted']};
+            color: var(--text-muted);
             padding: 4px 11px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 700;
-            border: 1px solid {p['border']};
+            border: 1px solid var(--border);
             text-transform: uppercase;
-        }}
+        }
 
         /* ============================================================
            ROL SIDEBAR CARD
            ============================================================ */
-        .rol-card {{
-            background: {p['bg_card']};
+        .rol-card {
+            background: var(--bg-card) !important;
             padding: 14px 16px;
             border-radius: 12px;
-            border: 1px solid {p['border']};
-            border-left: 4px solid {p['accent_primary']};
+            border: 1px solid var(--border) !important;
+            border-left: 4px solid var(--accent-primary) !important;
             margin-top: 12px;
-        }}
-        .rol-card .rol-label {{
+        }
+        .rol-card .rol-label {
             font-size: 10px;
             text-transform: uppercase;
-            color: {p['text_muted']};
+            color: var(--text-muted) !important;
             letter-spacing: 1px;
             font-weight: 700;
-        }}
-        .rol-card .rol-name {{
+        }
+        .rol-card .rol-name {
             font-size: 15px;
             font-weight: 700;
-            color: {p['text_primary']};
+            color: var(--text-primary) !important;
             margin: 4px 0 2px;
-        }}
-        .rol-card .rol-nivel {{
+        }
+        .rol-card .rol-nivel {
             font-size: 11.5px;
-            color: {p['text_secondary']};
-        }}
+            color: var(--text-secondary) !important;
+        }
 
         /* ============================================================
            FASES DE INCIDENTES
            ============================================================ */
-        .fase-step {{
-            border-left: 4px solid {p['accent_primary']};
+        .fase-step {
+            border-left: 4px solid var(--accent-primary) !important;
             padding: 14px 20px;
             margin-bottom: 12px;
-            background: {p['bg_card']};
+            background: var(--bg-card) !important;
             border-radius: 0 10px 10px 0;
-            border-top: 1px solid {p['border']};
-            border-right: 1px solid {p['border']};
-            border-bottom: 1px solid {p['border']};
-        }}
+            border-top: 1px solid var(--border) !important;
+            border-right: 1px solid var(--border) !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
 
         /* ============================================================
            BLOQUE ACCESO RESTRINGIDO
            ============================================================ */
-        .access-denied-block {{
-            background: {p['bg_card']};
-            border: 1px dashed {p['border_accent']};
+        .access-denied-block {
+            background: var(--bg-card) !important;
+            border: 1px dashed var(--border-accent) !important;
             border-radius: 14px;
             padding: 36px 28px;
             text-align: center;
             margin-top: 12px;
             margin-bottom: 16px;
-        }}
-        .access-denied-block h3 {{
-            color: {p['text_primary']} !important;
+        }
+        .access-denied-block h3 {
+            color: var(--text-primary) !important;
             font-size: 17px;
             margin-bottom: 6px;
-        }}
-        .access-denied-block p {{
+        }
+        .access-denied-block p {
             font-size: 13.5px;
-            color: {p['text_secondary']};
+            color: var(--text-secondary) !important;
             max-width: 420px;
             margin: 0 auto;
-        }}
+        }
 
         /* ============================================================
            STREAMLIT FORM CONTROLS & TABLES
            ============================================================ */
-        .stButton > button {{
+        .stButton > button {
             border-radius: 8px !important;
             font-weight: 700 !important;
             font-size: 13.5px !important;
-            border: 1px solid {p['border']} !important;
-            background-color: {p['bg_card']} !important;
-            color: {p['text_primary']} !important;
+            border: 1px solid var(--border) !important;
+            background-color: var(--bg-card) !important;
+            color: var(--text-primary) !important;
             transition: all 0.2s ease !important;
-        }}
-        .stButton > button:hover {{
-            border-color: {p['accent_primary']} !important;
+        }
+        .stButton > button:hover {
+            border-color: var(--accent-primary) !important;
             box-shadow: 0 0 0 2px rgba(191, 64, 250, 0.2) !important;
             transform: translateY(-1px) !important;
-        }}
-        [data-testid="baseButton-primary"] {{
-            background: {p['tab_active_bg']} !important;
+        }
+        [data-testid="baseButton-primary"] {
+            background: var(--tab-active-bg) !important;
             border-color: transparent !important;
             color: #FFFFFF !important;
-        }}
-        [data-testid="stDataFrame"] {{
+        }
+        [data-testid="stDataFrame"] {
             border-radius: 12px !important;
             overflow: hidden !important;
-            border: 1px solid {p['border']} !important;
-            background: {p['bg_card']} !important;
-        }}
+            border: 1px solid var(--border) !important;
+            background: var(--bg-card) !important;
+        }
         [data-baseweb="select"] > div,
-        [data-baseweb="input"] > div {{
+        [data-baseweb="input"] > div {
             border-radius: 8px !important;
-            border-color: {p['border']} !important;
-            background-color: {p['bg_surface']} !important;
-            color: {p['text_primary']} !important;
-        }}
-        hr {{
-            border-color: {p['border']} !important;
+            border-color: var(--border) !important;
+            background-color: var(--bg-surface) !important;
+            color: var(--text-primary) !important;
+        }
+        hr {
+            border-color: var(--border) !important;
             opacity: 0.5;
             margin: 20px 0 !important;
-        }}
+        }
+
+        /* ============================================================
+           PLOTLY TEXT STYLING NATIVO
+           ============================================================ */
+        .stPlotlyChart .js-plotly-plot text {
+            font-family: 'Playfair Display', Georgia, serif !important;
+            fill: var(--text-primary) !important;
+        }
         </style>
-    """, unsafe_allow_html=True)
+    """
+    st.markdown(css_cockpit, unsafe_allow_html=True)
 
 
 def render_reloj_en_vivo(modo: str = "oscuro"):
     """
     Renderiza un reloj digital en tiempo real con segundero continuo,
-    utilizando JavaScript en un micro-componente sin lag para Streamlit.
+    utilizando JavaScript en un micro-componente sin lag para Streamlit,
+    adaptándose de inmediato al tema claro u oscuro del sistema.
     """
     p = obtener_paleta(modo)
     html_code = f"""
@@ -542,6 +684,7 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
                 padding: 0;
                 box-sizing: border-box;
                 font-family: 'Playfair Display', Georgia, serif;
+                transition: all 0.25s ease;
             }}
             body {{
                 background: transparent;
@@ -552,12 +695,12 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
                 overflow: hidden;
             }}
             .reloj-hud {{
-                background: {p['bg_card']};
-                border: 1px solid {p['border']};
+                background: #180E24;
+                border: 1px solid #331E4D;
                 border-radius: 12px;
                 padding: 8px 18px;
                 text-align: right;
-                box-shadow: {p['shadow']};
+                box-shadow: 0 4px 24px rgba(191, 64, 250, 0.18);
                 display: inline-block;
                 min-width: 175px;
             }}
@@ -565,25 +708,40 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
                 font-size: 10.5px;
                 text-transform: uppercase;
                 letter-spacing: 0.8px;
-                color: {p['text_muted']};
+                color: #8D7AA8;
                 font-weight: 700;
             }}
             .reloj-time {{
                 font-size: 22px;
                 font-weight: 800;
-                color: {p['text_primary']};
+                color: #E3D9FC;
                 line-height: 1.15;
                 font-feature-settings: "tnum";
             }}
             .reloj-tag {{
                 font-size: 10px;
-                color: {p['success']};
+                color: #34d399;
                 font-weight: 700;
+            }}
+            /* MODO CLARO AUTOMÁTICO */
+            body.theme-light .reloj-hud {{
+                background: #E3DDD7 !important;
+                border: 1px solid #A8A096 !important;
+                box-shadow: 0 4px 16px rgba(57, 18, 20, 0.12) !important;
+            }}
+            body.theme-light .reloj-label {{
+                color: #52423D !important;
+            }}
+            body.theme-light .reloj-time {{
+                color: #160F0C !important;
+            }}
+            body.theme-light .reloj-tag {{
+                color: #15803d !important;
             }}
         </style>
     </head>
     <body>
-        <div class="reloj-hud">
+        <div class="reloj-hud" id="reloj-hud-box">
             <div class="reloj-label">Reloj de Sistema</div>
             <div class="reloj-time" id="reloj-live">--:--:--</div>
             <div class="reloj-tag">&bull; RTOS Synced</div>
@@ -597,8 +755,25 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
                 const el = document.getElementById('reloj-live');
                 if (el) el.innerText = h + ':' + m + ':' + s;
             }}
+            function syncTheme() {{
+                try {{
+                    const parentDoc = window.parent.document;
+                    const stApp = parentDoc.querySelector('.stApp');
+                    if (stApp) {{
+                        const theme = stApp.getAttribute('data-base-theme');
+                        const isLight = theme === 'light' || stApp.classList.contains('forced-light');
+                        if (isLight) {{
+                            document.body.classList.add('theme-light');
+                        }} else {{
+                            document.body.classList.remove('theme-light');
+                        }}
+                    }}
+                }} catch(e) {{}}
+            }}
             updateClock();
+            syncTheme();
             setInterval(updateClock, 1000);
+            setInterval(syncTheme, 500);
         </script>
     </body>
     </html>

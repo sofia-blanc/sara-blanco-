@@ -14,38 +14,90 @@ from config import get_db
 from modules.devices import obtener_resumen_dispositivos
 
 def obtener_estado_bateria() -> Dict[str, Any]:
-    """Retorna los parámetros de telemetría del sistema BMS de alta tensión"""
+    """
+    Retorna los parámetros de telemetría del sistema BMS de alta tensión.
+    Integra el perfil de conducción vehicular (Eco, Normal, Sport) y
+    calcula autonomía en km, límite de potencia del inversor, consumo y perfil térmico.
+    """
     db = get_db()
     bateria = db["bateria"]
     
-    # Determinar modo según SoC
-    soc = bateria["soc_pct"]
-    if soc > 25:
-        modo = "Normal"
-        color_modo = "NORMAL"
-    elif soc > 12:
-        modo = "Ahorro Energético (ECO)"
-        color_modo = "ECO"
-    else:
-        modo = "BATERÍA CRÍTICA (Limp Mode)"
+    soc = float(bateria.get("soc_pct", 78.5))
+    temp_c = float(bateria.get("temp_c", 31.5))
+    modo_sel = bateria.get("modo_conduccion", "Normal")
+    
+    # Paquete de 75 kWh nominal
+    capacidad_kwh = 75.0
+    energia_disponible_kwh = (soc / 100.0) * capacidad_kwh
+    
+    # Si la batería está en nivel crítico (<= 12%), se activa Limp Mode de emergencia
+    if soc <= 12.0:
+        modo_activo = "CRÍTICO (Limp Mode Forzado)"
         color_modo = "CRÍTICO"
-        
-    bateria["modo_actual"] = modo
+        consumo_kwh_100km = 12.0
+        limite_potencia_kw = 45.0
+        corriente_tipica_a = 16.0
+        perfil_hvac = "Desactivado (Solo Ventilación de Emergencia)"
+        curva_torque = "Restringida al 30% (Protección de Celdas)"
+        regeneracion = "Máxima (Frenado Regenerativo Forzado)"
+    elif modo_sel == "Eco":
+        modo_activo = "ECO (Ahorro Energético)"
+        color_modo = "ECO"
+        consumo_kwh_100km = 13.5
+        limite_potencia_kw = 75.0
+        corriente_tipica_a = 24.5
+        perfil_hvac = "Modo Ahorro (0.8 kW - Confort Térmico Eco)"
+        curva_torque = "Suave / Progresiva (Ahorro de Carga)"
+        regeneracion = "Alta (One-Pedal Drive +25% Regeneración)"
+    elif modo_sel == "Sport":
+        modo_activo = "SPORT (Alto Rendimiento)"
+        color_modo = "SPORT"
+        consumo_kwh_100km = 22.0
+        limite_potencia_kw = 240.0
+        corriente_tipica_a = 78.0
+        perfil_hvac = "Prioridad Refrigeración de Inversor y Batería"
+        curva_torque = "Agresiva / Dynamic Boost (100% Par Inmediato)"
+        regeneracion = "Baja (Inercia Dinámica para Pista)"
+    else:  # Normal
+        modo_activo = "NORMAL (Balance Dinámico)"
+        color_modo = "NORMAL"
+        consumo_kwh_100km = 16.5
+        limite_potencia_kw = 150.0
+        corriente_tipica_a = 42.0
+        perfil_hvac = "Automático / Confort Equilibrado (1.5 kW)"
+        curva_torque = "Lineal Equilibrada"
+        regeneracion = "Estándar (Nivel 2 de Regeneración)"
+
+    autonomia_km = round((energia_disponible_kwh / consumo_kwh_100km) * 100.0, 1)
+    autonomia_nominal = round(((soc / 100.0) * capacidad_kwh / 16.5) * 100.0, 1)
+    delta_autonomia = round(autonomia_km - autonomia_nominal, 1)
+
+    bateria["modo_actual"] = modo_activo
     bateria["color_modo"] = color_modo
+    bateria["modo_conduccion"] = modo_sel
+    bateria["autonomia_km"] = autonomia_km
+    bateria["delta_autonomia"] = delta_autonomia
+    bateria["limite_potencia_kw"] = limite_potencia_kw
+    bateria["consumo_kwh_100km"] = consumo_kwh_100km
+    bateria["corriente_a"] = corriente_tipica_a
+    bateria["perfil_hvac"] = perfil_hvac
+    bateria["curva_torque"] = curva_torque
+    bateria["regeneracion"] = regeneracion
+    bateria["voltaje_v"] = round(320.0 + (soc / 100.0) * 85.0, 1)
+    bateria["potencia_kw"] = round((bateria["voltaje_v"] * corriente_tipica_a) / 1000.0, 1)
     return bateria
 
 
 def actualizar_bateria(soc_pct: float, temp_c: float, modo_conduccion: str = "Normal") -> Dict[str, Any]:
-    """Actualiza los parámetros de batería para simulaciones en vivo"""
+    """Actualiza los parámetros de batería para simulaciones en vivo y perfiles de conducción"""
     db = get_db()
     bateria = db["bateria"]
-    bateria["soc_pct"] = max(0.0, min(100.0, soc_pct))
-    bateria["temp_c"] = temp_c
-    bateria["modo_conduccion"] = modo_conduccion
+    bateria["soc_pct"] = max(0.0, min(100.0, float(soc_pct)))
+    bateria["temp_c"] = float(temp_c)
+    if modo_conduccion:
+        bateria["modo_conduccion"] = modo_conduccion
     
-    # Calcular voltaje proporcional
-    bateria["voltaje_v"] = round(320.0 + (bateria["soc_pct"] / 100.0) * 85.0, 1)
-    return bateria
+    return obtener_estado_bateria()
 
 
 def obtener_eventos_criticos_activos() -> List[Dict[str, Any]]:

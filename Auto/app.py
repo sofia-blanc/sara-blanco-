@@ -59,15 +59,20 @@ with st.sidebar:
     st.markdown("#### Configuración Visual")
     tema_seleccionado = st.radio(
         "Modo de Interfaz:",
-        options=["Oscuro (Purple Night)", "Claro (Soft Dove)"],
+        options=["Sincronizar con Streamlit (Auto)", "Oscuro (Purple Night)", "Claro (Soft Dove)"],
         index=0,
-        horizontal=True
+        horizontal=False
     )
-    modo_tema = "claro" if "Claro" in tema_seleccionado else "oscuro"
+    if "Claro" in tema_seleccionado:
+        modo_tema = "claro"
+    elif "Oscuro" in tema_seleccionado:
+        modo_tema = "oscuro"
+    else:
+        modo_tema = "auto"
 
-    # Aplicar estilos con el tema seleccionado (elimina barra blanca de Streamlit)
+    # Aplicar estilos con el tema seleccionado
     aplicar_estilos_cockpit(modo_tema)
-    paleta = obtener_paleta(modo_tema)
+    paleta = obtener_paleta("claro" if modo_tema == "claro" else "oscuro")
 
     # Estado del sistema
     usuario_actual = obtener_usuario_actual()
@@ -197,7 +202,7 @@ with tab_cockpit:
             titulo="Batería HV (BMS)",
             valor=bateria["soc_pct"],
             unidad="%",
-            subtexto=f"{bateria['temp_c']} °C · {bateria['voltaje_v']} V",
+            subtexto=f"{bateria.get('autonomia_km', 357.0)} km · Modo {bateria.get('modo_conduccion', 'Normal')}",
             color_acento=color_bat,
             max_val=100.0,
             modo=modo_tema
@@ -394,20 +399,79 @@ with tab_dispositivos:
 # --------------------------------------------------------------------
 with tab_bateria:
     st.header("Sistema de Gestión Térmica y Batería (BMS)")
+    st.caption("Monitoreo de alta tensión, perfil dinámico de conducción y balanceo térmico de celdas.")
 
-    col_bat1, col_bat2, col_bat3 = st.columns(3)
+    col_bat1, col_bat2, col_bat3, col_bat4 = st.columns(4)
     with col_bat1:
-        st.metric("Estado de Carga (SoC)", f"{bateria['soc_pct']}%", delta=bateria["modo_actual"])
+        st.metric(
+            "Estado de Carga (SoC)",
+            f"{bateria['soc_pct']}%",
+            delta=bateria.get("modo_actual", "Normal")
+        )
     with col_bat2:
-        st.metric("Voltaje del Paquete", f"{bateria['voltaje_v']} V", delta="398V Nominal")
+        delta_km_val = bateria.get('delta_autonomia', 0)
+        delta_km_txt = f"{'+' if delta_km_val > 0 else ''}{delta_km_val} km vs Normal" if delta_km_val != 0 else "Referencia Nominal"
+        st.metric(
+            "Autonomía Estimada",
+            f"{bateria.get('autonomia_km', 357.0)} km",
+            delta=delta_km_txt
+        )
     with col_bat3:
-        st.metric("Temperatura de Celdas", f"{bateria['temp_c']} °C", delta="Máx tolerado: 55°C", delta_color="inverse")
+        st.metric(
+            "Límite de Inversor",
+            f"{bateria.get('limite_potencia_kw', 150.0)} kW",
+            delta=f"Voltaje: {bateria['voltaje_v']} V"
+        )
+    with col_bat4:
+        st.metric(
+            "Temperatura BMS",
+            f"{bateria['temp_c']} °C",
+            delta=f"Máx tolerado: 55°C",
+            delta_color="inverse"
+        )
+
+    st.markdown("---")
+
+    # Panel de Perfil de Conducción Vehicular (Disponible para Conductor y Mecánico/Admin)
+    st.subheader("Perfil de Conducción y Modo Energético")
+    st.caption("Ajusta la respuesta del acelerador, regeneración de frenado y climatización vehicular:")
+
+    modo_actual_sel = bateria.get("modo_conduccion", "Normal")
+
+    col_perfil1, col_perfil2 = st.columns([3, 2])
+    with col_perfil1:
+        if es_admin or es_conductor:
+            modo_elegido = st.radio(
+                "Modo de conducción:",
+                options=["Eco", "Normal", "Sport"],
+                horizontal=True,
+                index=["Eco", "Normal", "Sport"].index(modo_actual_sel) if modo_actual_sel in ["Eco", "Normal", "Sport"] else 1
+            )
+            if st.button("Aplicar Modo", use_container_width=True):
+                actualizar_bateria(bateria["soc_pct"], bateria["temp_c"], modo_conduccion=modo_elegido)
+                st.success(f"Modo '{modo_elegido}' activado y calibrado en el bus CAN.")
+                st.rerun()
+        else:
+            st.info("Modo de consulta. El rol de Pasajero tiene acceso de solo lectura a la telemetría energética.")
+
+    with col_perfil2:
+        st.markdown(f"""
+            <div class="auto-card" style="margin-bottom: 0;">
+                <h4 style="margin-bottom: 8px;">Telemetría del Perfil Activo</h4>
+                <div>Modo Actual: <b>{bateria.get('modo_actual', modo_actual_sel)}</b></div>
+                <div>Consumo Estimado: <b>{bateria.get('consumo_kwh_100km', 16.5)} kWh / 100 km</b></div>
+                <div>Regeneración de Frenado: <b>{bateria.get('regeneracion', 'Estándar')}</b></div>
+                <div>Curva de Torque: <b>{bateria.get('curva_torque', 'Lineal')}</b></div>
+                <div>Gestión Climatización: <b>{bateria.get('perfil_hvac', 'Automático')}</b></div>
+                <div>Descarga Típica: <b>~{bateria.get('corriente_a', 42.0)} A ({bateria.get('potencia_kw', 16.7)} kW)</b></div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
     if es_admin:
         st.subheader("Simulador de Descarga y Estado de Batería")
-        st.caption("Ajuste directo de parámetros del BMS de alta tensión:")
+        st.caption("Ajuste directo de parámetros del BMS de alta tensión (Laboratorio Mecánico):")
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
             nuevo_soc = st.slider("Ajustar Nivel de Carga (SoC %):", 0.0, 100.0, float(bateria["soc_pct"]))
@@ -417,29 +481,11 @@ with tab_bateria:
             st.write("")
             st.write("")
             if st.button("Actualizar Parámetros BMS", use_container_width=True):
-                actualizar_bateria(nuevo_soc, nueva_temp)
+                actualizar_bateria(nuevo_soc, nueva_temp, modo_conduccion=bateria.get("modo_conduccion", "Normal"))
                 st.success("Parámetros de batería actualizados en el bus CAN.")
                 st.rerun()
-
-    elif es_conductor:
-        st.subheader("Perfil de Conducción y Modo Energético")
-        st.caption("Como conductor puedes alternar el perfil de conducción vehicular:")
-        modo_elegido = st.radio(
-            "Modo de conducción:",
-            options=["Eco", "Normal", "Sport"],
-            horizontal=True,
-            index=["Eco", "Normal", "Sport"].index(bateria.get("modo_conduccion", "Normal")) if bateria.get("modo_conduccion") in ["Eco", "Normal", "Sport"] else 1
-        )
-        if st.button("Aplicar Modo"):
-            actualizar_bateria(bateria["soc_pct"], bateria["temp_c"], modo_conduccion=modo_elegido)
-            st.success(f"Modo '{modo_elegido}' activado.")
-            st.rerun()
-
-        st.markdown("---")
+    elif not es_conductor:
         render_acceso_denegado("Ajuste Directo de Parámetros BMS", "Mecánico / Admin")
-
-    else:
-        st.info("Modo de consulta. El rol de Pasajero tiene acceso de solo lectura a la telemetría energética.")
 
 
 # --------------------------------------------------------------------
