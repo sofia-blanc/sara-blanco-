@@ -142,6 +142,7 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
 
     css_cockpit = f"<style>\n{override_css}\n" + """
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
         /* ============================================================
            SISTEMA DE VARIABLES CSS (SINCRONIZACIÓN NATIVA CON STREAMLIT)
@@ -196,13 +197,50 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         }
 
         /* ============================================================
-           TIPOGRAFÍA PLAYFAIR DISPLAY PARA TODA LA PÁGINA WEB
+           TIPOGRAFÍA PLAYFAIR DISPLAY PARA CONTENIDO TEXTUAL
            ============================================================ */
-        html, body, [class*="css"], .stApp, 
+        html, body, .stApp, 
         h1, h2, h3, h4, h5, h6, 
-        p, span, div, label, button, input, select, textarea,
-        [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        p, label, button, input, select, textarea,
+        [data-testid="stMetricValue"], [data-testid="stMetricLabel"],
+        .auto-card, .gauge-card, .semaforo-hud, .rol-card,
+        [data-testid="stTabs"] [role="tab"],
+        [data-testid="stMarkdownContainer"] p,
+        [data-testid="stMarkdownContainer"] span:not([data-testid="stIconMaterial"]):not([class*="material"]),
+        [data-testid="stMarkdownContainer"] div:not([data-testid="stIconMaterial"]):not([class*="material"]) {
             font-family: 'Playfair Display', Georgia, serif !important;
+        }
+
+        /* ============================================================
+           PROTECCIÓN ESTRICTA DE ICONOS DE STREAMLIT (MATERIAL SYMBOLS)
+           Evita que los ligatures de iconos se rompan en texto plano
+           ============================================================ */
+        [data-testid="stIconMaterial"],
+        [data-testid="stIconMaterial"] *,
+        [class*="material-symbols"],
+        [class*="material-icons"],
+        .material-symbols-rounded,
+        .material-symbols-outlined,
+        .material-icons,
+        header [data-testid="stIconMaterial"],
+        [data-testid="stMainMenu"] [data-testid="stIconMaterial"],
+        div[role="dialog"] [data-testid="stIconMaterial"],
+        div[data-baseweb="popover"] [data-testid="stIconMaterial"],
+        div[data-baseweb="menu"] [data-testid="stIconMaterial"],
+        button [data-testid="stIconMaterial"],
+        svg {
+            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+            letter-spacing: normal !important;
+            text-transform: none !important;
+            display: inline-block !important;
+            white-space: nowrap !important;
+            word-wrap: normal !important;
+            direction: ltr !important;
+            -webkit-font-feature-settings: 'liga' 1 !important;
+            font-feature-settings: 'liga' 1 !important;
+            -webkit-font-smoothing: antialiased !important;
         }
 
         /* ============================================================
