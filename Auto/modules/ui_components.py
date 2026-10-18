@@ -1563,23 +1563,50 @@ def render_menu_herramientas_interactivas(modo: str = "oscuro"):
     components.html(html_code, height=140)
 
 
-def render_reproductor_spotify(modo: str = "oscuro"):
+def render_reproductor_spotify(modo: str = "oscuro", pista: dict = None, reproduciendo: bool = False, volumen: int = 50, silenciado: bool = False):
     """
-    Renderiza el reproductor vehicular vinculado a Spotify para AutoOS.
-    Permite reproducir listas recomendadas (Autobahn, Synthwave, Lo-Fi) y vincular cuenta.
+    Renderiza el reproductor vehicular Multimedia integrado con audio funcional real y sin redirecciones molestas.
     """
     p = obtener_paleta("claro" if modo == "claro" else "oscuro")
+    if pista is None:
+        pista = {
+            "titulo": "Conducción Nocturna (Synthwave 80s)",
+            "artista": "Kavinsky Style - AutoOS Master",
+            "duracion": "03:45",
+            "url": "https://cdn.freesound.org/previews/612/612610_5674468-lq.mp3"
+        }
+
+    vol_float = 0.0 if silenciado else (volumen / 100.0)
+    audio_url = pista.get("url", "")
+    play_attr = "autoplay" if reproduciendo else ""
+    estado_texto = "EN REPRODUCCIÓN (DSP 12ch)" if reproduciendo else "EN PAUSA"
+    estado_color = "#22c55e" if reproduciendo else p['text_muted']
+
     st.markdown(f"""
-        <div class="auto-card" style="margin-top: 15px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {p['border']}44; padding-bottom: 12px; margin-bottom: 14px;">
+        <div class="auto-card" style="margin-top: 15px; border: 1px solid {p['border']};">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {p['border']}33; padding-bottom: 12px; margin-bottom: 14px;">
                 <div>
-                    <span style="font-weight: 700; font-size: 16px; color: {p['text_primary']};">Spotify Vehicular en AutoOS</span>
-                    <span style="margin-left: 8px; font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);">Vinculado</span>
-                    <p style="font-size: 11.5px; color: {p['text_muted']}; margin-top: 2px;">Cuenta: Sara Blanco (Premium) · DSP 12 Canales Surround Activo</p>
+                    <span style="font-family: 'Playfair Display', serif; font-weight: 700; font-size: 17px; color: {p['text_primary']};">Multimedia y Streaming de Cabina</span>
+                    <span style="margin-left: 8px; font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(34,197,94,0.12); color: {estado_color}; border: 1px solid rgba(34,197,94,0.3);">{estado_texto}</span>
+                    <p style="font-size: 11.5px; color: {p['text_muted']}; margin-top: 3px;">Pista: <b style="color: {p['text_primary']};">{pista['titulo']}</b> · Artista: {pista['artista']}</p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="font-size: 11px; font-family: monospace; color: {p['text_secondary']}; font-weight: bold;">Volumen: {'SILENCIADO' if silenciado else f'{volumen}%'}</span>
                 </div>
             </div>
-            <div style="margin-bottom: 15px;">
-                <iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DXdLEN7aqioXM?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+            <!-- Reproductor de Audio HTML5 Funcional Real (Sin Redirecciones) -->
+            <div style="display: flex; align-items: center; justify-content: center; padding: 10px 0;">
+                <audio id="autoos-cabin-audio" src="{audio_url}" controls {play_attr} style="width: 100%; border-radius: 8px; outline: none; filter: {'invert(1)' if modo == 'oscuro' else 'none'};">
+                    Tu navegador no soporta el elemento de audio vehicular.
+                </audio>
             </div>
+            <script>
+                const cabinAudio = document.getElementById('autoos-cabin-audio');
+                if (cabinAudio) {{
+                    cabinAudio.volume = {vol_float};
+                    {'cabinAudio.play().catch(e => console.log(e));' if reproduciendo else 'cabinAudio.pause();'}
+                }}
+            </script>
         </div>
     """, unsafe_allow_html=True)
+

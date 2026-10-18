@@ -327,6 +327,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Ver GPS & Ruta", key="btn_sys_gps", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "GPS & Navegación"
+            st.session_state["selector_subsistema_cockpit"] = "GPS & Navegación"
             st.rerun()
 
     # Cámara y Visión Artificial
@@ -347,6 +348,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Ver Cámara ADAS", key="btn_sys_cam", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Cámara & Visión ADAS"
+            st.session_state["selector_subsistema_cockpit"] = "Cámara & Visión ADAS"
             st.rerun()
 
     # Sensores (LiDAR + Radar)
@@ -370,6 +372,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Radar LiDAR 360°", key="btn_sys_lidar", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Sensores (LiDAR/Radar)"
+            st.session_state["selector_subsistema_cockpit"] = "Sensores (LiDAR/Radar)"
             st.rerun()
 
     # Comunicación V2X / 5G
@@ -390,6 +393,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Diagnóstico 5G", key="btn_sys_com", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Comunicación 5G"
+            st.session_state["selector_subsistema_cockpit"] = "Comunicación 5G"
             st.rerun()
 
     # --- Fila 2: Multimedia · Batería · Procesos Críticos · Hardware general ---
@@ -414,6 +418,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Control Multimedia", key="btn_sys_media", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Multimedia & Audio"
+            st.session_state["selector_subsistema_cockpit"] = "Multimedia & Audio"
             st.rerun()
 
     # Batería BMS
@@ -434,6 +439,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Diagnóstico Batería", key="btn_sys_bat", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Batería & Celdas"
+            st.session_state["selector_subsistema_cockpit"] = "Batería & Celdas"
             st.rerun()
 
     # Procesos Críticos (ASIL-D)
@@ -452,6 +458,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Procesos ASIL-D", key="btn_sys_proc", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Procesos Críticos"
+            st.session_state["selector_subsistema_cockpit"] = "Procesos Críticos"
             st.rerun()
 
     # Hardware General
@@ -467,6 +474,7 @@ with tab_cockpit:
         """, unsafe_allow_html=True)
         if st.button("Hardware General", key="btn_sys_hw", use_container_width=True):
             st.session_state["cockpit_sub_activo"] = "Red CAN & Hardware"
+            st.session_state["selector_subsistema_cockpit"] = "Red CAN & Hardware"
             st.rerun()
 
     # ================================================================
@@ -694,40 +702,83 @@ with tab_cockpit:
         col_med1, col_med2 = st.columns([3, 2])
         with col_med1:
             st.markdown("##### Pantalla Central y Reproductor de Cabina")
-            pistas_audio = [
-                "Podcast Tecnologías de Vehículos Autónomos & RTOS",
-                "Playlist Conducción Nocturna - Synthwave & Ambient",
-                "Radio Tráfico y Reportes Viales en Vivo (FM 99.9)",
-                "Instrucciones del Navegador GPS / Audio Espacial"
+            PISTAS_MULTIMEDIA = [
+                {
+                    "titulo": "Conducción Nocturna (Synthwave 80s)",
+                    "artista": "Kavinsky Style - AutoOS Master",
+                    "duracion": "03:45",
+                    "url": "https://cdn.freesound.org/previews/612/612610_5674468-lq.mp3"
+                },
+                {
+                    "titulo": "Autobahn Electric Cruise",
+                    "artista": "Electronic Beats RTOS",
+                    "duracion": "04:12",
+                    "url": "https://cdn.freesound.org/previews/536/536108_7037-lq.mp3"
+                },
+                {
+                    "titulo": "Podcast Tecnologías de Vehículos Autónomos & RTOS",
+                    "artista": "AutoOS Engineering Team",
+                    "duracion": "05:30",
+                    "url": "https://cdn.freesound.org/previews/682/682142_11861866-lq.mp3"
+                },
+                {
+                    "titulo": "Radio Tráfico & Alertas en Vivo (FM 99.9)",
+                    "artista": "Central de Tráfico Inteligente",
+                    "duracion": "02:50",
+                    "url": "https://cdn.freesound.org/previews/416/416529_5121236-lq.mp3"
+                }
             ]
-            st.selectbox("Pista en Reproducción:", pistas_audio, index=0)
+            titulos_pistas = [f"{p['titulo']} — {p['artista']}" for p in PISTAS_MULTIMEDIA]
+            
+            pista_idx = st.session_state.get("multimedia_pista_idx", 0)
+            if pista_idx >= len(PISTAS_MULTIMEDIA):
+                pista_idx = 0
+                st.session_state["multimedia_pista_idx"] = 0
+
+            sel_pista = st.selectbox("Pista en Reproducción:", titulos_pistas, index=pista_idx, key="sb_pista_multimedia")
+            if titulos_pistas.index(sel_pista) != pista_idx:
+                st.session_state["multimedia_pista_idx"] = titulos_pistas.index(sel_pista)
+                st.session_state["multimedia_reproduciendo"] = True
+                pista_idx = st.session_state["multimedia_pista_idx"]
+
+            reproduciendo = st.session_state.get("multimedia_reproduciendo", False)
+            silenciado = st.session_state.get("multimedia_silenciado", False)
+            volumen_actual = st.session_state.get("multimedia_volumen", 65)
 
             col_c1, col_c2, col_c3, col_c4 = st.columns(4)
             with col_c1:
-                if st.button("Anterior", use_container_width=True):
-                    st.toast("Pista anterior")
+                if st.button("Anterior", use_container_width=True, key="btn_med_prev"):
+                    st.session_state["multimedia_pista_idx"] = (pista_idx - 1) % len(PISTAS_MULTIMEDIA)
+                    st.session_state["multimedia_reproduciendo"] = True
+                    st.rerun()
             with col_c2:
-                reproduciendo = st.session_state.get("audio_playing", True)
                 label_play = "Pausar" if reproduciendo else "Reproducir"
-                if st.button(label_play, type="primary", use_container_width=True):
-                    st.session_state["audio_playing"] = not reproduciendo
+                if st.button(label_play, type="primary" if reproduciendo else "secondary", use_container_width=True, key="btn_med_play"):
+                    st.session_state["multimedia_reproduciendo"] = not reproduciendo
                     st.rerun()
             with col_c3:
-                if st.button("Siguiente", use_container_width=True):
-                    st.toast("Siguiente pista")
+                if st.button("Siguiente", use_container_width=True, key="btn_med_next"):
+                    st.session_state["multimedia_pista_idx"] = (pista_idx + 1) % len(PISTAS_MULTIMEDIA)
+                    st.session_state["multimedia_reproduciendo"] = True
+                    st.rerun()
             with col_c4:
-                if st.button("Silenciar", use_container_width=True):
-                    st.toast("Audio silenciado")
+                label_mute = "Desmutear" if silenciado else "Silenciar"
+                if st.button(label_mute, use_container_width=True, key="btn_med_mute"):
+                    st.session_state["multimedia_silenciado"] = not silenciado
+                    st.rerun()
 
-            st.progress(0.42, text="02:18 / 05:30")
+            pista_actual = PISTAS_MULTIMEDIA[pista_idx]
+            st.progress(0.45 if reproduciendo else 0.0, text=f"Duración: {pista_actual['duracion']}")
 
             col_sl1, col_sl2 = st.columns(2)
             with col_sl1:
-                vol = st.slider("Volumen Cabina:", 0, 100, 35)
+                vol = st.slider("Volumen Cabina:", 0, 100, volumen_actual, key="slider_vol_cabina")
+                st.session_state["multimedia_volumen"] = vol
             with col_sl2:
-                brillo = st.slider("Brillo Pantalla OLED:", 10, 100, 75)
-            # Vinculación y Reproductor Oficial Spotify
-            render_reproductor_spotify(modo_tema)
+                brillo = st.slider("Brillo Pantalla OLED:", 10, 100, 75, key="slider_brillo_oled")
+
+            # Reproductor Funcional Real
+            render_reproductor_spotify(modo_tema, pista=pista_actual, reproduciendo=reproduciendo, volumen=vol, silenciado=silenciado)
 
         with col_med2:
             st.markdown("##### Confort Acústico & Climatización")
