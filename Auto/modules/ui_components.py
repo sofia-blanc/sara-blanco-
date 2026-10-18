@@ -42,7 +42,7 @@ def obtener_paleta(modo: str = "oscuro") -> Dict[str, str]:
             "bg_surface":     "#D5CFC9",
             "bg_card":        "#E3DDD7",
             "bg_card_hover":  "#EDE7E1",
-            "border":         "#A8A096",
+            "border":         "#887D77",
             "border_accent":  "#391214",
             "accent_primary": "#391214",
             "accent_second":  "#52423D",
@@ -1561,3 +1561,25 @@ def render_menu_herramientas_interactivas(modo: str = "oscuro"):
     </html>
     """
     components.html(html_code, height=140)
+
+
+def render_reproductor_spotify(modo: str = "oscuro"):
+    """
+    Renderiza el reproductor vehicular vinculado a Spotify para AutoOS.
+    Permite reproducir listas recomendadas (Autobahn, Synthwave, Lo-Fi) y vincular cuenta.
+    """
+    p = obtener_paleta("claro" if modo == "claro" else "oscuro")
+    st.markdown(f"""
+        <div class="auto-card" style="margin-top: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {p['border']}44; padding-bottom: 12px; margin-bottom: 14px;">
+                <div>
+                    <span style="font-weight: 700; font-size: 16px; color: {p['text_primary']};">Spotify Vehicular en AutoOS</span>
+                    <span style="margin-left: 8px; font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);">Vinculado</span>
+                    <p style="font-size: 11.5px; color: {p['text_muted']}; margin-top: 2px;">Cuenta: Sara Blanco (Premium) · DSP 12 Canales Surround Activo</p>
+                </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <iframe style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DXdLEN7aqioXM?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)

@@ -45,7 +45,7 @@ from modules.memory_storage import (
 from modules.ui_components import (
     aplicar_estilos_cockpit, render_banner_semaforo,
     render_card_telemetria, render_tarjeta_dispositivo,
-    render_acceso_denegado, obtener_paleta, render_reloj_en_vivo, render_menu_herramientas_interactivas
+    render_acceso_denegado, obtener_paleta, render_reloj_en_vivo, render_menu_herramientas_interactivas, render_reproductor_spotify
 )
 
 # Mapeo de identificadores de procesos a nombres descriptivos automotrices
@@ -70,7 +70,7 @@ def formatear_nombre_proceso(nombre: str) -> str:
 # BARRA LATERAL (CONTROL DE SESIÓN Y CREDENCIALES)
 # ====================================================================
 with st.sidebar:
-    st.markdown("### AutoOS Cockpit v2.4")
+    st.markdown("### AutoOS")
     st.caption("Sistema Operativo para Vehículo Inteligente")
 
     # ====================================================================
@@ -119,7 +119,7 @@ with st.sidebar:
 
     if st.session_state.get("abrir_grabador", False):
         st.info("🔴 Grabador de Pantalla Activo: Pulsa el control interactivo para capturar la sesión de AutoOS.")
-        render_menu_herramientas_interactivas(modo_tema)
+        render_menu_herramientas_interactivas, render_reproductor_spotify(modo_tema)
 
     st.caption("Made with Streamlit v1.66.0 · AutoOS Edition")
 
@@ -198,7 +198,7 @@ with st.sidebar:
 # ====================================================================
 col_head1, col_head2 = st.columns([3, 1])
 with col_head1:
-    st.title("AutoOS Dashboard")
+    st.title("AutoOS")
     st.caption("Plataforma de Simulación del Sistema Operativo Vehicular & Control de Seguridad")
 with col_head2:
     render_reloj_en_vivo(modo_tema)
@@ -711,6 +711,8 @@ with tab_cockpit:
                 vol = st.slider("Volumen Cabina:", 0, 100, 35)
             with col_sl2:
                 brillo = st.slider("Brillo Pantalla OLED:", 10, 100, 75)
+            # Vinculación y Reproductor Oficial Spotify
+            render_reproductor_spotify(modo_tema)
 
         with col_med2:
             st.markdown("##### Confort Acústico & Climatización")
