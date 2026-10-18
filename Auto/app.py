@@ -261,6 +261,9 @@ with tab_cockpit:
                 <div>Motor Nav: <b>{_nav_proc.get('estado', '—').capitalize()}</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Ver GPS & Ruta", key="btn_sys_gps", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "GPS & Navegación"
+            st.rerun()
 
     # Cámara y Visión Artificial
     _cam = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_CAM_FRONT"), {})
@@ -278,6 +281,9 @@ with tab_cockpit:
                 <div>Oclusión: <b>{'No' if not _cam_tel.get('oclusion') else 'Detectada'}</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Ver Cámara ADAS", key="btn_sys_cam", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Cámara & Visión ADAS"
+            st.rerun()
 
     # Sensores (LiDAR + Radar)
     _lidar = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_LIDAR_01"), {})
@@ -298,6 +304,9 @@ with tab_cockpit:
                 <div>Objetos: <b>{_radar.get('datos_telemetria', {}).get('objetos_trackeados', '—')} rastreados</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Radar LiDAR 360°", key="btn_sys_lidar", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Sensores (LiDAR/Radar)"
+            st.rerun()
 
     # Comunicación V2X / 5G
     _com = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_COM_V2X"), {})
@@ -315,6 +324,9 @@ with tab_cockpit:
                 <div>Backend: <b>{_com_tel.get('enlace', '—')}</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Diagnóstico 5G", key="btn_sys_com", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Comunicación 5G"
+            st.rerun()
 
     # --- Fila 2: Multimedia · Batería · Procesos Críticos · Hardware general ---
     col_sys5, col_sys6, col_sys7, col_sys8 = st.columns(4)
@@ -336,6 +348,9 @@ with tab_cockpit:
                 <div>Proceso: <b>{_media_proc.get('estado', '—').capitalize()}</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Control Multimedia", key="btn_sys_media", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Multimedia & Audio"
+            st.rerun()
 
     # Batería BMS
     _bms_dev = next((d for d in db["dispositivos"] if d["codigo"] == "DEV_BATTERY_BMS"), {})
@@ -353,6 +368,9 @@ with tab_cockpit:
                 <div>Temperatura: <b>{bateria['temp_c']} °C</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Diagnóstico Batería", key="btn_sys_bat", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Batería & Celdas"
+            st.rerun()
 
     # Procesos Críticos (ASIL-D)
     _criticos = [p for p in db["procesos"] if p.get("critico")]
@@ -364,10 +382,13 @@ with tab_cockpit:
                 <div style="color: {'#22c55e' if _criticos_ok else '#ef4444'};">
                     Estado general: <b>{'Nominal' if _criticos_ok else 'Alerta'}</b>
                 </div>
-                {"".join(f'<div>{formatear_nombre_proceso(p["nombre"])}: <b>{p["estado"].capitalize()}</b></div>' for p in _criticos)}
+                {"".join(f'<div>{formatear_nombre_proceso(p["nombre"])}: <b>{p["estado"].capitalize()}</b></div>' for p in _criticos[:2])}
                 <div>CPU RTOS: <b>{cpu_total}%</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Procesos ASIL-D", key="btn_sys_proc", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Procesos Críticos"
+            st.rerun()
 
     # Hardware General
     with col_sys8:
@@ -380,6 +401,379 @@ with tab_cockpit:
                 <div style="color: #ef4444;">Fallas: <b>{resumen_dev['fallas'] + resumen_dev['desconectados']}</b></div>
             </div>
         """, unsafe_allow_html=True)
+        if st.button("Hardware General", key="btn_sys_hw", use_container_width=True):
+            st.session_state["cockpit_sub_activo"] = "Red CAN & Hardware"
+            st.rerun()
+
+    # ================================================================
+    # CONSOLA DE INSPECCIÓN INTERACTIVA (CLICK-DRIVEN Y ÚTIL DE VERDAD)
+    # ================================================================
+    st.markdown("---")
+    st.subheader("Consola de Inspección Interactiva")
+    st.caption("Inspecciona y opera cada subsistema automotriz con mapas, cámaras, radar y telemetría en tiempo real:")
+
+    lista_subsistemas = [
+        "GPS & Navegación",
+        "Cámara & Visión ADAS",
+        "Sensores (LiDAR/Radar)",
+        "Multimedia & Audio",
+        "Comunicación 5G",
+        "Batería & Celdas",
+        "Procesos Críticos",
+        "Red CAN & Hardware"
+    ]
+
+    sub_activo_actual = st.session_state.get("cockpit_sub_activo", "GPS & Navegación")
+    sub_elegido = st.radio(
+        "Subsistema Activo en Consola:",
+        options=lista_subsistemas,
+        index=lista_subsistemas.index(sub_activo_actual) if sub_activo_actual in lista_subsistemas else 0,
+        horizontal=True,
+        key="selector_subsistema_cockpit"
+    )
+    st.session_state["cockpit_sub_activo"] = sub_elegido
+
+    # ------------------------------------------------------------
+    # 1. CONSOLA: GPS Y NAVEGACIÓN
+    # ------------------------------------------------------------
+    if sub_elegido == "GPS & Navegación":
+        col_gps1, col_gps2 = st.columns([3, 2])
+        rutas_gps = {
+            "Campus Universitario Central (Origen)": {"lat": 4.6097, "lon": -74.0817, "dist_km": 0.0, "tiempo_min": 0},
+            "Estación de Carga Rápida 150 kW (Autopista Norte)": {"lat": 4.6850, "lon": -74.0520, "dist_km": 11.4, "tiempo_min": 18},
+            "Taller y Laboratorio Mecánico Automotriz": {"lat": 4.6480, "lon": -74.0930, "dist_km": 5.8, "tiempo_min": 12},
+            "Centro de Distribución Logística (Occidente)": {"lat": 4.6950, "lon": -74.1350, "dist_km": 16.2, "tiempo_min": 26}
+        }
+
+        with col_gps1:
+            st.markdown("##### Mapa de Navegación Vehicular y Trayectoria")
+            dest_elegido = st.selectbox(
+                "Fijar Destino de Navegación:",
+                options=list(rutas_gps.keys()),
+                index=1
+            )
+            info_dest = rutas_gps[dest_elegido]
+
+            df_mapa = pd.DataFrame([
+                {"lat": 4.6097, "lon": -74.0817, "nombre": "Posición Actual Vehículo"},
+                {"lat": info_dest["lat"], "lon": info_dest["lon"], "nombre": dest_elegido}
+            ])
+            st.map(df_mapa, zoom=11)
+
+        with col_gps2:
+            st.markdown("##### Computadora de Ruta GNSS")
+            consumo_est_kwh = (info_dest["dist_km"] * bateria.get("consumo_kwh_100km", 16.5)) / 100.0
+            soc_consumo_pct = (consumo_est_kwh / 75.0) * 100.0
+            soc_llegada = max(0.0, round(bateria["soc_pct"] - soc_consumo_pct, 1))
+
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Telemetría de Navegación RTK</h4>
+                    <div>Coordenadas: <b>4.6097° N, -74.0817° W</b></div>
+                    <div>Distancia a destino: <b>{info_dest['dist_km']} km</b></div>
+                    <div>Tiempo estimado (ETA): <b>~{info_dest['tiempo_min']} min</b></div>
+                    <div>Consumo previsto: <b>~{consumo_est_kwh:.2f} kWh ({soc_consumo_pct:.1f}% SoC)</b></div>
+                    <div>Batería estimada al llegar: <b style="color: {'#22c55e' if soc_llegada > 20 else '#ef4444'};">{soc_llegada}%</b></div>
+                    <div>Rumbo vehicular: <b>142° (Sureste)</b></div>
+                    <div>Velocidad actual: <b>48.5 km/h</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            col_bnav1, col_bnav2 = st.columns(2)
+            with col_bnav1:
+                if st.button("Iniciar Guía GPS", type="primary", use_container_width=True):
+                    st.success(f"Trayectoria hacia '{dest_elegido}' sincronizada con el bus CAN.")
+            with col_bnav2:
+                if st.button("Recalibrar RTK", use_container_width=True):
+                    st.info("Calibración diferencial completada (14 satélites).")
+
+    # ------------------------------------------------------------
+    # 2. CONSOLA: CÁMARA Y VISIÓN ARTIFICIAL ADAS
+    # ------------------------------------------------------------
+    elif sub_elegido == "Cámara & Visión ADAS":
+        col_cam1, col_cam2 = st.columns([3, 2])
+        with col_cam1:
+            st.markdown("##### HUD de Visión Artificial ADAS Frontal")
+            modo_cam = st.radio(
+                "Filtro del Sensor Óptico:",
+                ["Luz Visible (RGB)", "Visión Térmica / Nocturna", "Segmentación Semántica ADAS"],
+                horizontal=True
+            )
+
+            bg_sky = "#0b132b" if modo_cam != "Visión Térmica / Nocturna" else "#000000"
+            bg_road = "#1c2541" if modo_cam != "Visión Térmica / Nocturna" else "#1a1a1a"
+            line_color = "#34d399" if modo_cam != "Segmentación Semántica ADAS" else "#BF40FA"
+
+            fig_cam = go.Figure()
+            # Líneas guía de carril LKA
+            fig_cam.add_trace(go.Scatter(
+                x=[20, 42, None, 80, 58],
+                y=[0, 60, None, 0, 60],
+                mode="lines",
+                line=dict(color=line_color, width=4),
+                name="Líneas de Carril LKA"
+            ))
+            # Vehículo líder detectado
+            fig_cam.add_trace(go.Scatter(
+                x=[45, 55, 55, 45, 45],
+                y=[38, 38, 55, 55, 38],
+                mode="lines",
+                line=dict(color="#ef4444", width=3),
+                fill="toself",
+                fillcolor="rgba(239, 68, 68, 0.2)",
+                name="Vehículo Líder [ACC 35m]"
+            ))
+            # Peatón detectado
+            fig_cam.add_trace(go.Scatter(
+                x=[76, 80, 80, 76, 76],
+                y=[15, 15, 30, 30, 15],
+                mode="lines",
+                line=dict(color="#f59e0b", width=2),
+                fill="toself",
+                fillcolor="rgba(245, 158, 11, 0.2)",
+                name="Peatón Acera [12m]"
+            ))
+
+            fig_cam.update_layout(
+                height=300,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(range=[0, 100], showgrid=False, zeroline=False, showticklabels=False),
+                yaxis=dict(range=[0, 70], showgrid=False, zeroline=False, showticklabels=False),
+                paper_bgcolor=bg_sky,
+                plot_bgcolor=bg_road,
+                font=dict(family="Playfair Display", color="#FFFFFF"),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_cam, use_container_width=True)
+
+        with col_cam2:
+            st.markdown("##### Inferencia de Red Neuronal en Tiempo Real")
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Cámara Estereoscópica Frontal</h4>
+                    <div>Resolución activa: <b>1920x1080p @ 60 FPS</b></div>
+                    <div>Latencia de procesamiento: <b>14.2 ms (ASIL-D)</b></div>
+                    <div>Oclusión de lente: <b style="color: #22c55e;">0% (Lente despejado)</b></div>
+                    <div>Temperatura de sensor: <b>42.5 °C</b></div>
+                    <div>Frenado Autónomo (AEB): <b style="color: #22c55e;">Armado y Listo</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+
+            if st.button("Ejecutar Snapshot & Detección IA", type="primary", use_container_width=True):
+                st.toast("Inferencia ejecutada en la NPU automotriz (14.2 ms).")
+
+            df_obj = pd.DataFrame([
+                {"Objeto": "Vehículo Líder", "Distancia": "35.4 m", "TTC (Colisión)": "4.8 s", "Confianza": "98.4%"},
+                {"Objeto": "Peatón en Acera", "Distancia": "12.8 m", "TTC (Colisión)": "Seguro", "Confianza": "94.2%"},
+                {"Objeto": "Señal Límite 60", "Distancia": "45.0 m", "TTC (Colisión)": "N/A", "Confianza": "99.1%"}
+            ])
+            st.dataframe(df_obj, hide_index=True, use_container_width=True)
+
+    # ------------------------------------------------------------
+    # 3. CONSOLA: SENSORES DE PERCEPCIÓN (LIDAR / RADAR)
+    # ------------------------------------------------------------
+    elif sub_elegido == "Sensores (LiDAR/Radar)":
+        col_sen1, col_sen2 = st.columns([3, 2])
+        with col_sen1:
+            st.markdown("##### Radar Polar 360° — Fusión LiDAR + Radar")
+            angulos = [0, 25, 45, 90, 135, 180, 225, 270, 315]
+            distancias = [35.4, 48.0, 18.2, 8.5, 42.0, 28.0, 4.2, 9.8, 22.0]
+            tipos = ["Auto", "Eco", "Obstáculo", "Muro", "Auto", "Eco", "Guardarraíl", "Poste", "Eco"]
+            colores_radar = ["#ef4444" if d < 10 else ("#f59e0b" if d < 25 else "#22c55e") for d in distancias]
+
+            fig_polar = go.Figure()
+            fig_polar.add_trace(go.Scatterpolar(
+                r=[0], theta=[0], mode="markers",
+                marker=dict(size=14, color="#BF40FA", symbol="triangle-up"),
+                name="Vehículo Propio"
+            ))
+            fig_polar.add_trace(go.Scatterpolar(
+                r=distancias, theta=angulos, mode="markers+text",
+                text=tipos, textposition="top center",
+                marker=dict(size=10, color=colores_radar),
+                name="Ecos Detectados"
+            ))
+
+            fig_polar.update_layout(
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 60]),
+                    angularaxis=dict(direction="clockwise")
+                ),
+                height=320,
+                margin=dict(l=20, r=20, t=20, b=20),
+                paper_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Playfair Display", color=paleta['text_primary']),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig_polar, use_container_width=True)
+
+        with col_sen2:
+            st.markdown("##### Parámetros de Escaneo Solid-State")
+            st.slider("Rango de Cobertura Activo (m):", 10, 150, 60)
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Telemetría de Percepción</h4>
+                    <div>Frecuencia de muestreo: <b>600 RPM (10 Hz)</b></div>
+                    <div>Puntos de nube por segundo: <b>1,200,000 pts/s</b></div>
+                    <div>Precisión de alcance: <b>± 2.5 cm</b></div>
+                    <div>Radar de ondas milimétricas: <b>77 GHz Doppler</b></div>
+                    <div>Zona ciega: <b>0.15 m (Cero punto ciego frontal)</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button("Limpiar Lentes / Calibrar LiDAR", use_container_width=True):
+                st.success("Ciclo de calentamiento y autolimpieza completado.")
+
+    # ------------------------------------------------------------
+    # 4. CONSOLA: MULTIMEDIA E INFOENTRETENIMIENTO
+    # ------------------------------------------------------------
+    elif sub_elegido == "Multimedia & Audio":
+        col_med1, col_med2 = st.columns([3, 2])
+        with col_med1:
+            st.markdown("##### Pantalla Central y Reproductor de Cabina")
+            pistas_audio = [
+                "Podcast Tecnologías de Vehículos Autónomos & RTOS",
+                "Playlist Conducción Nocturna - Synthwave & Ambient",
+                "Radio Tráfico y Reportes Viales en Vivo (FM 99.9)",
+                "Instrucciones del Navegador GPS / Audio Espacial"
+            ]
+            st.selectbox("Pista en Reproducción:", pistas_audio, index=0)
+
+            col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+            with col_c1:
+                if st.button("Anterior", use_container_width=True):
+                    st.toast("Pista anterior")
+            with col_c2:
+                reproduciendo = st.session_state.get("audio_playing", True)
+                label_play = "Pausar" if reproduciendo else "Reproducir"
+                if st.button(label_play, type="primary", use_container_width=True):
+                    st.session_state["audio_playing"] = not reproduciendo
+                    st.rerun()
+            with col_c3:
+                if st.button("Siguiente", use_container_width=True):
+                    st.toast("Siguiente pista")
+            with col_c4:
+                if st.button("Silenciar", use_container_width=True):
+                    st.toast("Audio silenciado")
+
+            st.progress(0.42, text="02:18 / 05:30")
+
+            col_sl1, col_sl2 = st.columns(2)
+            with col_sl1:
+                vol = st.slider("Volumen Cabina:", 0, 100, 35)
+            with col_sl2:
+                brillo = st.slider("Brillo Pantalla OLED:", 10, 100, 75)
+
+        with col_med2:
+            st.markdown("##### Confort Acústico & Climatización")
+            st.radio("Perfil de Ecualizador:", ["Voz & Podcasts", "Bajos Dinámicos", "Sonido Espacial 3D"], horizontal=True)
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Gestión de Cabina</h4>
+                    <div>Fuente de audio: <b>LIN-Bus Confort · Automotive DSP</b></div>
+                    <div>Volumen actual: <b>{vol}%</b></div>
+                    <div>Brillo de pantalla: <b>{brillo}%</b></div>
+                    <div>Temperatura de cabina: <b>21.5 °C</b></div>
+                    <div>Compresor HVAC: <b>30% carga</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            st.slider("Ajustar Climatizador (°C):", 16.0, 28.0, 21.0, 0.5)
+
+    # ------------------------------------------------------------
+    # 5. CONSOLA: COMUNICACIÓN 5G / V2X
+    # ------------------------------------------------------------
+    elif sub_elegido == "Comunicación 5G":
+        col_v1, col_v2 = st.columns([3, 2])
+        with col_v1:
+            st.markdown("##### Telemetría de Enlace Celular y V2X Cloud")
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Módem 5G Automotriz & V2X</h4>
+                    <div>Proveedor / Red: <b>AutoOS Automotive Telecom (5G SA)</b></div>
+                    <div>Latencia de enlace actual: <b style="color: #22c55e;">19 ms</b></div>
+                    <div>Potencia de señal: <b>-67 dBm (Excelente cobertura)</b></div>
+                    <div>Enlace de base de datos: <b>Supabase PostgreSQL / Cloud</b></div>
+                    <div>Protocolo V2X: <b>C-V2X 3GPP Rel 16 (Direct SideLink)</b></div>
+                    <div>Tráfico transmitido hoy: <b>142.8 MB</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button("Enviar Ping de Prueba a Supabase", type="primary", use_container_width=True):
+                st.success("Respuesta recibida: 200 OK en 18.4 ms (Packet ACK).")
+        with col_v2:
+            st.markdown("##### Estado de Transmisión de Telemetría")
+            st.json({
+                "dispositivo": "DEV_COM_V2X",
+                "protocolo": "MQTT / TLS 1.3",
+                "broker": "cloud.autoos.tech",
+                "qos": 1,
+                "keepalive_sec": 30,
+                "paquetes_perdidos": "0.0%"
+            })
+
+    # ------------------------------------------------------------
+    # 6. CONSOLA: BATERÍA Y CELDAS BMS
+    # ------------------------------------------------------------
+    elif sub_elegido == "Batería & Celdas":
+        col_b1, col_b2 = st.columns([3, 2])
+        with col_b1:
+            st.markdown("##### Distribución de Tensión por Celda (16 Celdas LiFePO4)")
+            celdas_nombres = [f"C{i+1}" for i in range(16)]
+            voltajes = [3.31, 3.30, 3.32, 3.31, 3.29, 3.30, 3.31, 3.32, 3.30, 3.31, 3.29, 3.32, 3.31, 3.30, 3.31, 3.32]
+            fig_celdas = px.bar(
+                x=celdas_nombres, y=voltajes,
+                labels={"x": "Celda", "y": "Tensión (V)"},
+                color=voltajes,
+                color_continuous_scale="Viridis"
+            )
+            fig_celdas.update_yaxes(range=[3.0, 3.5])
+            fig_celdas.update_layout(
+                height=260,
+                margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(family="Playfair Display", color=paleta['text_primary']),
+                coloraxis_showscale=False
+            )
+            st.plotly_chart(fig_celdas, use_container_width=True)
+        with col_b2:
+            st.markdown("##### Diagnóstico de Celda & Balanceador")
+            st.markdown(f"""
+                <div class="auto-card">
+                    <h4>Balanceo de Paquete LiFePO4</h4>
+                    <div>Tensión media: <b>3.308 V</b></div>
+                    <div>Delta de tensión máx: <b style="color: #22c55e;">0.030 V (Óptimo)</b></div>
+                    <div>Resistencia interna media: <b>0.45 mΩ</b></div>
+                    <div>Salud de batería (SoH): <b>{bateria.get('salud_soh', 96.0)}%</b></div>
+                    <div>Ciclos completos: <b>142 ciclos</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+            st.caption("Para calibración térmica y modo de conducción detallado, consulta la pestaña 'Batería'.")
+
+    # ------------------------------------------------------------
+    # 7. CONSOLA: PROCESOS CRÍTICOS ASIL-D
+    # ------------------------------------------------------------
+    elif sub_elegido == "Procesos Críticos":
+        st.markdown("##### Monitoreo de Tareas de Tiempo Real (Watchdog Kernel)")
+        df_crit = pd.DataFrame([
+            {"PID": 101, "Nombre": "Monitor Térmico BMS", "Nivel ASIL": "ASIL-D", "Período (ms)": 10, "Margen Límite": "98.5%", "Watchdog": "OK"},
+            {"PID": 102, "Nombre": "Sistema Anticolisión ADAS", "Nivel ASIL": "ASIL-D", "Período (ms)": 20, "Margen Límite": "94.2%", "Watchdog": "OK"},
+            {"PID": 103, "Nombre": "Gateway de Comunicación CAN", "Nivel ASIL": "ASIL-B", "Período (ms)": 5, "Margen Límite": "99.1%", "Watchdog": "OK"}
+        ])
+        st.dataframe(df_crit, hide_index=True, use_container_width=True)
+        st.caption("Para pausar, crear o terminar procesos con permisos de rol (RBAC), utiliza la pestaña 'Procesos'.")
+
+    # ------------------------------------------------------------
+    # 8. CONSOLA: RED CAN Y HARDWARE
+    # ------------------------------------------------------------
+    elif sub_elegido == "Red CAN & Hardware":
+        st.markdown("##### Diagnóstico de Carga y Tráfico en Buses Automotrices")
+        df_buses = pd.DataFrame([
+            {"Bus": "CAN-Bus Principal", "Velocidad": "500 kbps", "Carga": "28.4%", "Tramas/s": "1,840", "Errores CRC": 0},
+            {"Bus": "CAN-Bus ADAS", "Velocidad": "1.0 Mbps", "Carga": "42.1%", "Tramas/s": "3,420", "Errores CRC": 0},
+            {"Bus": "Automotive Ethernet", "Velocidad": "100 Mbps", "Carga": "19.5%", "Tramas/s": "12,800", "Errores CRC": 0},
+            {"Bus": "LIN-Bus Confort", "Velocidad": "19.2 kbps", "Carga": "15.0%", "Tramas/s": "120", "Errores CRC": 0}
+        ])
+        st.dataframe(df_buses, hide_index=True, use_container_width=True)
+        st.caption("Para calibrar o inyectar fallos de hardware en laboratorio, accede a la pestaña 'Dispositivos'.")
 
     st.markdown("#### Alertas y Eventos Críticos Activos")
     eventos_criticos = obtener_eventos_criticos_activos()
