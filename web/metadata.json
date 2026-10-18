@@ -1,0 +1,6 @@
+{
+  "name": "AutoOS - Planificador de Procesos y Simuladores",
+  "description": "Simulador interactivo de algoritmos de planificación de CPU (FCFS, Round Robin, Prioridad) con diagrama de Gantt, simulador de batería baja y procesos críticos para vehículos inteligentes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

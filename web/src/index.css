@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #C0BAB3;
+    --bg-surface: #D5CFC9;
+    --bg-card: #E3DDD7;
+    --bg-card-hover: #EDE7E1;
+    --border-color: #A8A096;
+    --text-primary: #160F0C;
+    --text-secondary: #391214;
+    --text-muted: #52423D;
+    --accent-primary: #391214;
+    --accent-glow: rgba(57, 18, 20, 0.25);
+  }
+
+  .dark {
+    --bg-base: #040607;
+    --bg-surface: #0D0714;
+    --bg-card: #180E24;
+    --bg-card-hover: #241438;
+    --border-color: #331E4D;
+    --text-primary: #E3D9FC;
+    --text-secondary: #B8A8DC;
+    --text-muted: #8D7AA8;
+    --accent-primary: #BF40FA;
+    --accent-glow: rgba(191, 64, 250, 0.25);
+  }
+
+  body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .font-serif {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+.autoos-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.autoos-surface {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
