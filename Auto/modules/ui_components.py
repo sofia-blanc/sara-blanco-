@@ -216,7 +216,12 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .stApp[data-base-theme="light"],
         [data-theme="light"],
         [data-base-theme="light"],
-        .st-theme-light {
+        .st-theme-light,
+        .st-theme-light.stApp,
+        .st-theme-light .stApp,
+        .st-theme-light [data-testid="stAppViewContainer"],
+        body.st-theme-light,
+        html.st-theme-light {
             --bg-base: #C0BAB3 !important;
             --bg-surface: #D5CFC9 !important;
             --bg-card: #E3DDD7 !important;
@@ -236,6 +241,72 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
             --gauge-bg: #D0C9C2 !important;
             --gauge-text: #160F0C !important;
             --shadow: 0 4px 18px rgba(57, 18, 20, 0.14) !important;
+        }
+
+        /* Reglas explícitas directas para Modo Claro (Garantía Visual Total) */
+        [data-theme="light"] .stApp,
+        .st-theme-light.stApp,
+        .st-theme-light .stApp,
+        html[data-theme="light"] .stApp,
+        body[data-theme="light"] .stApp {
+            background-color: #C0BAB3 !important;
+            color: #160F0C !important;
+        }
+        [data-theme="light"] [data-testid="stSidebar"],
+        .st-theme-light [data-testid="stSidebar"] {
+            background-color: #D5CFC9 !important;
+            border-right: 1px solid #A8A096 !important;
+        }
+        [data-theme="light"] .auto-card,
+        .st-theme-light .auto-card,
+        [data-theme="light"] .gauge-card,
+        .st-theme-light .gauge-card,
+        [data-theme="light"] .semaforo-hud,
+        .st-theme-light .semaforo-hud,
+        [data-theme="light"] .rol-card,
+        .st-theme-light .rol-card {
+            background: #E3DDD7 !important;
+            border: 1px solid #A8A096 !important;
+            box-shadow: 0 4px 18px rgba(57, 18, 20, 0.12) !important;
+        }
+        [data-theme="light"] .auto-card h4,
+        .st-theme-light .auto-card h4,
+        [data-theme="light"] .gauge-header,
+        .st-theme-light .gauge-header,
+        [data-theme="light"] .gauge-center-value,
+        .st-theme-light .gauge-center-value,
+        [data-theme="light"] .semaforo-title,
+        .st-theme-light .semaforo-title,
+        [data-theme="light"] .rol-card .rol-name,
+        .st-theme-light .rol-card .rol-name,
+        [data-theme="light"] h1, [data-theme="light"] h2, [data-theme="light"] h3,
+        .st-theme-light h1, .st-theme-light h2, .st-theme-light h3 {
+            color: #160F0C !important;
+        }
+        [data-theme="light"] p, [data-theme="light"] span, [data-theme="light"] label,
+        .st-theme-light p, .st-theme-light span, .st-theme-light label {
+            color: #391214 !important;
+        }
+        [data-theme="light"] [data-testid="stTabs"] [role="tablist"],
+        .st-theme-light [data-testid="stTabs"] [role="tablist"] {
+            background-color: #D5CFC9 !important;
+            border: 1px solid #A8A096 !important;
+        }
+        [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]),
+        .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) {
+            color: #160F0C !important;
+        }
+        [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
+        .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
+        [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span,
+        .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span {
+            color: #160F0C !important;
+        }
+        [data-theme="light"] [data-testid="stTabs"] [role="tab"][aria-selected="true"],
+        .st-theme-light [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
+            background: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            color: #FFFFFF !important;
+            box-shadow: 0 4px 18px rgba(57, 18, 20, 0.25) !important;
         }
 
         /* ============================================================
@@ -811,38 +882,66 @@ def inyectar_sincronizador_tema():
                 const pDoc = window.parent.document;
                 if (!pWin || !pDoc) return "dark";
 
-                // 1. Revisar localStorage de Streamlit
-                const keys = ['streamlit:theme', 'stActiveTheme', 'theme'];
-                for (let k of keys) {
-                    const raw = pWin.localStorage.getItem(k);
-                    if (raw) {
-                        try {
-                            const parsed = JSON.parse(raw);
-                            const base = (parsed.base || parsed.name || parsed.theme || '').toLowerCase();
-                            if (base === 'light') return 'light';
-                            if (base === 'dark') return 'dark';
-                        } catch(e) {
-                            const str = String(raw).toLowerCase();
-                            if (str.includes('light')) return 'light';
-                            if (str.includes('dark')) return 'dark';
+                // 1. Revisar TODAS las claves de localStorage en la ventana principal
+                try {
+                    if (pWin.localStorage) {
+                        for (let i = 0; i < pWin.localStorage.length; i++) {
+                            const k = pWin.localStorage.key(i);
+                            if (k && (k.toLowerCase().includes('theme') || k.toLowerCase().includes('activetheme'))) {
+                                const raw = pWin.localStorage.getItem(k);
+                                if (raw) {
+                                    try {
+                                        const parsed = JSON.parse(raw);
+                                        const base = ((parsed.base || parsed.name || parsed.theme || '') + '').toLowerCase();
+                                        if (base === 'light') return 'light';
+                                        if (base === 'dark') return 'dark';
+                                        if (base === 'system') {
+                                            return (pWin.matchMedia && !pWin.matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark';
+                                        }
+                                    } catch(e) {
+                                        const str = String(raw).toLowerCase();
+                                        if (str.includes('light')) return 'light';
+                                        if (str.includes('dark')) return 'dark';
+                                    }
+                                }
+                            }
                         }
                     }
-                }
+                } catch(e) {}
 
-                // 2. Revisar color de toolbar nativo de Streamlit
-                const toolbar = pDoc.querySelector('[data-testid="stToolbar"]') || pDoc.querySelector('header');
-                if (toolbar) {
-                    const color = pWin.getComputedStyle(toolbar).color;
-                    const match = color ? color.match(/\\d+/g) : null;
-                    if (match && match.length >= 3) {
-                        const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
-                        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                        if (brightness < 120) return 'light';
-                        if (brightness > 180) return 'dark';
+                // 2. Revisar el control segmentado de Streamlit en el menú de 3 puntos
+                try {
+                    const buttons = Array.from(pDoc.querySelectorAll('button, [role="radio"], [role="tab"]'));
+                    for (let b of buttons) {
+                        const txt = (b.textContent || '').trim().toLowerCase();
+                        const isChecked = b.getAttribute('aria-checked') === 'true' || 
+                                          b.getAttribute('aria-selected') === 'true' ||
+                                          b.getAttribute('data-checked') === 'true';
+                        if (isChecked) {
+                            if (txt === 'light' || txt.includes('light')) return 'light';
+                            if (txt === 'dark' || txt.includes('dark')) return 'dark';
+                        }
                     }
-                }
+                } catch(e) {}
 
-                // 3. Preferencia del sistema operativo
+                // 3. Revisar color de toolbar nativo de Streamlit
+                try {
+                    const toolbar = pDoc.querySelector('[data-testid="stToolbar"]') || 
+                                    pDoc.querySelector('[data-testid="stHeader"]') ||
+                                    pDoc.querySelector('header');
+                    if (toolbar) {
+                        const color = pWin.getComputedStyle(toolbar).color;
+                        const match = color ? color.match(/[0-9]+/g) : null;
+                        if (match && match.length >= 3) {
+                            const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+                            const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                            if (brightness < 125) return 'light';
+                            if (brightness > 175) return 'dark';
+                        }
+                    }
+                } catch(e) {}
+
+                // 4. Preferencia del sistema operativo
                 if (pWin.matchMedia && pWin.matchMedia('(prefers-color-scheme: light)').matches) {
                     return 'light';
                 }
@@ -884,25 +983,29 @@ def inyectar_sincronizador_tema():
             } catch(err) {}
         }
 
-        // Ocultar este micro-frame completamente
+        // Ocultar este micro-frame sin display: none para mantener timers activos
         try {
             if (window.frameElement) {
-                window.frameElement.style.display = 'none';
-                window.frameElement.style.height = '0px';
-                window.frameElement.style.width = '0px';
+                window.frameElement.style.position = 'fixed';
+                window.frameElement.style.top = '-9999px';
+                window.frameElement.style.left = '-9999px';
+                window.frameElement.style.width = '1px';
+                window.frameElement.style.height = '1px';
+                window.frameElement.style.opacity = '0';
+                window.frameElement.style.pointerEvents = 'none';
                 window.frameElement.style.border = 'none';
-                if (window.frameElement.parentElement) {
-                    window.frameElement.parentElement.style.display = 'none';
-                    window.frameElement.parentElement.style.height = '0px';
-                }
             }
         } catch(e) {}
 
         sincronizar();
         if (window.parent) {
             window.parent.addEventListener('storage', sincronizar);
+            window.parent.addEventListener('click', function() {
+                setTimeout(sincronizar, 60);
+                setTimeout(sincronizar, 200);
+            });
         }
-        setInterval(sincronizar, 250);
+        setInterval(sincronizar, 150);
     })();
     </script>
     </body>
@@ -1002,31 +1105,142 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
             }}
             function syncTheme() {{
                 try {{
-                    const parentDoc = window.parent.document;
-                    if (!parentDoc) return;
-                    const root = parentDoc.documentElement;
-                    const stApp = parentDoc.querySelector('.stApp');
-                    const theme = (root ? root.getAttribute('data-theme') : null) || 
-                                  (stApp ? stApp.getAttribute('data-theme') : null) ||
-                                  (stApp ? stApp.getAttribute('data-base-theme') : null);
-                    
-                    let isLight = theme === 'light';
-                    if (!theme && window.parent.localStorage) {{
-                        const raw = window.parent.localStorage.getItem('streamlit:theme');
-                        if (raw && raw.toLowerCase().includes('light')) isLight = true;
+                    const pWin = window.parent;
+                    const pDoc = (pWin && pWin.document) ? pWin.document : null;
+                    if (!pWin || !pDoc) return;
+
+                    let detected = null;
+
+                    // 1. Revisar TODAS las claves de localStorage de Streamlit en la ventana principal
+                    try {{
+                        if (pWin.localStorage) {{
+                            for (let i = 0; i < pWin.localStorage.length; i++) {{
+                                const k = pWin.localStorage.key(i);
+                                if (k && (k.toLowerCase().includes('theme') || k.toLowerCase().includes('activetheme'))) {{
+                                    const raw = pWin.localStorage.getItem(k);
+                                    if (raw) {{
+                                        try {{
+                                            const parsed = JSON.parse(raw);
+                                            const base = ((parsed.base || parsed.name || parsed.theme || '') + '').toLowerCase();
+                                            if (base === 'light') {{ detected = 'light'; break; }}
+                                            if (base === 'dark') {{ detected = 'dark'; break; }}
+                                            if (base === 'system') {{
+                                                detected = (pWin.matchMedia && !pWin.matchMedia('(prefers-color-scheme: dark)').matches) ? 'light' : 'dark';
+                                                break;
+                                            }}
+                                        }} catch(e) {{
+                                            const str = String(raw).toLowerCase();
+                                            if (str.includes('light')) {{ detected = 'light'; break; }}
+                                            if (str.includes('dark')) {{ detected = 'dark'; break; }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }} catch(e) {{}}
+
+                    // 2. Revisar el control segmentado de Streamlit en el menú de 3 puntos
+                    if (!detected) {{
+                        try {{
+                            const buttons = Array.from(pDoc.querySelectorAll('button, [role="radio"], [role="tab"]'));
+                            for (let b of buttons) {{
+                                const txt = (b.textContent || '').trim().toLowerCase();
+                                const isChecked = b.getAttribute('aria-checked') === 'true' || 
+                                                  b.getAttribute('aria-selected') === 'true' ||
+                                                  b.getAttribute('data-checked') === 'true';
+                                if (isChecked) {{
+                                    if (txt === 'light' || txt.includes('light')) {{ detected = 'light'; break; }}
+                                    if (txt === 'dark' || txt.includes('dark')) {{ detected = 'dark'; break; }}
+                                }}
+                            }}
+                        }} catch(e) {{}}
                     }}
 
-                    if (isLight) {{
-                        document.body.classList.add('theme-light');
-                    }} else {{
-                        document.body.classList.remove('theme-light');
+                    // 3. Revisar el color de texto e iconos del header nativo de Streamlit
+                    if (!detected) {{
+                        try {{
+                            const toolbar = pDoc.querySelector('[data-testid="stToolbar"]') || 
+                                            pDoc.querySelector('[data-testid="stHeader"]') ||
+                                            pDoc.querySelector('header');
+                            if (toolbar) {{
+                                const color = pWin.getComputedStyle(toolbar).color;
+                                const match = color ? color.match(/\\d+/g) : null;
+                                if (match && match.length >= 3) {{
+                                    const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+                                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                                    if (brightness < 125) detected = 'light';
+                                    else if (brightness > 175) detected = 'dark';
+                                }}
+                            }}
+                        }} catch(e) {{}}
+                    }}
+
+                    // 4. Preferencia del sistema operativo
+                    if (!detected) {{
+                        try {{
+                            if (pWin.matchMedia && pWin.matchMedia('(prefers-color-scheme: light)').matches) {{
+                                detected = 'light';
+                            }} else {{
+                                detected = 'dark';
+                            }}
+                        }} catch(e) {{
+                            detected = 'dark';
+                        }}
+                    }}
+
+                    const isLight = (detected === 'light');
+                    const themeVal = isLight ? 'light' : 'dark';
+
+                    // Actualizar iframe interno del reloj
+                    if (document.body) {{
+                        if (isLight) document.body.classList.add('theme-light');
+                        else document.body.classList.remove('theme-light');
+                    }}
+
+                    // Actualizar documento padre (Streamlit)
+                    const root = pDoc.documentElement;
+                    const body = pDoc.body;
+                    const stApp = pDoc.querySelector('.stApp');
+
+                    if (root && root.getAttribute('data-theme') !== themeVal) {{
+                        root.setAttribute('data-theme', themeVal);
+                        root.setAttribute('data-base-theme', themeVal);
+                    }}
+                    if (body && body.getAttribute('data-theme') !== themeVal) {{
+                        body.setAttribute('data-theme', themeVal);
+                        body.setAttribute('data-base-theme', themeVal);
+                        if (isLight) {{
+                            body.classList.add('st-theme-light');
+                            body.classList.remove('st-theme-dark');
+                        }} else {{
+                            body.classList.add('st-theme-dark');
+                            body.classList.remove('st-theme-light');
+                        }}
+                    }}
+                    if (stApp && stApp.getAttribute('data-theme') !== themeVal) {{
+                        stApp.setAttribute('data-theme', themeVal);
+                        stApp.setAttribute('data-base-theme', themeVal);
+                        if (isLight) {{
+                            stApp.classList.add('st-theme-light');
+                            stApp.classList.remove('st-theme-dark');
+                        }} else {{
+                            stApp.classList.add('st-theme-dark');
+                            stApp.classList.remove('st-theme-light');
+                        }}
                     }}
                 }} catch(e) {{}}
             }}
             updateClock();
             syncTheme();
             setInterval(updateClock, 1000);
-            setInterval(syncTheme, 300);
+            setInterval(syncTheme, 150);
+            if (window.parent) {{
+                window.parent.addEventListener('storage', syncTheme);
+                window.parent.addEventListener('click', function() {{
+                    setTimeout(syncTheme, 60);
+                    setTimeout(syncTheme, 200);
+                }});
+            }}
         </script>
     </body>
     </html>
@@ -1085,7 +1299,7 @@ def render_card_telemetria(
             <div class="gauge-ring-container">
                 <svg width="110" height="110" viewBox="0 0 110 110" style="transform: rotate(-90deg);">
                     <circle cx="55" cy="55" r="{radio}"
-                            stroke="{p['gauge_bg']}" stroke-width="8" fill="none" />
+                            stroke="var(--gauge-bg)" stroke-width="8" fill="none" />
                     <circle cx="55" cy="55" r="{radio}"
                             stroke="{color_stroke}" stroke-width="8" fill="none"
                             stroke-dasharray="{circunferencia:.1f}"
