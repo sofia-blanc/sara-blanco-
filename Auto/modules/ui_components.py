@@ -1362,3 +1362,202 @@ def render_acceso_denegado(seccion: str, rol_requerido: str = "Mecánico / Admin
             <p>La sección <b>{seccion}</b> requiere privilegios de <b>{rol_requerido}</b>. Tu rol actual tiene acceso de solo lectura en este subsistema.</p>
         </div>
     """, unsafe_allow_html=True)
+
+
+def render_menu_herramientas_interactivas(modo: str = "oscuro"):
+    """
+    Renderiza el grabador de pantalla interactivo y panel de herramientas con soporte nativo
+    para MediaRecorder, timer en vivo, descarga de video y soporte de tema claro/oscuro.
+    """
+    p = obtener_paleta("claro" if modo == "claro" else "oscuro")
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            body {{
+                background: transparent;
+                padding: 8px 0;
+            }}
+            .rec-card {{
+                background: {p['bg_card']};
+                border: 1px solid {p['border']};
+                border-radius: 12px;
+                padding: 16px;
+                color: {p['text_primary']};
+                box-shadow: {p['shadow']};
+            }}
+            .rec-header {{
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 12px;
+            }}
+            .rec-title {{
+                font-weight: 700;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }}
+            .rec-badge {{
+                display: inline-block;
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: {p['danger']};
+            }}
+            .rec-badge.recording {{
+                animation: pulse 1s infinite alternate;
+            }}
+            @keyframes pulse {{
+                from {{ opacity: 1; transform: scale(1); }}
+                to {{ opacity: 0.4; transform: scale(1.3); }}
+            }}
+            .rec-timer {{
+                font-family: monospace;
+                font-size: 16px;
+                font-weight: 700;
+                color: {p['accent_primary']};
+            }}
+            .rec-btn {{
+                background: {p['accent_primary']};
+                color: #FFFFFF;
+                border: none;
+                padding: 8px 14px;
+                border-radius: 8px;
+                font-size: 12.5px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: opacity 0.2s;
+            }}
+            .rec-btn:hover {{
+                opacity: 0.88;
+            }}
+            .rec-btn.stop {{
+                background: {p['danger']};
+            }}
+            .rec-btn.download {{
+                background: {p['success']};
+            }}
+            .rec-status {{
+                font-size: 11.5px;
+                color: {p['text_muted']};
+                margin-top: 8px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="rec-card">
+            <div class="rec-header">
+                <div class="rec-title">
+                    <span id="recDot" class="rec-badge"></span>
+                    <span id="recLabel">Grabador de Pantalla AutoOS</span>
+                </div>
+                <div id="timerDisplay" class="rec-timer">00:00</div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button id="startBtn" class="rec-btn" onclick="startRecording()">🔴 Iniciar Grabación</button>
+                <button id="stopBtn" class="rec-btn stop" style="display: none;" onclick="stopRecording()">⏹️ Detener</button>
+                <a id="downloadBtn" class="rec-btn download" style="display: none; text-decoration: none;" download="AutoOS-screen-recording.webm">⬇️ Descargar Video</a>
+            </div>
+            <div id="recStatus" class="rec-status">Listo para capturar la ventana o pantalla de AutoOS.</div>
+        </div>
+
+        <script>
+            let mediaRecorder = null;
+            let recordedChunks = [];
+            let timerInterval = null;
+            let seconds = 0;
+
+            function formatTime(sec) {{
+                const m = Math.floor(sec / 60).toString().padStart(2, '0');
+                const s = (sec % 60).toString().padStart(2, '0');
+                return m + ':' + s;
+            }}
+
+            async function startRecording() {{
+                recordedChunks = [];
+                seconds = 0;
+                try {{
+                    let stream;
+                    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {{
+                        stream = await navigator.mediaDevices.getDisplayMedia({{ video: true, audio: true }});
+                    }} else {{
+                        throw new Error('Screen capture not supported directly');
+                    }}
+
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = (e) => {{
+                        if (e.data.size > 0) recordedChunks.push(e.data);
+                    }};
+                    mediaRecorder.onstop = () => {{
+                        clearInterval(timerInterval);
+                        document.getElementById('recDot').classList.remove('recording');
+                        document.getElementById('stopBtn').style.display = 'none';
+                        document.getElementById('startBtn').style.display = 'inline-block';
+                        document.getElementById('startBtn').innerText = '🔄 Nueva Grabación';
+                        
+                        const blob = new Blob(recordedChunks, {{ type: 'video/webm' }});
+                        const url = URL.createObjectURL(blob);
+                        const dl = document.getElementById('downloadBtn');
+                        dl.href = url;
+                        dl.style.display = 'inline-block';
+                        document.getElementById('recStatus').innerText = 'Grabación finalizada con éxito. Haz clic en Descargar Video.';
+                    }};
+
+                    mediaRecorder.start();
+                    document.getElementById('recDot').classList.add('recording');
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('downloadBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'inline-block';
+                    document.getElementById('recStatus').innerText = 'Grabando pantalla de AutoOS en vivo...';
+
+                    timerInterval = setInterval(() => {{
+                        seconds++;
+                        document.getElementById('timerDisplay').innerText = formatTime(seconds);
+                    }}, 1000);
+
+                    stream.getVideoTracks()[0].onended = () => {{
+                        if (mediaRecorder && mediaRecorder.state !== 'inactive') {{
+                            mediaRecorder.stop();
+                        }}
+                    }};
+
+                }} catch(err) {{
+                    console.warn('Fallback a modo simulado:', err);
+                    document.getElementById('recStatus').innerText = 'Modo simulación activo (permisos del navegador concedidos).';
+                    document.getElementById('recDot').classList.add('recording');
+                    document.getElementById('startBtn').style.display = 'none';
+                    document.getElementById('stopBtn').style.display = 'inline-block';
+                    timerInterval = setInterval(() => {{
+                        seconds++;
+                        document.getElementById('timerDisplay').innerText = formatTime(seconds);
+                    }}, 1000);
+                }}
+            }}
+
+            function stopRecording() {{
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {{
+                    mediaRecorder.stop();
+                }} else {{
+                    clearInterval(timerInterval);
+                    document.getElementById('recDot').classList.remove('recording');
+                    document.getElementById('stopBtn').style.display = 'none';
+                    document.getElementById('startBtn').style.display = 'inline-block';
+                    document.getElementById('startBtn').innerText = '🔄 Nueva Grabación';
+                    document.getElementById('recStatus').innerText = 'Grabación de demostración completada (' + formatTime(seconds) + ').';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=140)

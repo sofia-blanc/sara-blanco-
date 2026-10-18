@@ -45,7 +45,7 @@ from modules.memory_storage import (
 from modules.ui_components import (
     aplicar_estilos_cockpit, render_banner_semaforo,
     render_card_telemetria, render_tarjeta_dispositivo,
-    render_acceso_denegado, obtener_paleta, render_reloj_en_vivo
+    render_acceso_denegado, obtener_paleta, render_reloj_en_vivo, render_menu_herramientas_interactivas
 )
 
 # Mapeo de identificadores de procesos a nombres descriptivos automotrices
@@ -73,10 +73,59 @@ with st.sidebar:
     st.markdown("### AutoOS Cockpit v2.4")
     st.caption("Sistema Operativo para Vehículo Inteligente")
 
-    # Aplicar estilos con sincronización nativa de Streamlit (Light / Dark)
-    aplicar_estilos_cockpit()
-    modo_tema = "auto"
-    paleta = obtener_paleta("oscuro")
+    # ====================================================================
+    # SELECTOR DE MODO CLARO / OSCURO / SISTEMA INTERACTIVO (STREAMLIT POPUP & SIDEBAR)
+    # ====================================================================
+    st.markdown("#### Apariencia y Tema")
+    if "modo_tema_seleccionado" not in st.session_state:
+        st.session_state["modo_tema_seleccionado"] = "System"
+
+    cols_tema = st.columns(3)
+    with cols_tema[0]:
+        if st.button("◐ System", key="btn_theme_sys", use_container_width=True,
+                     type="primary" if st.session_state["modo_tema_seleccionado"] == "System" else "secondary"):
+            st.session_state["modo_tema_seleccionado"] = "System"
+            st.rerun()
+    with cols_tema[1]:
+        if st.button("☀ Light", key="btn_theme_light", use_container_width=True,
+                     type="primary" if st.session_state["modo_tema_seleccionado"] == "Light" else "secondary"):
+            st.session_state["modo_tema_seleccionado"] = "Light"
+            st.rerun()
+    with cols_tema[2]:
+        if st.button("☾ Dark", key="btn_theme_dark", use_container_width=True,
+                     type="primary" if st.session_state["modo_tema_seleccionado"] == "Dark" else "secondary"):
+            st.session_state["modo_tema_seleccionado"] = "Dark"
+            st.rerun()
+
+    tema_actual = st.session_state.get("modo_tema_seleccionado", "System")
+    if tema_actual == "Light":
+        modo_tema = "claro"
+    elif tema_actual == "Dark":
+        modo_tema = "oscuro"
+    else:
+        modo_tema = "auto"
+
+    # Acciones Interactivas: Imprimir y Grabar Pantalla
+    st.markdown("#### Herramientas")
+    col_tools1, col_tools2 = st.columns(2)
+    with col_tools1:
+        if st.button("🖨️ Print", key="btn_tools_print", use_container_width=True):
+            st.toast("Iniciando diálogo de impresión...", icon="🖨️")
+            components.html("<script>window.parent.print();</script>", height=0)
+    with col_tools2:
+        if st.button("📹 Record screen", key="btn_tools_rec", use_container_width=True):
+            st.session_state["abrir_grabador"] = not st.session_state.get("abrir_grabador", False)
+            st.rerun()
+
+    if st.session_state.get("abrir_grabador", False):
+        st.info("🔴 Grabador de Pantalla Activo: Pulsa el control interactivo para capturar la sesión de AutoOS.")
+        render_menu_herramientas_interactivas(modo_tema)
+
+    st.caption("Made with Streamlit v1.66.0 · AutoOS Edition")
+
+    # Aplicar estilos dinámicos para el tema seleccionado
+    aplicar_estilos_cockpit(modo_tema)
+    paleta = obtener_paleta("claro" if modo_tema == "claro" else "oscuro")
 
     # Estado del sistema
     usuario_actual = obtener_usuario_actual()
