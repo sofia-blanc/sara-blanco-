@@ -5,18 +5,20 @@ Lanzador del Dashboard Integrado para Despliegue Local y Cloud
 Responsable: Integrante 4 (Interfaz e Integración)
 ====================================================================
 """
+
 import sys
 import os
 from pathlib import Path
 
-# Configurar ruta absoluta al módulo integrado Auto
+# Configurar rutas absolutas consistentes al módulo raíz y módulo Auto
 BASE_DIR = Path(__file__).resolve().parent
 AUTO_DIR = BASE_DIR / "Auto"
 
-if str(AUTO_DIR) not in sys.path:
-    sys.path.insert(0, str(AUTO_DIR))
+for d in [str(BASE_DIR), str(AUTO_DIR)]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
-# Cambiar directorio de trabajo para resolución consistente de .streamlit/secrets.toml
+# Cambiar directorio de trabajo para resolución consistente
 os.chdir(str(AUTO_DIR))
 
 # Ejecutar el dashboard principal integrado
