@@ -284,3 +284,33 @@ Los diccionarios devueltos por `service.get_system_status()`, `service.get_all_p
 | **Dependencias externas** | **0 (Solo biblioteca estándar)** |
 | **Compatibilidad** | Python 3.10+ |
 | **Estado para entrega** | **Listo para comprimir en `.zip` y compartir** |
+
+---
+
+## 3. Nuevas Implementaciones de Planificación y Simuladores
+
+Se han incorporado los algoritmos formales de planificación de CPU requeridos para AutoOS:
+
+### 3.1 Algoritmos de Planificación Implementados
+1. **FCFS (First-Come, First-Served):**
+   - Política no apropiativa estricta por tiempo de llegada.
+   - Demuestra el fenómeno del *efecto convoy* en sistemas embebidos.
+2. **Round Robin (RR):**
+   - Planificación circular con Quantum de tiempo configurable ($q = 1, 2, 3, 4, 5$).
+   - Desalojo periódico y reencolamiento al final de la cola para garantizar equidad.
+3. **Priority Scheduling (No Apropiativo y Apropiativo / Preemptive):**
+   - Selección por min-heap basada en prioridad numérica (1 = Crítica ASIL-D, 5 = Muy Baja).
+   - En modo apropiativo (*preemptive*), cualquier proceso de mayor prioridad desaloja inmediatamente al proceso en CPU.
+
+### 3.2 Simuladores de Contingencia Vehicular
+- **Simulador de Batería Baja:**
+  - Detecta niveles de reserva energética $< 20\%$.
+  - Suspende dinámicamente procesos de confort e infoentretenimiento para ahorrar potencia.
+  - Eleva la prioridad del sistema de frenado regenerativo y gestión térmica (BMS).
+- **Simulador de Proceso Crítico (ASIL-D):**
+  - Inyección en tiempo real de tareas de emergencia (ej. *Frenado Autónomo de Emergencia - AEB*, *Sensor de Colisión Airbag*).
+  - Fuerza el desalojo inmediato (*preemption*) del proceso actual en CPU y registra el cambio de contexto (*context switch*).
+
+### 3.3 Representación Visual
+- Diagrama de Gantt interactivo con traza temporal continua.
+- Métricas en tiempo real: Tiempo de Espera promedio ($WT$), Tiempo de Retorno promedio ($TAT$) y Porcentaje de Utilización de CPU.
