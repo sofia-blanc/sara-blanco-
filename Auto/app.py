@@ -5,7 +5,22 @@ Dashboard Principal de Control e Integración
 ====================================================================
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Configurar ruta absoluta al módulo Auto para compatibilidad total con Streamlit Cloud
+AUTO_DIR = Path(__file__).resolve().parent
+if str(AUTO_DIR) not in sys.path:
+    sys.path.insert(0, str(AUTO_DIR))
+
+try:
+    os.chdir(str(AUTO_DIR))
+except Exception:
+    pass
+
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import datetime
 import plotly.express as px
