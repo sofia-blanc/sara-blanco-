@@ -78,6 +78,10 @@ export default function App() {
 
   const syncIframeState = useCallback(() => {
     const iframe = iframeRef.current;
+    if (typeof window !== 'undefined') {
+      (window as unknown as { __AUTOOS_CURRENT_ROLE__?: string }).__AUTOOS_CURRENT_ROLE__ = userRole;
+      (window as unknown as { __AUTOOS_CURRENT_THEME__?: string }).__AUTOOS_CURRENT_THEME__ = theme;
+    }
     if (!iframe) return;
     try {
       if (iframe.contentDocument && iframe.contentDocument.documentElement) {
@@ -91,6 +95,16 @@ export default function App() {
     try {
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_THEME', theme }, '*');
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_ROLE', role: userRole }, '*');
+      const win = iframe.contentWindow as unknown as {
+        __AUTOOS_SET_THEME__?: (t: string) => void;
+        __AUTOOS_SET_ROLE__?: (r: string) => void;
+      };
+      if (typeof win?.__AUTOOS_SET_THEME__ === 'function') {
+        win.__AUTOOS_SET_THEME__(theme);
+      }
+      if (typeof win?.__AUTOOS_SET_ROLE__ === 'function') {
+        win.__AUTOOS_SET_ROLE__(userRole);
+      }
     } catch (_) {}
   }, [theme, userRole]);
 
@@ -107,7 +121,15 @@ export default function App() {
 
   useEffect(() => {
     syncIframeState();
-  }, [userRole, activeTab, syncIframeState]);
+    const t1 = setTimeout(syncIframeState, 60);
+    const t2 = setTimeout(syncIframeState, 200);
+    const t3 = setTimeout(syncIframeState, 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [userRole, activeTab, theme, syncIframeState]);
 
   // Bidirectional listener from Cockpit iframe
   useEffect(() => {
@@ -127,10 +149,13 @@ export default function App() {
           setActiveTab('SCHEDULER');
         }
       }
+      if (e.data.type === 'AUTOOS_REQUEST_SYNC') {
+        syncIframeState();
+      }
     };
     window.addEventListener('message', handleIframeMessage);
     return () => window.removeEventListener('message', handleIframeMessage);
-  }, []);
+  }, [syncIframeState]);
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -646,8 +671,7 @@ export default function App() {
       )}
 
       {/* TAB 1: SCHEDULER & SIMULATORS */}
-      {activeTab === 'SCHEDULER' && (
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6">
+      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' ? '' : 'hidden'}`}>
           {/* Controls Bar */}
           <section className="autoos-card rounded-3xl p-5 shadow-xl">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -887,32 +911,29 @@ export default function App() {
             </div>
           </section>
         </main>
-      )}
 
       {/* TAB 2: ORIGINAL FULL VEHICLE COCKPIT */}
-      {activeTab === 'COCKPIT' && (
-        <main className="flex-1 w-full flex flex-col">
-          <div className="autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-            <span className="flex items-center gap-2">
-              <Car className="w-4 h-4 text-[var(--accent-primary)]" />
-              <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (Velocímetro, Medidores, Audio Player, Chat y Cámaras)</span>
-            </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Sistemas Activos 100%
-            </span>
-          </div>
-          <iframe
-            ref={iframeRef}
-            onLoad={syncIframeState}
-            src={cockpitHtml ? undefined : "/autoos_interactive.html"}
-            srcDoc={cockpitHtml || undefined}
-            title="AutoOS Cockpit Completo"
-            className="w-full flex-1 border-none"
-            style={{ minHeight: 'calc(100vh - 120px)' }}
-          />
-        </main>
-      )}
+      <main className={`flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`}>
+        <div className="autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
+          <span className="flex items-center gap-2">
+            <Car className="w-4 h-4 text-[var(--accent-primary)]" />
+            <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (Velocímetro, Medidores, Audio Player, Chat y Cámaras)</span>
+          </span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Sistemas Activos 100%
+          </span>
+        </div>
+        <iframe
+          ref={iframeRef}
+          onLoad={syncIframeState}
+          src={cockpitHtml ? undefined : "/autoos_interactive.html"}
+          srcDoc={cockpitHtml || undefined}
+          title="AutoOS Cockpit Completo"
+          className="w-full flex-1 border-none"
+          style={{ minHeight: 'calc(100vh - 120px)' }}
+        />
+      </main>
 
       {/* Footer */}
       <footer className="autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono">
