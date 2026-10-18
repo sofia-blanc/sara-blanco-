@@ -55,6 +55,25 @@ export default function App() {
   const [userRole, setUserRole] = useState<UserRole>('mecanico');
   const [rbacAlertMessage, setRbacAlertMessage] = useState<string | null>(null);
 
+  // Inlined or fetched cockpit HTML for seamless rendering in both Vite dev server and Streamlit iframe
+  const [cockpitHtml, setCockpitHtml] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && (window as unknown as { __AUTOOS_COCKPIT_HTML__?: string }).__AUTOOS_COCKPIT_HTML__) {
+      return (window as unknown as { __AUTOOS_COCKPIT_HTML__?: string }).__AUTOOS_COCKPIT_HTML__!;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    if (!cockpitHtml) {
+      fetch('/autoos_interactive.html')
+        .then((res) => (res.ok ? res.text() : ''))
+        .then((html) => {
+          if (html) setCockpitHtml(html);
+        })
+        .catch(() => {});
+    }
+  }, [cockpitHtml]);
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const syncIframeState = useCallback(() => {
@@ -886,7 +905,8 @@ export default function App() {
           <iframe
             ref={iframeRef}
             onLoad={syncIframeState}
-            src="/autoos_interactive.html"
+            src={cockpitHtml ? undefined : "/autoos_interactive.html"}
+            srcDoc={cockpitHtml || undefined}
             title="AutoOS Cockpit Completo"
             className="w-full flex-1 border-none"
             style={{ minHeight: 'calc(100vh - 120px)' }}
