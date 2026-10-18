@@ -157,7 +157,7 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
     };
 
     setActiveScenarioId(sc.id);
-    setLastInjectedPhase(`DTC ${sc.dtc} detectado en ${sc.dispositivo} → Desalojando CPU con Prioridad 1`);
+    setLastInjectedPhase(`${sc.name} detectada → Desalojando CPU con Prioridad 1`);
     onInjectCriticalProcess(procToInject);
   };
 
@@ -230,7 +230,7 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
                 <button
                   key={sc.id}
                   onClick={() => setSelectedIdx(idx)}
-                  className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                  className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between gap-2 cursor-pointer ${
                     isActive
                       ? 'border-red-500 ring-2 ring-red-500/30 bg-red-500/10'
                       : isSelected
@@ -238,26 +238,33 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
                       : 'autoos-surface hover:border-[var(--accent-primary)]/40'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-bold flex items-center gap-1.5 text-red-500">
-                      <IconComp className="w-3.5 h-3.5" />
-                      <span className="font-mono">{sc.dispositivo}</span>
-                    </span>
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
+                        isActive
+                          ? 'bg-red-500/20 text-red-500'
+                          : isSelected
+                          ? 'bg-[var(--accent-primary)]/15 text-[var(--accent-primary)]'
+                          : 'autoos-card text-[var(--text-muted)]'
+                      }`}>
+                        <IconComp className="w-4 h-4" />
+                      </div>
+                      <h5 className="text-xs font-bold text-[var(--text-primary)] leading-tight">
+                        {sc.name}
+                      </h5>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
                       {isActive && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-red-600 text-white font-bold uppercase animate-pulse">
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-red-600 text-white font-bold uppercase animate-pulse">
                           Activo
                         </span>
                       )}
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded autoos-surface text-[var(--text-muted)]">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded autoos-surface text-[var(--text-muted)] border border-[var(--border-color)]">
                         {sc.burstTime}s
                       </span>
                     </div>
                   </div>
-                  <h5 className="text-[11px] font-semibold text-[var(--text-primary)] line-clamp-1 mb-1">
-                    {sc.name}
-                  </h5>
-                  <p className="text-[10px] text-[var(--text-muted)] line-clamp-2 leading-tight">
+                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
                     {sc.desc}
                   </p>
                 </button>
