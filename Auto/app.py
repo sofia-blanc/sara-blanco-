@@ -3,9 +3,9 @@
 AUTOOS - SISTEMA OPERATIVO PARA VEHÍCULO INTELIGENTE
 Dashboard Principal de Control e Integración
 ====================================================================
-Permite alternar de manera fluida entre:
-1. El Cockpit Automotriz Interactivo Completo (Velocímetro, Multimedia, Chat, Cámaras)
-2. El Módulo de Planificación de CPU y Procesos (FCFS, Round Robin, Prioridad y Simuladores)
+Interfaz unificada con acceso directo y visible a:
+1. Planificador de CPU y Simuladores (FCFS, Round Robin, Prioridad, Batería Baja, Proceso Crítico)
+2. Cockpit Vehicular Completo (Velocímetro, Multimedia, Chat, Cámaras)
 ====================================================================
 """
 
@@ -13,7 +13,7 @@ import sys
 import os
 from pathlib import Path
 
-# Configurar ruta absoluta al módulo Auto y raíz
+# Configurar ruta absoluta
 AUTO_DIR = Path(__file__).resolve().parent
 ROOT_DIR = AUTO_DIR.parent
 for d in [str(AUTO_DIR), str(ROOT_DIR)]:
@@ -32,59 +32,58 @@ st.set_page_config(
     page_title="AutoOS - Sistema Operativo Vehicular",
     page_icon="🚗",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Selector de Vista en barra lateral o superior
-with st.sidebar:
-    st.markdown("### 🚘 AutoOS Navigation")
-    vista = st.radio(
-        "Seleccionar Módulo:",
-        [
-            "🚗 Cockpit Vehicular Completo",
-            "🖥️ Planificador de Procesos (CPU & Simuladores)"
-        ],
-        index=0
-    )
-    st.divider()
-    st.markdown("**Integración Sistemas Operativos**")
-    st.caption("FCFS • Round Robin • Prioridad • Batería Baja • Proceso Crítico")
+# Estilos globales elegantes
+st.markdown("""
+<style>
+    /* Estilos de pestañas y botones superiores */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #0D0714;
+        padding: 8px 12px;
+        border-radius: 16px;
+        border: 1px solid #331E4D;
+        margin-bottom: 16px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 12px;
+        padding: 8px 20px;
+        color: #8D7AA8;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #4928C2 0%, #BF40FA 100%) !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 16px rgba(191, 64, 250, 0.35);
+    }
+    iframe {
+        border: none !important;
+        width: 100% !important;
+        min-height: 1200px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-if vista == "🚗 Cockpit Vehicular Completo":
-    # Estilos CSS para experiencia fluida idéntica al preview sin márgenes nativos
-    st.markdown("""
-    <style>
-        header[data-testid="stHeader"], footer, #MainMenu {
-            visibility: hidden !important;
-            height: 0px !important;
-        }
-        .stApp > header {
-            display: none !important;
-        }
-        .block-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-        }
-        div[data-testid="stVerticalBlock"] {
-            padding: 0 !important;
-            gap: 0 !important;
-        }
-        iframe {
-            border: none !important;
-            width: 100% !important;
-            min-height: 100vh !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+# Pestañas principales visibles directamente en la pantalla (sin menús ocultos)
+tab_sched, tab_cockpit = st.tabs([
+    "🏎️ Planificador & Simuladores de CPU",
+    "🚗 Cockpit Vehicular Completo"
+])
 
-    # Cargar el bundle interactivo oficial completo de AutoOS
+with tab_sched:
+    from dashboard.cpu import mostrar as mostrar_cpu
+    mostrar_cpu()
+
+with tab_cockpit:
     bundle_candidates = [
         AUTO_DIR / "modules" / "autoos_interactive.html",
         AUTO_DIR / "autoos_interactive.html",
         ROOT_DIR / "modules" / "autoos_interactive.html",
     ]
-
     bundle_path = next((p for p in bundle_candidates if p.exists()), None)
     if bundle_path:
         with open(bundle_path, "r", encoding="utf-8") as f:
@@ -92,8 +91,3 @@ if vista == "🚗 Cockpit Vehicular Completo":
         components.html(app_html, height=1350, scrolling=True)
     else:
         st.error("Archivo interactivo de AutoOS no encontrado.")
-
-else:
-    # Renderizar el Módulo de Planificación de CPU en Python puro
-    from dashboard.cpu import mostrar as mostrar_cpu
-    mostrar_cpu()
