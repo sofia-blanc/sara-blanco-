@@ -3,15 +3,22 @@
 AUTOOS - SISTEMA OPERATIVO PARA VEHÍCULO INTELIGENTE
 Dashboard Principal de Control e Integración
 ====================================================================
+Permite alternar de manera fluida entre:
+1. El Cockpit Automotriz Interactivo Completo (Velocímetro, Multimedia, Chat, Cámaras)
+2. El Módulo de Planificación de CPU y Procesos (FCFS, Round Robin, Prioridad y Simuladores)
+====================================================================
 """
+
 import sys
 import os
 from pathlib import Path
 
-# Configurar ruta absoluta al módulo Auto para compatibilidad total con Streamlit Cloud
+# Configurar ruta absoluta al módulo Auto y raíz
 AUTO_DIR = Path(__file__).resolve().parent
-if str(AUTO_DIR) not in sys.path:
-    sys.path.insert(0, str(AUTO_DIR))
+ROOT_DIR = AUTO_DIR.parent
+for d in [str(AUTO_DIR), str(ROOT_DIR)]:
+    if d not in sys.path:
+        sys.path.insert(0, d)
 
 try:
     os.chdir(str(AUTO_DIR))
@@ -28,47 +35,65 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilos CSS para experiencia fluida idéntica al preview sin márgenes nativos de Streamlit
-st.markdown("""
-<style>
-    /* Ocultar barra superior y pie nativo de Streamlit */
-    header[data-testid="stHeader"], footer, #MainMenu {
-        visibility: hidden !important;
-        height: 0px !important;
-    }
-    .stApp > header {
-        display: none !important;
-    }
-    /* Ocupar el 100% del viewport sin bordes ni padding excesivo */
-    .block-container {
-        padding: 0 !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-    }
-    div[data-testid="stVerticalBlock"] {
-        padding: 0 !important;
-        gap: 0 !important;
-    }
-    iframe {
-        border: none !important;
-        width: 100% !important;
-        min-height: 100vh !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Selector de Vista en barra lateral o superior
+with st.sidebar:
+    st.markdown("### 🚘 AutoOS Navigation")
+    vista = st.radio(
+        "Seleccionar Módulo:",
+        [
+            "🚗 Cockpit Vehicular Completo",
+            "🖥️ Planificador de Procesos (CPU & Simuladores)"
+        ],
+        index=0
+    )
+    st.divider()
+    st.markdown("**Integración Sistemas Operativos**")
+    st.caption("FCFS • Round Robin • Prioridad • Batería Baja • Proceso Crítico")
 
-# Cargar el bundle interactivo oficial de AutoOS
-bundle_candidates = [
-    AUTO_DIR / "modules" / "autoos_interactive.html",
-    AUTO_DIR / "autoos_interactive.html",
-    Path(__file__).resolve().parent.parent / "modules" / "autoos_interactive.html",
-]
+if vista == "🚗 Cockpit Vehicular Completo":
+    # Estilos CSS para experiencia fluida idéntica al preview sin márgenes nativos
+    st.markdown("""
+    <style>
+        header[data-testid="stHeader"], footer, #MainMenu {
+            visibility: hidden !important;
+            height: 0px !important;
+        }
+        .stApp > header {
+            display: none !important;
+        }
+        .block-container {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+        div[data-testid="stVerticalBlock"] {
+            padding: 0 !important;
+            gap: 0 !important;
+        }
+        iframe {
+            border: none !important;
+            width: 100% !important;
+            min-height: 100vh !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-bundle_path = next((p for p in bundle_candidates if p.exists()), None)
+    # Cargar el bundle interactivo oficial completo de AutoOS
+    bundle_candidates = [
+        AUTO_DIR / "modules" / "autoos_interactive.html",
+        AUTO_DIR / "autoos_interactive.html",
+        ROOT_DIR / "modules" / "autoos_interactive.html",
+    ]
 
-if bundle_path:
-    with open(bundle_path, "r", encoding="utf-8") as f:
-        app_html = f.read()
-    components.html(app_html, height=1350, scrolling=True)
+    bundle_path = next((p for p in bundle_candidates if p.exists()), None)
+    if bundle_path:
+        with open(bundle_path, "r", encoding="utf-8") as f:
+            app_html = f.read()
+        components.html(app_html, height=1350, scrolling=True)
+    else:
+        st.error("Archivo interactivo de AutoOS no encontrado.")
+
 else:
-    st.error("Archivo interactivo de AutoOS no encontrado.")
+    # Renderizar el Módulo de Planificación de CPU en Python puro
+    from dashboard.cpu import mostrar as mostrar_cpu
+    mostrar_cpu()
