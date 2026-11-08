@@ -5,6 +5,7 @@ import {
   Process,
   ProcessState,
   UserRole,
+  VehicleDevice,
 } from './types/scheduler';
 import { INITIAL_VEHICLE_PROCESSES } from './utils/presets';
 import {
@@ -19,6 +20,8 @@ import { QueueVisualizer } from './components/QueueVisualizer';
 import { ProcessTable } from './components/ProcessTable';
 import { BatterySimulatorPanel } from './components/BatterySimulatorPanel';
 import { CriticalProcessSimulator } from './components/CriticalProcessSimulator';
+import { GPSSimulatorPanel } from './components/GPSSimulatorPanel';
+import { HardwareStatusGrid } from './components/HardwareStatusGrid';
 import { AlgorithmComparisonModal } from './components/AlgorithmComparisonModal';
 import { NewProcessModal } from './components/NewProcessModal';
 import { EventsLog } from './components/EventsLog';
@@ -39,7 +42,145 @@ import {
   ShieldAlert,
   X,
   CheckCircle,
+  AlertTriangle,
+  Zap,
+  Navigation,
 } from 'lucide-react';
+
+const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
+  {
+    id: 'dev_01',
+    code: 'DEV_GPS_01',
+    name: 'Receptor GNSS / GPS Diferencial',
+    subsystem: 'Navegación',
+    status: 'operativo',
+    health: 98,
+    criticalLevel: 'esencial',
+    bus: 'CAN-Bus Principal',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_02',
+    code: 'DEV_CAM_FRONT',
+    name: 'Cámara Estereoscópica ADAS Frontal',
+    subsystem: 'Visión',
+    status: 'operativo',
+    health: 95,
+    criticalLevel: 'critico',
+    bus: 'Automotive Ethernet',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_03',
+    code: 'DEV_LIDAR_01',
+    name: 'Sensor LiDAR 360° Solid-State',
+    subsystem: 'Sensores',
+    status: 'operativo',
+    health: 99,
+    criticalLevel: 'critico',
+    bus: 'Automotive Ethernet',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_04',
+    code: 'DEV_RADAR_01',
+    name: 'Radar Milimétrico 77GHz (ACC)',
+    subsystem: 'Sensores',
+    status: 'operativo',
+    health: 94,
+    criticalLevel: 'critico',
+    bus: 'CAN-Bus ADAS',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_05',
+    code: 'DEV_BATTERY_BMS',
+    name: 'BMS Batería LiFePO4 Alta Tensión',
+    subsystem: 'Batería',
+    status: 'operativo',
+    health: 92,
+    criticalLevel: 'critico',
+    bus: 'CAN-Bus Principal',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_06',
+    code: 'DEV_ACT_BRAKE',
+    name: 'Actuador Frenado By-Wire AEB',
+    subsystem: 'Seguridad Dinámica',
+    status: 'operativo',
+    health: 100,
+    criticalLevel: 'critico',
+    bus: 'CAN-Bus ADAS',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_07',
+    code: 'DEV_ACT_STEER',
+    name: 'Actuador Dirección Eléctrica EPS',
+    subsystem: 'Seguridad Dinámica',
+    status: 'operativo',
+    health: 97,
+    criticalLevel: 'critico',
+    bus: 'CAN-Bus ADAS',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_08',
+    code: 'DEV_COM_V2X',
+    name: 'Módulo Telemetría 5G / V2X Cloud',
+    subsystem: 'Comunicación',
+    status: 'operativo',
+    health: 91,
+    criticalLevel: 'esencial',
+    bus: 'Automotive Ethernet',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_09',
+    code: 'DEV_GATEWAY_CAN',
+    name: 'Gateway Bus CAN-FD Chasis',
+    subsystem: 'Chasis',
+    status: 'operativo',
+    health: 98,
+    criticalLevel: 'critico',
+    bus: 'CAN-Bus Principal',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_10',
+    code: 'DEV_INFOTAINMENT',
+    name: 'Pantalla Central Cockpit & Audio',
+    subsystem: 'Multimedia',
+    status: 'operativo',
+    health: 96,
+    criticalLevel: 'confort',
+    bus: 'LIN-Bus Confort',
+    activeDtc: null,
+    failureMode: null,
+  },
+  {
+    id: 'dev_11',
+    code: 'DEV_HVAC_CLIMA',
+    name: 'Climatización y Gestión Térmica',
+    subsystem: 'Confort',
+    status: 'operativo',
+    health: 89,
+    criticalLevel: 'confort',
+    bus: 'LIN-Bus Confort',
+    activeDtc: null,
+    failureMode: null,
+  },
+];
 
 export default function App() {
   // Navigation tabs: only 2 tabs as requested
@@ -54,6 +195,9 @@ export default function App() {
   // User Role & RBAC State: 'mecanico' | 'conductor' | 'pasajero'
   const [userRole, setUserRole] = useState<UserRole>('mecanico');
   const [rbacAlertMessage, setRbacAlertMessage] = useState<string | null>(null);
+
+  // Hardware Devices State for Real-Time Reflection
+  const [devices, setDevices] = useState<VehicleDevice[]>(INITIAL_VEHICLE_DEVICES);
 
   // Inlined or fetched cockpit HTML for seamless rendering in both Vite dev server and Streamlit iframe
   const [cockpitHtml, setCockpitHtml] = useState<string | null>(() => {
@@ -355,14 +499,39 @@ export default function App() {
     handleUpdateBatteryLevel(battery.isLowBatteryMode ? 85 : 18);
   };
 
-  // Critical Process injection
-  const handleInjectCriticalProcess = (procData: Omit<Process, 'waitingTime' | 'turnaroundTime'>) => {
+  // Critical Process injection with Device State Reflection
+  const handleInjectCriticalProcess = (
+    procData: Omit<Process, 'waitingTime' | 'turnaroundTime'>,
+    deviceCode?: string,
+    dtc?: string,
+    failureMode?: string
+  ) => {
     const fullProc: Process = {
       ...procData,
       waitingTime: 0,
       turnaroundTime: 0,
     };
 
+    // 1. Update Hardware Devices Matrix
+    if (deviceCode) {
+      setDevices((prev) =>
+        prev.map((d) => {
+          if (d.code === deviceCode) {
+            const isCritical = procData.priority === 1;
+            return {
+              ...d,
+              status: isCritical ? ('falla' as const) : ('degradado' as const),
+              health: isCritical ? 15 : 60,
+              activeDtc: dtc || d.activeDtc || 'U0100-87',
+              failureMode: failureMode || procData.name,
+            };
+          }
+          return d;
+        })
+      );
+    }
+
+    // 2. Dispatch process into CPU Scheduler
     setBaseProcesses((prev) => [...prev, fullProc]);
 
     setSimState((prev) => {
@@ -379,7 +548,7 @@ export default function App() {
         time: currentT,
         timestamp: new Date().toLocaleTimeString(),
         type: 'CRITICAL_INJECT',
-        message: `🚨 PROCESO CRÍTICO ASIL-D INYECTADO! '${newProc.name}' (PID ${newProc.pid}, P1) ingresa a la CPU.`,
+        message: `🚨 PROCESO CRÍTICO ASIL-D INYECTADO! '${newProc.name}' [DTC: ${dtc || 'U0100'}] (PID ${newProc.pid}, P${newProc.priority}) ingresa a la CPU.`,
         pid: newProc.pid,
         severity: 'critical',
       });
@@ -416,6 +585,113 @@ export default function App() {
         events: newEvents,
       };
     });
+
+    // 3. Post notification to Cockpit iframe
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'AUTOOS_HARDWARE_FAULT',
+          deviceCode,
+          dtc,
+          name: procData.name,
+        },
+        '*'
+      );
+    } catch (_) {}
+  };
+
+  // Reset single device
+  const handleResetDevice = (deviceCode: string) => {
+    setDevices((prev) =>
+      prev.map((d) => {
+        if (d.code === deviceCode) {
+          return {
+            ...d,
+            status: 'operativo',
+            health: 98,
+            activeDtc: null,
+            failureMode: null,
+          };
+        }
+        return d;
+      })
+    );
+
+    setSimState((prev) => ({
+      ...prev,
+      events: [
+        {
+          id: `evt-dev-rst-${deviceCode}-${Date.now()}`,
+          time: prev.currentTime,
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'STATE_CHANGE',
+          message: `✓ Calibración OBD-II completada: Dispositivo [${deviceCode}] restablecido a OPERATIVO (100% Nominal).`,
+          severity: 'success',
+        },
+        ...prev.events,
+      ],
+    }));
+
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'AUTOOS_RESET_DEVICE',
+          deviceCode,
+        },
+        '*'
+      );
+    } catch (_) {}
+  };
+
+  // Reset all devices and faults
+  const handleResetAllDevices = () => {
+    setDevices(INITIAL_VEHICLE_DEVICES);
+
+    setSimState((prev) => ({
+      ...prev,
+      events: [
+        {
+          id: `evt-dev-rstall-${Date.now()}`,
+          time: prev.currentTime,
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'STATE_CHANGE',
+          message: `✓ RESTABLECIMIENTO GLOBAL: Todos los subsistemas y buses CAN/Ethernet restablecidos a 100% NOMINAL ASIL-D.`,
+          severity: 'success',
+        },
+        ...prev.events,
+      ],
+    }));
+
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'AUTOOS_RESET_ALL_FAULTS',
+        },
+        '*'
+      );
+    } catch (_) {}
+  };
+
+  // Quick fault trigger on single device
+  const handleTriggerQuickFault = (deviceCode: string) => {
+    const dev = devices.find((d) => d.code === deviceCode) || INITIAL_VEHICLE_DEVICES[0];
+    const dtc = dev.activeDtc || 'P0100-F1';
+    const procData: Omit<Process, 'waitingTime' | 'turnaroundTime'> = {
+      pid: Math.floor(Math.random() * 800) + 200,
+      name: `Falla Simulada en ${dev.name.split('/')[0]}`,
+      category: dev.subsystem === 'Seguridad Dinámica' ? 'seguridad' : dev.subsystem === 'Sensores' ? 'sensor' : 'control',
+      arrivalTime: simState.currentTime,
+      burstTime: 4,
+      remainingTime: 4,
+      priority: 1,
+      critical: true,
+      color: '#ef4444',
+      state: 'LISTO',
+      powerConsumptionWatts: 50,
+      cpuUsagePct: 35,
+      memoryMb: 128,
+    };
+    handleInjectCriticalProcess(procData, deviceCode, dtc, 'Prueba de Diagnóstico Forzado OBD-II');
   };
 
   // Add custom process
@@ -545,6 +821,16 @@ export default function App() {
 
   const suspendedProcesses = simState.processes.filter((p) => p.state === 'SUSPENDIDO');
 
+  // Hardware health calculations for top banner
+  const failingDevices = devices.filter((d) => d.status === 'falla' || d.status === 'desconectado');
+  const degradedDevices = devices.filter((d) => d.status === 'degradado');
+  const avgHealth = Math.round(devices.reduce((acc, d) => acc + d.health, 0) / devices.length);
+
+  // GPS device specific status
+  const gpsDevice = devices.find((d) => d.code === 'DEV_GPS_01');
+  const isGpsFailed = gpsDevice?.status === 'falla' || gpsDevice?.status === 'desconectado';
+  const gpsActiveDtc = gpsDevice?.activeDtc;
+
   return (
     <div className="min-h-screen flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)]">
       {/* Top Header with Universal Theme Switcher & RBAC Role Selector */}
@@ -558,15 +844,23 @@ export default function App() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-serif font-bold text-[var(--text-primary)] tracking-wide">
-                  AutoOS <span className="text-[var(--accent-primary)] font-mono text-xs font-semibold">v2.4.1</span>
+                  AutoOS <span className="text-[var(--accent-primary)] font-mono text-xs font-semibold">v2.5.0</span>
                 </h1>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  OPERATIVO
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
+                  failingDevices.length > 0
+                    ? 'bg-red-500/15 text-red-500 border border-red-500/30 animate-pulse'
+                    : degradedDevices.length > 0
+                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    failingDevices.length > 0 ? 'bg-red-500 animate-ping' : degradedDevices.length > 0 ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'
+                  }`}></span>
+                  {failingDevices.length > 0 ? 'FALLA ACTIVA' : degradedDevices.length > 0 ? 'DEGRADADO' : 'OPERATIVO 100%'}
                 </span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                Sistema Operativo para Vehículo Inteligente — RTOS
+                Sistema Operativo para Vehículo Inteligente — RTOS ISO 26262 ASIL-D
               </p>
             </div>
           </div>
@@ -672,245 +966,329 @@ export default function App() {
 
       {/* TAB 1: SCHEDULER & SIMULATORS */}
       <main className={`flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' ? '' : 'hidden'}`}>
-          {/* Controls Bar */}
-          <section className="autoos-card rounded-3xl p-5 shadow-xl">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                  Algoritmo de Planificación:
-                </label>
-                <div className="flex flex-wrap gap-1.5 autoos-surface p-1.5 rounded-2xl">
-                  <button
-                    onClick={() => handleAlgorithmChange('FCFS')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                      algorithm === 'FCFS'
-                        ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    FCFS (First-Come)
-                  </button>
-                  <button
-                    onClick={() => handleAlgorithmChange('RR')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                      algorithm === 'RR'
-                        ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    Round Robin (RR)
-                  </button>
-                  <button
-                    onClick={() => handleAlgorithmChange('PRIORITY')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                      algorithm === 'PRIORITY'
-                        ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    Prioridad No Apropiativa
-                  </button>
-                  <button
-                    onClick={() => handleAlgorithmChange('PRIORITY_PREEMPTIVE')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                      algorithm === 'PRIORITY_PREEMPTIVE'
-                        ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                    }`}
-                  >
-                    Prioridad Apropiativa (Preemptive)
-                  </button>
-                </div>
-              </div>
-
-              {algorithm === 'RR' && (
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                    Quantum (q):
-                  </label>
-                  <div className="flex items-center gap-1.5 autoos-surface p-1.5 rounded-2xl font-mono text-xs">
-                    {[1, 2, 3, 4, 5].map((q) => (
-                      <button
-                        key={q}
-                        onClick={() => handleQuantumChange(q)}
-                        className={`w-7 h-7 rounded-xl font-bold transition ${
-                          quantum === q
-                            ? 'bg-[var(--accent-primary)] text-white'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                        }`}
-                      >
-                        {q}s
-                      </button>
-                    ))}
-                  </div>
-                </div>
+        {/* Dynamic Global Vehicle Health HUD Banner */}
+        <div className={`p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${
+          failingDevices.length > 0
+            ? 'bg-red-500/15 border-red-500 text-red-600 dark:text-red-400 ring-2 ring-red-500/30'
+            : degradedDevices.length > 0
+            ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400'
+            : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-xl shrink-0 ${
+              failingDevices.length > 0
+                ? 'bg-red-600 text-white animate-bounce'
+                : degradedDevices.length > 0
+                ? 'bg-amber-500 text-white'
+                : 'bg-emerald-500/20 text-emerald-500'
+            }`}>
+              {failingDevices.length > 0 ? (
+                <ShieldAlert className="w-5 h-5" />
+              ) : degradedDevices.length > 0 ? (
+                <AlertTriangle className="w-5 h-5" />
+              ) : (
+                <CheckCircle className="w-5 h-5" />
               )}
+            </div>
+            <div>
+              <div className="font-bold text-sm flex items-center gap-2">
+                <span>
+                  {failingDevices.length > 0
+                    ? `🚨 ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE`
+                    : degradedDevices.length > 0
+                    ? `⚠️ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO`
+                    : '✓ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)'}
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900/10 dark:bg-white/10 font-bold">
+                  Salud: {avgHealth}%
+                </span>
+              </div>
+              <p className="text-[11px] opacity-90">
+                {failingDevices.length > 0
+                  ? `Fallas detectadas en: ${failingDevices.map((d) => `${d.name.split('/')[0]} [${d.activeDtc || 'DTC'}]`).join(', ')}. Conmutado a algoritmos de contingencia pre-emptivos.`
+                  : degradedDevices.length > 0
+                  ? `Subsistemas con rendimiento reducido: ${degradedDevices.map((d) => d.name.split('/')[0]).join(', ')}.`
+                  : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. Planificación de tiempo real en rango de latencia < 2ms.'}
+              </p>
+            </div>
+          </div>
 
-              {/* Playback & Action Controls */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                  Controles de Simulación:
-                </label>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleTogglePlay}
-                    disabled={simState.isFinished}
-                    className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition shadow-md ${
-                      isPlaying
-                        ? 'bg-amber-500 hover:bg-amber-400 text-white'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50'
-                    }`}
-                  >
-                    {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
-                    <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
-                  </button>
-                  <button
-                    onClick={handleStepForward}
-                    disabled={isPlaying || simState.isFinished}
-                    className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
-                  >
-                    <SkipForward className="w-4 h-4 text-[var(--accent-primary)]" />
-                    <span>Paso (+1s)</span>
-                  </button>
-                  <button
-                    onClick={() => handleReset()}
-                    className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Reiniciar</span>
-                  </button>
-                  <button
-                    onClick={() => setIsCompareModalOpen(true)}
-                    className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition"
-                  >
-                    <BarChart3 className="w-4 h-4 text-[var(--accent-primary)]" />
-                    <span>Comparar</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (userRole === 'pasajero') {
-                        handleRoleRestricted('Crear Procesos en el Sistema');
-                        return;
-                      }
-                      setIsNewProcessModalOpen(true);
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm hover:opacity-90"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Añadir</span>
-                  </button>
-                </div>
+          {/* Quick Clear Faults Button */}
+          {failingDevices.length > 0 && (
+            <button
+              onClick={handleResetAllDevices}
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider shadow-md hover:scale-105 transition flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Restablecer Fallas</span>
+            </button>
+          )}
+        </div>
+
+        {/* Controls Bar */}
+        <section className="autoos-card rounded-3xl p-5 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
+                Algoritmo de Planificación:
+              </label>
+              <div className="flex flex-wrap gap-1.5 autoos-surface p-1.5 rounded-2xl">
+                <button
+                  onClick={() => handleAlgorithmChange('FCFS')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                    algorithm === 'FCFS'
+                      ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  FCFS (First-Come)
+                </button>
+                <button
+                  onClick={() => handleAlgorithmChange('RR')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                    algorithm === 'RR'
+                      ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Round Robin (RR)
+                </button>
+                <button
+                  onClick={() => handleAlgorithmChange('PRIORITY')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                    algorithm === 'PRIORITY'
+                      ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Prioridad No Apropiativa
+                </button>
+                <button
+                  onClick={() => handleAlgorithmChange('PRIORITY_PREEMPTIVE')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                    algorithm === 'PRIORITY_PREEMPTIVE'
+                      ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  Prioridad Apropiativa (Preemptive)
+                </button>
               </div>
             </div>
-          </section>
 
-          {/* Metrics KPI Cards */}
-          <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 font-mono">
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Reloj Simulado</span>
-              <strong className="text-xl text-[var(--accent-primary)] font-bold">t = {simState.currentTime}s</strong>
-            </div>
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Uso de CPU</span>
-              <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold">{metrics.cpuUtilization}%</strong>
-            </div>
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">T. Espera Prom</span>
-              <strong className="text-xl text-amber-600 dark:text-amber-400 font-bold">{metrics.averageWaitingTime}s</strong>
-            </div>
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">T. Retorno Prom</span>
-              <strong className="text-xl text-[var(--text-primary)] font-bold">{metrics.averageTurnaroundTime}s</strong>
-            </div>
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Conmutaciones</span>
-              <strong className="text-xl text-[var(--text-primary)] font-bold">{metrics.contextSwitches}</strong>
-            </div>
-            <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
-              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Completados</span>
-              <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold">
-                {metrics.completedCount} / {metrics.totalProcesses}
-              </strong>
-            </div>
-          </section>
+            {algorithm === 'RR' && (
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
+                  Quantum (q):
+                </label>
+                <div className="flex items-center gap-1.5 autoos-surface p-1.5 rounded-2xl font-mono text-xs">
+                  {[1, 2, 3, 4, 5].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => handleQuantumChange(q)}
+                      className={`w-7 h-7 rounded-xl font-bold transition ${
+                        quantum === q
+                          ? 'bg-[var(--accent-primary)] text-white'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {q}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          {/* Gantt Chart */}
-          <section>
-            <GanttChart
-              slots={simState.ganttSlots}
+            {/* Playback & Action Controls */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
+                Controles de Simulación:
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleTogglePlay}
+                  disabled={simState.isFinished}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition shadow-md ${
+                    isPlaying
+                      ? 'bg-amber-500 hover:bg-amber-400 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50'
+                  }`}
+                >
+                  {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                  <span>{isPlaying ? 'Pausar' : 'Reproducir'}</span>
+                </button>
+                <button
+                  onClick={handleStepForward}
+                  disabled={isPlaying || simState.isFinished}
+                  className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                >
+                  <SkipForward className="w-4 h-4 text-[var(--accent-primary)]" />
+                  <span>Paso (+1s)</span>
+                </button>
+                <button
+                  onClick={() => handleReset()}
+                  className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Reiniciar</span>
+                </button>
+                <button
+                  onClick={() => setIsCompareModalOpen(true)}
+                  className="px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition"
+                >
+                  <BarChart3 className="w-4 h-4 text-[var(--accent-primary)]" />
+                  <span>Comparar</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (userRole === 'pasajero') {
+                      handleRoleRestricted('Crear Procesos en el Sistema');
+                      return;
+                    }
+                    setIsNewProcessModalOpen(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm hover:opacity-90"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Añadir</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Metrics KPI Cards */}
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 font-mono">
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Reloj Simulado</span>
+            <strong className="text-xl text-[var(--accent-primary)] font-bold">t = {simState.currentTime}s</strong>
+          </div>
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Uso de CPU</span>
+            <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold">{metrics.cpuUtilization}%</strong>
+          </div>
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">T. Espera Prom</span>
+            <strong className="text-xl text-amber-600 dark:text-amber-400 font-bold">{metrics.averageWaitingTime}s</strong>
+          </div>
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">T. Retorno Prom</span>
+            <strong className="text-xl text-[var(--text-primary)] font-bold">{metrics.averageTurnaroundTime}s</strong>
+          </div>
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Conmutaciones</span>
+            <strong className="text-xl text-[var(--text-primary)] font-bold">{metrics.contextSwitches}</strong>
+          </div>
+          <div className="autoos-card p-3.5 rounded-2xl shadow-sm">
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider block font-bold">Completados</span>
+            <strong className="text-xl text-emerald-600 dark:text-emerald-400 font-bold">
+              {metrics.completedCount} / {metrics.totalProcesses}
+            </strong>
+          </div>
+        </section>
+
+        {/* Real-time Hardware & Subsystems Matrix */}
+        <section>
+          <HardwareStatusGrid
+            devices={devices}
+            onResetDevice={handleResetDevice}
+            onResetAllDevices={handleResetAllDevices}
+            onTriggerQuickFault={handleTriggerQuickFault}
+            userRole={userRole}
+            onRoleRestricted={handleRoleRestricted}
+          />
+        </section>
+
+        {/* Real-Time Dynamic GPS Navigation Simulator */}
+        <section>
+          <GPSSimulatorPanel
+            isDeviceFailed={isGpsFailed}
+            activeDtc={gpsActiveDtc}
+            userRole={userRole}
+            onRoleRestricted={handleRoleRestricted}
+            batteryLevel={battery.level}
+          />
+        </section>
+
+        {/* Gantt Chart */}
+        <section>
+          <GanttChart
+            slots={simState.ganttSlots}
+            currentTime={simState.currentTime}
+            totalTime={simState.currentTime}
+            processes={simState.processes}
+          />
+        </section>
+
+        {/* CPU Core & Ready Queue */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <CPUCoreCard
+              runningProcess={simState.runningProcess}
+              algorithm={simState.algorithm}
+              quantum={simState.quantum}
+              quantumRemaining={simState.quantumRemaining}
+              preemptedProcessId={simState.preemptedProcessId}
+              contextSwitches={simState.contextSwitchCount}
               currentTime={simState.currentTime}
-              totalTime={simState.currentTime}
-              processes={simState.processes}
+              isLowBatteryActive={battery.isLowBatteryMode}
             />
-          </section>
+          </div>
+          <div className="lg:col-span-2">
+            <QueueVisualizer
+              readyQueue={simState.readyQueue}
+              algorithm={simState.algorithm}
+              suspendedProcesses={suspendedProcesses}
+            />
+          </div>
+        </section>
 
-          {/* CPU Core & Ready Queue */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <CPUCoreCard
-                runningProcess={simState.runningProcess}
-                algorithm={simState.algorithm}
-                quantum={simState.quantum}
-                quantumRemaining={simState.quantumRemaining}
-                preemptedProcessId={simState.preemptedProcessId}
-                contextSwitches={simState.contextSwitchCount}
-                currentTime={simState.currentTime}
-                isLowBatteryActive={battery.isLowBatteryMode}
-              />
-            </div>
-            <div className="lg:col-span-2">
-              <QueueVisualizer
-                readyQueue={simState.readyQueue}
-                algorithm={simState.algorithm}
-                suspendedProcesses={suspendedProcesses}
-              />
-            </div>
-          </section>
+        {/* The Two Dedicated Simulators: Battery and Configurable Fault Simulator */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2 px-1">
+            <Activity className="w-4 h-4 text-[var(--accent-primary)]" />
+            <h3 className="text-sm font-serif font-bold text-[var(--text-primary)] uppercase tracking-wider">
+              Simuladores de Contingencia y Gestión Energética
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <BatterySimulatorPanel
+              battery={battery}
+              onUpdateBatteryLevel={handleUpdateBatteryLevel}
+              onTogglePowerSaving={handleTogglePowerSaving}
+              wattsSaved={battery.powerSavingWattsSaved}
+              suspendedCount={suspendedProcesses.length}
+              userRole={userRole}
+              onRoleRestricted={handleRoleRestricted}
+            />
+            <CriticalProcessSimulator
+              onInjectCriticalProcess={handleInjectCriticalProcess}
+              onResetDevice={handleResetDevice}
+              onResetAllScenarios={handleResetAllDevices}
+              currentTime={simState.currentTime}
+              userRole={userRole}
+              onRoleRestricted={handleRoleRestricted}
+            />
+          </div>
+        </section>
 
-          {/* The Two Dedicated Simulators (Moved from Cockpit into this Tab) */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Activity className="w-4 h-4 text-[var(--accent-primary)]" />
-              <h3 className="text-sm font-serif font-bold text-[var(--text-primary)] uppercase tracking-wider">
-                Simuladores de Contingencia de Cockpit AutoOS
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <BatterySimulatorPanel
-                battery={battery}
-                onUpdateBatteryLevel={handleUpdateBatteryLevel}
-                onTogglePowerSaving={handleTogglePowerSaving}
-                wattsSaved={battery.powerSavingWattsSaved}
-                suspendedCount={suspendedProcesses.length}
-                userRole={userRole}
-                onRoleRestricted={handleRoleRestricted}
-              />
-              <CriticalProcessSimulator
-                onInjectCriticalProcess={handleInjectCriticalProcess}
-                currentTime={simState.currentTime}
-                userRole={userRole}
-                onRoleRestricted={handleRoleRestricted}
-              />
-            </div>
-          </section>
-
-          {/* Process Table & Events Log */}
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <ProcessTable
-                processes={simState.processes}
-                onToggleSuspend={handleToggleSuspend}
-                onTerminate={handleTerminateProcess}
-                currentTime={simState.currentTime}
-                userRole={userRole}
-                onRoleRestricted={handleRoleRestricted}
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <EventsLog events={simState.events} />
-            </div>
-          </section>
-        </main>
+        {/* Process Table & Events Log */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <ProcessTable
+              processes={simState.processes}
+              onToggleSuspend={handleToggleSuspend}
+              onTerminate={handleTerminateProcess}
+              currentTime={simState.currentTime}
+              userRole={userRole}
+              onRoleRestricted={handleRoleRestricted}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <EventsLog events={simState.events} />
+          </div>
+        </section>
+      </main>
 
       {/* TAB 2: ORIGINAL FULL VEHICLE COCKPIT */}
       <main className={`flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`}>
@@ -919,9 +1297,21 @@ export default function App() {
             <Car className="w-4 h-4 text-[var(--accent-primary)]" />
             <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (Velocímetro, Medidores, Audio Player, Chat y Cámaras)</span>
           </span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Sistemas Activos 100%
+          <span className={`font-bold flex items-center gap-1.5 ${
+            failingDevices.length > 0
+              ? 'text-red-500 animate-pulse'
+              : degradedDevices.length > 0
+              ? 'text-amber-500'
+              : 'text-emerald-600 dark:text-emerald-400'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${
+              failingDevices.length > 0 ? 'bg-red-500 animate-ping' : degradedDevices.length > 0 ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'
+            }`}></span>
+            {failingDevices.length > 0
+              ? `Falla en ${failingDevices.length} Subsistema(s)`
+              : degradedDevices.length > 0
+              ? 'Rendimiento Degradado'
+              : 'Sistemas Activos 100%'}
           </span>
         </div>
         <iframe
@@ -943,7 +1333,7 @@ export default function App() {
             {theme === 'dark' ? 'Tema: Purple Night (Oscuro)' : 'Tema: Soft Dove (Claro)'}
           </span>
           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold">
-            <CheckCircle className="w-3.5 h-3.5" /> FCFS • Round Robin • Prioridad • Batería Baja • Proceso Crítico
+            <CheckCircle className="w-3.5 h-3.5" /> FCFS • Round Robin • Prioridad • Batería Baja • Falla Configurable • GPS Dinámico
           </span>
         </div>
       </footer>

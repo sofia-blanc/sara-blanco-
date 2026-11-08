@@ -4,7 +4,9 @@ Dashboard Principal de Control e Integración
 ====================================================================
 Interfaz unificada de alta fidelidad con experiencia visual idéntica:
 - Planificador de CPU multialgoritmo (FCFS, Round Robin, Prioridad) con Gantt reactivo
-- Simuladores de Contingencia (Batería Baja Limp-Mode y Proceso Crítico ASIL-D)
+- Matriz de Salud de Hardware (11 dispositivos CAN/Ethernet/LIN) con inyección bidireccional
+- Simulador GPS GNSS en Tiempo Real (3 rutas, modos de señal, telemetría y mapa SVG dinámico)
+- Simuladores de Contingencia (Batería Baja Limp-Mode y Falla ASIL-D 100% configurable)
 - Cockpit Vehicular Completo (Velocímetro, HUD, Multimedia, Chat, Cámaras)
 - Control ÚNICO y centralizado de Usuario/Rol (RBAC) y Tema (Claro/Oscuro) en la barra superior
 ===================================================================="""
@@ -43,12 +45,19 @@ st.markdown("""
         margin: 0 !important;
     }
     
-    /* Iframe de pantalla completa fluido */
+    /* Iframe de pantalla completa fluido y sin bordes de enfoque */
     iframe {
         width: 100% !important;
         border: none !important;
         min-height: 100vh !important;
-        height: 100vh !important;
+        outline: none !important;
+    }
+    
+    /* Eliminar líneas rojas de selección/enfoque de Streamlit */
+    *:focus, *:active, iframe:focus, iframe:active, [data-baseweb="tab"]:focus {
+        outline: none !important;
+        box-shadow: none !important;
+        border-color: transparent !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -70,6 +79,6 @@ bundle_path = next((p for p in bundle_candidates if p.exists()), None)
 if bundle_path:
     with open(bundle_path, "r", encoding="utf-8") as f:
         app_html = f.read()
-    components.html(app_html, height=1350, scrolling=True)
+    components.html(app_html, height=2400, scrolling=True)
 else:
     st.error("No se encontró el paquete unificado de AutoOS.")

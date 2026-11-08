@@ -75,3 +75,47 @@ export interface BatteryState {
   autoThrottlingEnabled: boolean;
   powerSavingWattsSaved: number;
 }
+
+export type DeviceStatus = 'operativo' | 'degradado' | 'falla' | 'desconectado';
+
+export interface VehicleDevice {
+  id: string;
+  code: string;
+  name: string;
+  subsystem: 'Navegación' | 'Visión' | 'Sensores' | 'Batería' | 'Seguridad Dinámica' | 'Comunicación' | 'Confort' | 'Multimedia' | 'Chasis' | 'Tren Motriz';
+  status: DeviceStatus;
+  health: number; // 0 - 100%
+  criticalLevel: 'critico' | 'esencial' | 'confort';
+  bus: 'CAN-Bus Principal' | 'CAN-Bus ADAS' | 'Automotive Ethernet' | 'LIN-Bus Confort';
+  activeDtc?: string | null;
+  failureMode?: string | null;
+  details?: Record<string, any>;
+}
+
+export interface CustomFaultConfig {
+  deviceCode: string;
+  failureType: string;
+  severity: 'ASIL-D' | 'ASIL-B' | 'CONFORT';
+  dtc: string;
+  burstTime: number;
+  cpuImpactPct: number;
+  memoryMb: number;
+  description: string;
+}
+
+export interface GPSTelemetry {
+  latitude: number;
+  longitude: number;
+  altitudeM: number;
+  speedKmh: number;
+  headingDeg: number;
+  headingLabel: string;
+  satellites: number;
+  hdop: number;
+  signalMode: 'RTK' | 'DEGRADED' | 'TUNNEL_DEAD_RECKONING';
+  distanceRemainingKm: number;
+  etaMinutes: number;
+  destinationName: string;
+  batteryEstimatedSoC: number;
+  isMoving: boolean;
+}

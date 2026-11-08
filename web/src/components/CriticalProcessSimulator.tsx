@@ -16,15 +16,52 @@ import {
   Gauge,
   Thermometer,
   Zap,
+  Sliders,
+  Wrench,
+  Sparkles,
 } from 'lucide-react';
-import { Process, UserRole } from '../types/scheduler';
+import { Process, UserRole, ProcessCategory, ProcessPriority } from '../types/scheduler';
 
 interface CriticalProcessSimulatorProps {
-  onInjectCriticalProcess: (proc: Omit<Process, 'waitingTime' | 'turnaroundTime'>) => void;
+  onInjectCriticalProcess: (
+    proc: Omit<Process, 'waitingTime' | 'turnaroundTime'>,
+    deviceCode?: string,
+    dtc?: string,
+    failureMode?: string
+  ) => void;
+  onResetDevice?: (deviceCode: string) => void;
+  onResetAllScenarios?: () => void;
   currentTime: number;
   userRole: UserRole;
   onRoleRestricted: (action: string) => void;
+  activeFaultDeviceCode?: string | null;
 }
+
+export const AVAILABLE_DEVICES = [
+  { code: 'DEV_GPS_01', name: 'Receptor GNSS / GPS Diferencial', defaultDtc: 'U0100-87', category: 'sensor' as const, color: '#06b6d4' },
+  { code: 'DEV_CAM_FRONT', name: 'Cámara Estereoscópica ADAS Frontal', defaultDtc: 'B1203-54', category: 'sensor' as const, color: '#8b5cf6' },
+  { code: 'DEV_LIDAR_01', name: 'Sensor LiDAR 360° Solid-State', defaultDtc: 'U0100-87', category: 'sensor' as const, color: '#06b6d4' },
+  { code: 'DEV_RADAR_01', name: 'Radar Milimétrico 77GHz (ACC)', defaultDtc: 'B1000-01', category: 'sensor' as const, color: '#3b82f6' },
+  { code: 'DEV_BATTERY_BMS', name: 'BMS Batería LiFePO4 Alta Tensión', defaultDtc: 'P0A7E-00', category: 'control' as const, color: '#f59e0b' },
+  { code: 'DEV_ACT_BRAKE', name: 'Actuador Frenado By-Wire AEB', defaultDtc: 'B1000-01', category: 'seguridad' as const, color: '#dc2626' },
+  { code: 'DEV_ACT_STEER', name: 'Actuador Dirección Eléctrica EPS', defaultDtc: 'C0040-04', category: 'control' as const, color: '#e11d48' },
+  { code: 'DEV_COM_V2X', name: 'Módulo Telemetría 5G / V2X Cloud', defaultDtc: 'U0140-00', category: 'control' as const, color: '#3b82f6' },
+  { code: 'DEV_GATEWAY_CAN', name: 'Gateway Bus CAN-FD Chasis', defaultDtc: 'U1101-08', category: 'seguridad' as const, color: '#ec4899' },
+  { code: 'DEV_INFOTAINMENT', name: 'Pantalla Central Cockpit & Audio', defaultDtc: 'U0155-00', category: 'multimedia' as const, color: '#a855f7' },
+  { code: 'DEV_HVAC_CLIMA', name: 'Climatización y Gestión Térmica', defaultDtc: 'B1081-00', category: 'confort' as const, color: '#10b981' },
+];
+
+export const FAILURE_TYPES = [
+  'Falla Crítica Total / Desconexión de Bus',
+  'Degradación de Rendimiento y Descalibración',
+  'Sobrecalentamiento Térmico Extremo (>52°C)',
+  'Ataque DoS / Inyección Anómala de Tramas',
+  'Oclusión Óptica / Ceguera de Sensores',
+  'Pérdida de Presión Hidráulica / Retardo Actuador',
+  'Desfase de Ángulo y Sobrecorriente By-Wire',
+  'Pérdida de Cobertura y Señal Satelital',
+  'Personalizado',
+];
 
 export const COCKPIT_INCIDENT_SCENARIOS = [
   {
@@ -43,7 +80,7 @@ export const COCKPIT_INCIDENT_SCENARIOS = [
   {
     id: 'scen_bms_thermal',
     name: 'Sobrecalentamiento BMS (48°C)',
-    dispositivo: 'DEV_BMS_01',
+    dispositivo: 'DEV_BATTERY_BMS',
     dtc: 'P0A7E-00 (Sobretemperatura módulo celdas tracción)',
     burstTime: 5,
     category: 'control' as const,
@@ -82,20 +119,20 @@ export const COCKPIT_INCIDENT_SCENARIOS = [
   {
     id: 'scen_telemetry_drop',
     name: 'Corte de Cobertura 5G Nube',
-    dispositivo: 'DEV_MODEM_5G',
+    dispositivo: 'DEV_COM_V2X',
     dtc: 'U0140-00 (Desconexión de enlace telemático OTA)',
     burstTime: 3,
     category: 'control' as const,
     color: '#3b82f6',
     icon: WifiOff,
-    desc: 'Pérdida de señal satelital/celular. Activa búfer NVRAM local determinístico para telemetría pendiente.',
+    desc: 'Pérdida de señal celular/satelital. Activa búfer NVRAM local determinístico para telemetría pendiente.',
     powerWatts: 25,
     memoryMb: 64,
   },
   {
     id: 'scen_aeb',
     name: 'Frenado Autónomo Emergencia (AEB)',
-    dispositivo: 'DEV_BRAKE_BOOSTER',
+    dispositivo: 'DEV_ACT_BRAKE',
     dtc: 'B1000-01 (Desaceleración inminente radar/cámara)',
     burstTime: 3,
     category: 'seguridad' as const,
@@ -122,24 +159,95 @@ export const COCKPIT_INCIDENT_SCENARIOS = [
 
 export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> = ({
   onInjectCriticalProcess,
+  onResetDevice,
+  onResetAllScenarios,
   currentTime,
   userRole,
   onRoleRestricted,
 }) => {
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  // Subtab navigation: 'CUSTOM' | 'PRESETS' | 'POWERTRAIN'
+  const [viewSubtab, setViewSubtab] = useState<'CUSTOM' | 'PRESETS' | 'POWERTRAIN'>('CUSTOM');
+
+  // Custom Failure Builder State
+  const [targetDeviceCode, setTargetDeviceCode] = useState<string>('DEV_GPS_01');
+  const [selectedFailureType, setSelectedFailureType] = useState<string>(FAILURE_TYPES[0]);
+  const [customFaultName, setCustomFaultName] = useState<string>('Falla Crítica de Navegación GNSS');
+  const [customDtc, setCustomDtc] = useState<string>('U0100-87');
+  const [severityLevel, setSeverityLevel] = useState<'ASIL-D' | 'ASIL-B' | 'CONFORT'>('ASIL-D');
+  const [burstDuration, setBurstDuration] = useState<number>(4);
+  const [cpuUsagePct, setCpuUsagePct] = useState<number>(45);
+  const [powerWatts, setPowerWatts] = useState<number>(55);
+  const [memoryMb, setMemoryMb] = useState<number>(140);
+  const [customDescription, setCustomDescription] = useState<string>(
+    'Pérdida súbita de señal diferencial RTK. Conmuta a estimación inercial por giróscopo IMU.'
+  );
+
+  // Preset scenarios state
+  const [selectedPresetIdx, setSelectedPresetIdx] = useState(0);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [lastInjectedPhase, setLastInjectedPhase] = useState<string | null>(null);
-  const [viewSubtab, setViewSubtab] = useState<'INCIDENTS' | 'POWERTRAIN'>('INCIDENTS');
 
   const canInject = userRole === 'mecanico';
 
-  const handleInject = () => {
+  // Handle device change in custom builder
+  const handleDeviceChange = (devCode: string) => {
+    setTargetDeviceCode(devCode);
+    const dev = AVAILABLE_DEVICES.find((d) => d.code === devCode);
+    if (dev) {
+      setCustomDtc(dev.defaultDtc);
+      setCustomFaultName(`Falla Crítica en ${dev.name.split('/')[0].trim()}`);
+      if (dev.code === 'DEV_GPS_01') {
+        setCustomDescription('Pérdida de señal satelital RTK. Conmutación a Dead Reckoning IMU.');
+      } else if (dev.code === 'DEV_CAM_FRONT') {
+        setCustomDescription('Oclusión óptica frontal y pérdida de reconocimiento de carril.');
+      } else if (dev.code === 'DEV_BATTERY_BMS') {
+        setCustomDescription('Sobrecalentamiento térmico en celdas de tracción (>48°C). Corte preventivo de potencia.');
+      } else if (dev.code === 'DEV_ACT_BRAKE') {
+        setCustomDescription('Pérdida de presión en booster hidráulico EBS. Activación de freno redundante.');
+      } else {
+        setCustomDescription(`Anomalía de comunicación y rendimiento degradado en ${dev.name}.`);
+      }
+    }
+  };
+
+  // Inject from Custom Builder
+  const handleInjectCustomFault = () => {
     if (!canInject) {
       onRoleRestricted('Inyectar Fallas Críticas de Hardware ASIL-D (Requiere Rol Mecánico / Nivel 10)');
       return;
     }
 
-    const sc = COCKPIT_INCIDENT_SCENARIOS[selectedIdx];
+    const dev = AVAILABLE_DEVICES.find((d) => d.code === targetDeviceCode) || AVAILABLE_DEVICES[0];
+    const priority: ProcessPriority = severityLevel === 'ASIL-D' ? 1 : severityLevel === 'ASIL-B' ? 2 : 4;
+
+    const procToInject: Omit<Process, 'waitingTime' | 'turnaroundTime'> = {
+      pid: Math.floor(Math.random() * 800) + 200,
+      name: customFaultName || `Falla en ${dev.name}`,
+      category: dev.category,
+      arrivalTime: currentTime,
+      burstTime: burstDuration,
+      remainingTime: burstDuration,
+      priority,
+      critical: severityLevel === 'ASIL-D',
+      color: dev.color,
+      state: 'LISTO',
+      powerConsumptionWatts: powerWatts,
+      cpuUsagePct,
+      memoryMb,
+    };
+
+    setLastInjectedPhase(`[${dev.code}] ${customFaultName} disparada → Impacto en Hardware y CPU`);
+    onInjectCriticalProcess(procToInject, dev.code, customDtc, selectedFailureType);
+  };
+
+  // Inject from Preset Scenarios
+  const handleInjectPreset = () => {
+    if (!canInject) {
+      onRoleRestricted('Inyectar Fallas Críticas de Hardware ASIL-D (Requiere Rol Mecánico / Nivel 10)');
+      return;
+    }
+
+    const sc = COCKPIT_INCIDENT_SCENARIOS[selectedPresetIdx];
     const procToInject: Omit<Process, 'waitingTime' | 'turnaroundTime'> = {
       pid: Math.floor(Math.random() * 800) + 200,
       name: sc.name,
@@ -156,14 +264,17 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
       memoryMb: sc.memoryMb,
     };
 
-    setActiveScenarioId(sc.id);
+    setActivePresetId(sc.id);
     setLastInjectedPhase(`${sc.name} detectada → Desalojando CPU con Prioridad 1`);
-    onInjectCriticalProcess(procToInject);
+    onInjectCriticalProcess(procToInject, sc.dispositivo, sc.dtc.split(' ')[0], sc.name);
   };
 
-  const handleResetScenarios = () => {
-    setActiveScenarioId(null);
-    setLastInjectedPhase('Todos los escenarios restablecidos. Parámetros nominales ISO 26262 ASIL-D.');
+  const handleResetAll = () => {
+    setActivePresetId(null);
+    setLastInjectedPhase('Todos los subsistemas restablecidos a Nominal ISO 26262 ASIL-D.');
+    if (onResetAllScenarios) {
+      onResetAllScenarios();
+    }
   };
 
   return (
@@ -176,25 +287,37 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
           </div>
           <div>
             <h3 className="text-sm font-serif font-bold text-[var(--text-primary)] flex items-center gap-2">
-              Simulador de Fallas e Inyección de Incidentes (Cockpit AutoOS)
+              Simulador & Configurador Total de Fallas Vehiculares
             </h3>
             <p className="text-[11px] text-[var(--text-muted)]">
-              Verificación de resiliencia del kernel RTOS, inyección ASIL-D y telemetría térmica
+              Personalización total de modo de falla, dispositivo receptor, código DTC, severidad ASIL e impacto en CPU
             </p>
           </div>
         </div>
 
-        {/* Subtabs to switch between Incident Injection and Powertrain Telemetry */}
+        {/* Subtabs */}
         <div className="flex items-center gap-1.5 autoos-surface p-1 rounded-xl text-xs font-mono">
           <button
-            onClick={() => setViewSubtab('INCIDENTS')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition ${
-              viewSubtab === 'INCIDENTS'
+            onClick={() => setViewSubtab('CUSTOM')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+              viewSubtab === 'CUSTOM'
                 ? 'bg-[var(--accent-primary)] text-white shadow-sm'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             }`}
           >
-            Escenarios de Falla (7)
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Configurador Personalizado</span>
+          </button>
+          <button
+            onClick={() => setViewSubtab('PRESETS')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+              viewSubtab === 'PRESETS'
+                ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Escenarios Rápidos (7)</span>
           </button>
           <button
             onClick={() => setViewSubtab('POWERTRAIN')}
@@ -205,7 +328,7 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
             }`}
           >
             <Gauge className="w-3.5 h-3.5" />
-            <span>Tren Motriz Térmico</span>
+            <span>Tren Motriz</span>
           </button>
         </div>
       </div>
@@ -213,23 +336,192 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
       {!canInject && (
         <div className="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-300 text-xs font-mono flex items-center gap-2">
           <ShieldX className="w-4 h-4 shrink-0" />
-          <span>Acceso Restringido: Solo el Mecánico Certificado (Nivel 10) tiene privilegios para disparar incidentes ASIL-D.</span>
+          <span>Acceso Restringido: Solo el Mecánico Certificado (Nivel 10) tiene privilegios para inyectar fallas ASIL-D.</span>
         </div>
       )}
 
-      {/* VIEW 1: 7 INCIDENT SCENARIOS */}
-      {viewSubtab === 'INCIDENTS' && (
+      {/* VIEW 1: CUSTOM CONFIGURABLE BUILDER (USER EMPOWERMENT) */}
+      {viewSubtab === 'CUSTOM' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+            {/* Device Selection */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+                1. Dispositivo / Subsistema a Fallar:
+              </label>
+              <select
+                value={targetDeviceCode}
+                onChange={(e) => handleDeviceChange(e.target.value)}
+                className="w-full autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] p-2.5 rounded-xl font-bold text-xs focus:outline-none"
+              >
+                {AVAILABLE_DEVICES.map((d) => (
+                  <option key={d.code} value={d.code} className="text-black dark:text-white dark:bg-[#180E24]">
+                    {d.name} ({d.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Failure Mode Selection */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+                2. Modo / Tipo de Falla:
+              </label>
+              <select
+                value={selectedFailureType}
+                onChange={(e) => setSelectedFailureType(e.target.value)}
+                className="w-full autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] p-2.5 rounded-xl font-bold text-xs focus:outline-none"
+              >
+                {FAILURE_TYPES.map((ft) => (
+                  <option key={ft} value={ft} className="text-black dark:text-white dark:bg-[#180E24]">
+                    {ft}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Severity Level */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+                3. Nivel de Severidad ISO 26262:
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSeverityLevel('ASIL-D')}
+                  className={`py-2 px-2 rounded-xl font-bold transition text-center ${
+                    severityLevel === 'ASIL-D'
+                      ? 'bg-red-600 text-white shadow-sm ring-2 ring-red-500/40'
+                      : 'autoos-surface text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]'
+                  }`}
+                >
+                  🔴 ASIL-D (P1)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSeverityLevel('ASIL-B')}
+                  className={`py-2 px-2 rounded-xl font-bold transition text-center ${
+                    severityLevel === 'ASIL-B'
+                      ? 'bg-amber-600 text-white shadow-sm ring-2 ring-amber-500/40'
+                      : 'autoos-surface text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]'
+                  }`}
+                >
+                  🟡 ASIL-B (P2)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSeverityLevel('CONFORT')}
+                  className={`py-2 px-2 rounded-xl font-bold transition text-center ${
+                    severityLevel === 'CONFORT'
+                      ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500/40'
+                      : 'autoos-surface text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)]'
+                  }`}
+                >
+                  🔵 Confort (P4)
+                </button>
+              </div>
+            </div>
+
+            {/* DTC Code input */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+                4. Código DTC OBD-II / UDS:
+              </label>
+              <input
+                type="text"
+                value={customDtc}
+                onChange={(e) => setCustomDtc(e.target.value)}
+                placeholder="Ej. U0100-87, P0A7E, B1203"
+                className="w-full autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] p-2.5 rounded-xl font-bold text-xs focus:outline-none"
+              />
+            </div>
+
+            {/* Custom Name */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+                5. Nombre del Evento / Proceso de Contingencia:
+              </label>
+              <input
+                type="text"
+                value={customFaultName}
+                onChange={(e) => setCustomFaultName(e.target.value)}
+                placeholder="Nombre descriptivo"
+                className="w-full autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] p-2.5 rounded-xl font-bold text-xs focus:outline-none"
+              />
+            </div>
+
+            {/* Duration and Resource Impact */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block flex justify-between">
+                <span>6. Duración Ráfaga CPU:</span>
+                <span className="text-[var(--accent-primary)]">{burstDuration}s ({cpuUsagePct}% CPU, {powerWatts}W)</span>
+              </label>
+              <div className="flex items-center gap-3 autoos-surface p-2.5 rounded-xl border border-[var(--border-color)]">
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={burstDuration}
+                  onChange={(e) => setBurstDuration(Number(e.target.value))}
+                  className="w-full accent-[var(--accent-primary)] cursor-pointer"
+                />
+                <span className="font-bold text-xs shrink-0 w-8 text-right">{burstDuration}s</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5 text-xs font-mono">
+            <label className="text-[11px] text-[var(--text-muted)] uppercase font-bold block">
+              7. Descripción Técnica del Incidente:
+            </label>
+            <input
+              type="text"
+              value={customDescription}
+              onChange={(e) => setCustomDescription(e.target.value)}
+              placeholder="Detalles del comportamiento anómalo"
+              className="w-full autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] p-2.5 rounded-xl text-xs focus:outline-none"
+            />
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-color)]">
+            <button
+              onClick={handleResetAll}
+              className="px-3.5 py-2.5 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition font-mono"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
+              <span>Restablecer Todo a Nominal</span>
+            </button>
+
+            <button
+              onClick={handleInjectCustomFault}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${
+                canInject
+                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'
+              }`}
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>⚡ Disparar Falla Personalizada al Sistema!</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: 7 PRESET SCENARIOS */}
+      {viewSubtab === 'PRESETS' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[290px] overflow-y-auto pr-1">
             {COCKPIT_INCIDENT_SCENARIOS.map((sc, idx) => {
-              const isSelected = selectedIdx === idx;
-              const isActive = activeScenarioId === sc.id;
+              const isSelected = selectedPresetIdx === idx;
+              const isActive = activePresetId === sc.id;
               const IconComp = sc.icon;
 
               return (
                 <button
                   key={sc.id}
-                  onClick={() => setSelectedIdx(idx)}
+                  onClick={() => setSelectedPresetIdx(idx)}
                   className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between gap-2 cursor-pointer ${
                     isActive
                       ? 'border-red-500 ring-2 ring-red-500/30 bg-red-500/10'
@@ -293,29 +585,29 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
           {/* Action Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-color)]">
             <button
-              onClick={handleResetScenarios}
-              className="px-3.5 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition"
+              onClick={handleResetAll}
+              className="px-3.5 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition font-mono"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Restablecer Sistema a Normal</span>
             </button>
 
             <button
-              onClick={handleInject}
-              className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition ${
+              onClick={handleInjectPreset}
+              className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${
                 canInject
                   ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]'
                   : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'
               }`}
             >
               <Play className="w-4 h-4 fill-current" />
-              <span>⚡ Disparar Incidente en CPU!</span>
+              <span>⚡ Disparar Escenario Seleccionado!</span>
             </button>
           </div>
         </>
       )}
 
-      {/* VIEW 2: POWERTRAIN & INVERTER THERMAL TELEMETRY (FROM COCKPIT PROCESS MANAGER) */}
+      {/* VIEW 3: POWERTRAIN & THERMAL TELEMETRY */}
       {viewSubtab === 'POWERTRAIN' && (
         <div className="space-y-3 font-mono">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">

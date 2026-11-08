@@ -5,8 +5,10 @@ Responsable: Integrante 1 (CPU & Scheduling Engine)
 Vista unificada de alta fidelidad con estética Cockpit AutoOS:
 - Despacho multialgoritmo (FCFS, Round Robin, Prioridad)
 - Diagrama de Gantt reactivo con trazabilidad temporal
+- Matriz de Salud de Hardware y Subsistemas Vehiculares
+- Simulador GPS GNSS en tiempo real
 - Simulador de Batería Baja Limp-Mode
-- Simulador de Fallas Críticas ASIL-D
+- Simulador de Fallas Críticas ASIL-D 100% Configurable
 - Control único de Rol y Tema en la barra superior
 ===================================================================="""
 
@@ -30,6 +32,6 @@ def mostrar(supabase=None):
     if bundle_path:
         with open(bundle_path, "r", encoding="utf-8") as f:
             app_html = f.read()
-        components.html(app_html, height=1350, scrolling=True)
+        components.html(app_html, height=2400, scrolling=True)
     else:
         st.error("No se encontró el paquete unificado de AutoOS.")
