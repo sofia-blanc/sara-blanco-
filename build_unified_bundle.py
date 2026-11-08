@@ -1866,13 +1866,13 @@ function st() {
             children: [
               (0, E.jsxDEV)('div', {
                 className: 'lg:col-span-1',
-                children: (0, E.jsxDEV)(Ze, {
+                children: (0, E.jsxDEV)(Xe, {
                   runningProcess: simState.runningProcess, algorithm: simState.algorithm, quantum: simState.quantum, quantumRemaining: simState.quantumRemaining, preemptedProcessId: simState.preemptedProcessId, contextSwitches: simState.contextSwitchCount, currentTime: simState.currentTime, isLowBatteryActive: battery.isLowBatteryMode
                 }, void 0, false)
               }, void 0, false),
               (0, E.jsxDEV)('div', {
                 className: 'lg:col-span-2',
-                children: (0, E.jsxDEV)(et, {
+                children: (0, E.jsxDEV)(Ze, {
                   readyQueue: simState.readyQueue, algorithm: simState.algorithm, suspendedProcesses: suspendedProcesses
                 }, void 0, false)
               }, void 0, false)
