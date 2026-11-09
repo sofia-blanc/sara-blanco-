@@ -16,6 +16,15 @@ custom_js = r"""
 // ==========================================
 // ADDITIONAL LUCIDE ICONS
 // ==========================================
+
+var IconPlus = x(`plus`, [[`line`, {x1: `12`, y1: `5`, x2: `12`, y2: `19`, key: `pl1`}], [`line`, {x1: `5`, y1: `12`, x2: `19`, y2: `12`, key: `pl2`}]] );
+var IconTrash2 = x(`trash-2`, [[`path`, {d: `M3 6h18`, key: `tr1`}], [`path`, {d: `M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6`, key: `tr2`}], [`path`, {d: `M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2`, key: `tr3`}]] );
+var IconPenLine = x(`pen-line`, [[`path`, {d: `M12 20h9`, key: `pn1`}], [`path`, {d: `M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z`, key: `pn2`}]] );
+var IconTimer = x(`timer`, [[`line`, {x1: `10`, x2: `14`, y1: `2`, y2: `2`, key: `tm1`}], [`line`, {x1: `12`, x2: `15`, y1: `14`, y2: `11`, key: `tm2`}], [`circle`, {cx: `12`, cy: `14`, r: `8`, key: `tm3`}]] );
+var IconZap = x(`zap`, [[`polygon`, {points: `13 2 3 14 12 14 11 22 21 10 12 10 13 2`, key: `zp1`}]] );
+var IconChevronDown = x(`chevron-down`, [[`path`, {d: `m6 9 6 6 6-6`, key: `cd1`}]] );
+var IconChevronUp = x(`chevron-up`, [[`path`, {d: `m18 15-6-6-6 6`, key: `cu1`}]] );
+
 var IconNavigation = x(`navigation`, [[`polygon`, {points: `3 11 22 2 13 21 11 13 3 11`, key: `nav1`}]]);
 var IconCompass = x(`compass`, [[`circle`, {cx: `12`, cy: `12`, r: `10`, key: `cp1`}], [`polygon`, {points: `16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76`, key: `cp2`}]] );
 var IconCrosshair = x(`crosshair`, [[`circle`, {cx: `12`, cy: `12`, r: `10`, key: `ch1`}], [`line`, {x1: `22`, y1: `12`, x2: `18`, y2: `12`, key: `ch2`}], [`line`, {x1: `6`, y1: `12`, x2: `2`, y2: `12`, key: `ch3`}], [`line`, {x1: `12`, y1: `6`, x2: `12`, y2: `2`, key: `ch4`}], [`line`, {x1: `12`, y1: `22`, x2: `12`, y2: `18`, key: `ch5`}]] );
@@ -87,7 +96,7 @@ var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuick
                     children: [
                       (0, E.jsxDEV)('h3', { className: 'text-sm font-serif font-bold text-[var(--text-primary)]', children: 'Matriz de Salud de Hardware y Subsistemas Vehiculares' }, void 0, false),
                       (0, E.jsxDEV)('span', {
-                        className: `text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${faultCount > 0 ? 'bg-red-600 text-white animate-pulse' : degradedCount > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'}`,
+                        className: `text-[10px] font-mono px-2 py-0.5 rounded-full font-bold uppercase ${faultCount > 0 ? 'bg-red-600 text-white animate-pulse' : degradedCount > 0 ? 'bg-amber-600 text-white' : 'bg-emerald-500/25 text-emerald-950 dark:text-emerald-300 font-bold border border-emerald-600/50'}`,
                         children: faultCount > 0 ? `🚨 ${faultCount} Falla(s) Crítica(s)` : degradedCount > 0 ? `⚠️ ${degradedCount} Degradado(s)` : '✓ Todos los Sistemas Nominales'
                       }, void 0, false)
                     ]
@@ -151,7 +160,7 @@ var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuick
                     ]
                   }, void 0, true),
                   (0, E.jsxDEV)('span', {
-                    className: `text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${isFailing ? 'bg-red-600 text-white animate-pulse' : isDegraded ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30' : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'}`,
+                    className: `text-[9px] font-mono px-2 py-0.5 rounded-full font-bold uppercase shrink-0 ${isFailing ? 'bg-red-600 text-white animate-pulse' : isDegraded ? 'bg-amber-500/30 text-amber-950 dark:text-amber-200 font-bold border border-amber-600/50' : 'bg-emerald-500/30 text-emerald-950 dark:text-emerald-200 font-bold border border-emerald-600/50'}`,
                     children: dev.status
                   }, void 0, false)
                 ]
@@ -215,9 +224,35 @@ var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuick
 };
 
 // ==========================================
-// COMPONENT: GPS REAL-TIME SIMULATOR (rt_gps)
+
 // ==========================================
-var PRESET_GPS_ROUTES = [
+// COMPONENT: GPS REAL-TIME SIMULATOR (rt_gps)
+// Total Custom Route + Waypoint Editing + Energy & ETA Calculator
+// ==========================================
+function haversineDistKm(lat1, lon1, lat2, lon2) {
+  var R = 6371;
+  var dLat = ((lat2 - lat1) * Math.PI) / 180;
+  var dLon = ((lon2 - lon1) * Math.PI) / 180;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcTotalRouteKm(waypoints) {
+  var dist = 0;
+  for (var i = 0; i < waypoints.length - 1; i++) {
+    dist += haversineDistKm(waypoints[i].lat, waypoints[i].lon, waypoints[i + 1].lat, waypoints[i + 1].lon);
+  }
+  return dist;
+}
+
+function calcSegmentEnergyKwh(distKm, speedKmh) {
+  var efficiencyWhPerKm = 150 + speedKmh * 0.45;
+  return (distKm * efficiencyWhPerKm) / 1000;
+}
+
+var DEFAULT_GPS_ROUTES = [
   {
     id: 'route_urbana',
     name: 'Ruta 1: Campus Universitario → Centro Tecnológico',
@@ -243,7 +278,7 @@ var PRESET_GPS_ROUTES = [
   },
   {
     id: 'route_tunel',
-    name: 'Ruta 3: Tramo de Túneles y Montaña (Prueba Dead Reckoning)',
+    name: 'Ruta 3: Tramo de Túneles y Montaña (Dead Reckoning)',
     description: 'Pérdida forzada de satélites para verificar la odometría inercial IMU.',
     waypoints: [
       { id: 't1', name: 'Portal Occidental', lat: 4.6400, lon: -74.1200, speedLimitKmh: 50, description: 'Entrada con cielo abierto' },
@@ -251,12 +286,27 @@ var PRESET_GPS_ROUTES = [
       { id: 't3', name: 'Cámara Subterránea Intermedia', lat: 4.6620, lon: -74.1480, speedLimitKmh: 55, description: 'Navegación 100% Inercial IMU' },
       { id: 't4', name: 'Salida Galería Valle Verde', lat: 4.6780, lon: -74.1620, speedLimitKmh: 45, description: 'Recuperación de señal RTK' }
     ]
+  },
+  {
+    id: 'route_custom',
+    name: '✏️ Ruta Personalizada (Configurable)',
+    description: 'Configura tus propios waypoints, coordenadas y límites de velocidad.',
+    waypoints: [
+      { id: 'c1', name: 'Punto de Inicio', lat: 4.6097, lon: -74.0817, speedLimitKmh: 35, description: 'Origen personalizado' },
+      { id: 'c2', name: 'Punto Intermedio', lat: 4.6450, lon: -74.0650, speedLimitKmh: 50, description: 'Vía intermedia' },
+      { id: 'c3', name: 'Destino Final', lat: 4.6920, lon: -74.0480, speedLimitKmh: 40, description: 'Destino de llegada' }
+    ]
   }
 ];
 
 var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, batteryLevel }) {
+  var bLevel = (batteryLevel !== undefined) ? batteryLevel : 85;
+  var [routes, setRoutes] = (0, _.useState)(DEFAULT_GPS_ROUTES);
   var [selectedRouteIdx, setSelectedRouteIdx] = (0, _.useState)(0);
-  var currentRoute = PRESET_GPS_ROUTES[selectedRouteIdx];
+  var currentRoute = routes[selectedRouteIdx] || routes[0];
+
+  var [showRouteEditor, setShowRouteEditor] = (0, _.useState)(false);
+  var [editWaypoints, setEditWaypoints] = (0, _.useState)(routes[3].waypoints);
 
   var [isNavigating, setIsNavigating] = (0, _.useState)(true);
   var [speedMultiplier, setSpeedMultiplier] = (0, _.useState)(1);
@@ -292,7 +342,7 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
     return function() { clearInterval(interval); };
   }, [isNavigating, speedMultiplier, currentRoute.waypoints.length]);
 
-  var pA = currentRoute.waypoints[currentWaypointIdx];
+  var pA = currentRoute.waypoints[currentWaypointIdx] || currentRoute.waypoints[0];
   var pB = currentRoute.waypoints[Math.min(currentWaypointIdx + 1, currentRoute.waypoints.length - 1)];
   var isLastPoint = currentWaypointIdx >= currentRoute.waypoints.length - 1;
 
@@ -319,13 +369,46 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
   var baseSpeed = isLastPoint ? 0 : pA.speedLimitKmh;
   var currentSpeed = isNavigating ? Math.max(0, Math.round(baseSpeed * (0.85 + Math.sin(segmentProgress * Math.PI) * 0.25))) : 0;
 
-  var waypointsRemaining = currentRoute.waypoints.length - 1 - currentWaypointIdx;
-  var distanceRemainingKm = Math.max(0.4, Number((waypointsRemaining * 2.8 + (1 - segmentProgress) * 2.8).toFixed(1)));
-  var etaMinutes = currentSpeed > 0 ? Math.round((distanceRemainingKm / currentSpeed) * 60) : 0;
+  // Real distance calculations with Haversine
+  var totalDistKm = calcTotalRouteKm(currentRoute.waypoints);
+  var coveredDistKm = 0;
+  for (var iCover = 0; iCover < currentWaypointIdx; iCover++) {
+    coveredDistKm += haversineDistKm(currentRoute.waypoints[iCover].lat, currentRoute.waypoints[iCover].lon, currentRoute.waypoints[iCover + 1].lat, currentRoute.waypoints[iCover + 1].lon);
+  }
+  if (!isLastPoint) {
+    coveredDistKm += haversineDistKm(pA.lat, pA.lon, pB.lat, pB.lon) * segmentProgress;
+  }
+  var distanceRemainingKm = Math.max(0, Number((totalDistKm - coveredDistKm).toFixed(2)));
+
+  var avgSpeedKmh = currentRoute.waypoints.reduce(function(acc, w) { return acc + w.speedLimitKmh; }, 0) / currentRoute.waypoints.length;
+  var etaMinutes = currentSpeed > 0 ? Math.round((distanceRemainingKm / avgSpeedKmh) * 60) : 0;
+
+  // Real Energy Calculations (kWh)
+  var totalEnergyKwh = 0;
+  for (var iE = 0; iE < currentRoute.waypoints.length - 1; iE++) {
+    var segD = haversineDistKm(currentRoute.waypoints[iE].lat, currentRoute.waypoints[iE].lon, currentRoute.waypoints[iE + 1].lat, currentRoute.waypoints[iE + 1].lon);
+    totalEnergyKwh += calcSegmentEnergyKwh(segD, currentRoute.waypoints[iE].speedLimitKmh);
+  }
+  var remainingEnergyKwh = 0;
+  for (var iR = currentWaypointIdx; iR < currentRoute.waypoints.length - 1; iR++) {
+    var segR = haversineDistKm(currentRoute.waypoints[iR].lat, currentRoute.waypoints[iR].lon, currentRoute.waypoints[iR + 1].lat, currentRoute.waypoints[iR + 1].lon);
+    remainingEnergyKwh += calcSegmentEnergyKwh(segR, currentRoute.waypoints[iR].speedLimitKmh);
+  }
+  if (!isLastPoint) {
+    var segCur = haversineDistKm(pA.lat, pA.lon, pB.lat, pB.lon);
+    remainingEnergyKwh = Math.max(0, remainingEnergyKwh - calcSegmentEnergyKwh(segCur * segmentProgress, pA.speedLimitKmh));
+  }
+  remainingEnergyKwh = Number(remainingEnergyKwh.toFixed(2));
+  totalEnergyKwh = Number(totalEnergyKwh.toFixed(2));
+
+  var BATTERY_CAP_KWH = 60;
+  var availableKwh = (bLevel / 100) * BATTERY_CAP_KWH;
+  var estimatedArrivalSoc = Math.max(0, Math.round(((availableKwh - remainingEnergyKwh) / BATTERY_CAP_KWH) * 100));
+  var isBatterySufficient = availableKwh >= remainingEnergyKwh;
 
   var satellites = 18;
   var hdop = 0.7;
-  var signalStatusText = 'Óptimo RTK Submétrica';
+  var signalStatusText = 'Óptimo RTK Centimétrico';
   var signalColorClass = 'text-emerald-500';
 
   if (isDeviceFailed) {
@@ -345,8 +428,51 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
     signalColorClass = 'text-yellow-500';
   }
 
-  var estimatedKwhToArrival = Number((distanceRemainingKm * 0.16).toFixed(2));
-  var estimatedArrivalSoc = Math.max(2, Math.round(batteryLevel - (estimatedKwhToArrival / 60) * 100));
+  // Handlers for Custom Route Editor
+  var handleRouteChange = function(idx) {
+    setSelectedRouteIdx(idx);
+    setCurrentWaypointIdx(0);
+    setSegmentProgress(0);
+    if (idx === 3) setShowRouteEditor(true);
+  };
+
+  var handleAddWaypoint = function() {
+    var last = editWaypoints[editWaypoints.length - 1];
+    var nextWp = {
+      id: 'wp_' + Date.now(),
+      name: 'Punto ' + (editWaypoints.length + 1),
+      lat: Number((last.lat + 0.015).toFixed(4)),
+      lon: Number((last.lon + 0.015).toFixed(4)),
+      speedLimitKmh: 45,
+      description: 'Waypoint intermedio'
+    };
+    setEditWaypoints(function(prev) { return [...prev, nextWp]; });
+  };
+
+  var handleRemoveWaypoint = function(idx) {
+    if (editWaypoints.length <= 2) return;
+    setEditWaypoints(function(prev) { return prev.filter(function(_, i) { return i !== idx; }); });
+  };
+
+  var handleWaypointField = function(idx, field, val) {
+    setEditWaypoints(function(prev) {
+      return prev.map(function(wp, i) {
+        if (i === idx) return { ...wp, [field]: val };
+        return wp;
+      });
+    });
+  };
+
+  var handleApplyCustomRoute = function() {
+    setRoutes(function(prev) {
+      var updated = [...prev];
+      updated[3] = { ...updated[3], waypoints: editWaypoints };
+      return updated;
+    });
+    setCurrentWaypointIdx(0);
+    setSegmentProgress(0);
+    setShowRouteEditor(false);
+  };
 
   return (0, E.jsxDEV)('div', {
     className: 'autoos-card rounded-2xl p-5 shadow-xl space-y-4',
@@ -366,11 +492,11 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
                   (0, E.jsxDEV)('h3', {
                     className: 'text-sm font-serif font-bold text-[var(--text-primary)] flex items-center gap-2',
                     children: [
-                      'Simulador GNSS / GPS Dinámico en Tiempo Real',
+                      'Navegación Satelital GNSS & Planificador Dinámico de Rutas',
                       isDeviceFailed ? (0, E.jsxDEV)('span', { className: 'text-[10px] font-mono px-2 py-0.5 rounded-full bg-red-600 text-white font-bold uppercase animate-pulse', children: `DTC: ${activeDtc || 'U0100-87'}` }, void 0, false) : null
                     ]
                   }, void 0, true),
-                  (0, E.jsxDEV)('p', { className: 'text-[11px] text-[var(--text-muted)]', children: 'Cálculo cinemático de waypoints, odometría satelital, rumbo inercial y consumo energético proyectado' }, void 0, false)
+                  (0, E.jsxDEV)('p', { className: 'text-[11px] text-[var(--text-muted)]', children: 'Waypoints reales WGS84, cálculo dinámico de gasto energético y tiempo estimado de llegada' }, void 0, false)
                 ]
               }, void 0, true)
             ]
@@ -381,16 +507,118 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
               (0, E.jsxDEV)('span', { className: 'text-[11px] text-[var(--text-muted)] font-semibold hidden sm:inline', children: 'Ruta:' }, void 0, false),
               (0, E.jsxDEV)('select', {
                 value: selectedRouteIdx,
-                onChange: function(e) { setSelectedRouteIdx(Number(e.target.value)); setCurrentWaypointIdx(0); setSegmentProgress(0); },
+                onChange: function(e) { handleRouteChange(Number(e.target.value)); },
                 className: 'autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] px-3 py-1.5 rounded-xl font-bold text-xs focus:outline-none cursor-pointer',
-                children: PRESET_GPS_ROUTES.map(function(r, i) {
+                children: routes.map(function(r, i) {
                   return (0, E.jsxDEV)('option', { value: i, className: 'text-black dark:text-white dark:bg-[#180E24]', children: r.name }, r.id, false);
                 })
-              }, void 0, false)
+              }, void 0, false),
+              selectedRouteIdx === 3 ? (0, E.jsxDEV)('button', {
+                onClick: function() { setShowRouteEditor(function(v) { return !v; }); },
+                className: 'flex items-center gap-1 px-2.5 py-1.5 rounded-xl autoos-surface border border-[var(--border-color)] text-[var(--text-primary)] hover:border-[var(--accent-primary)] text-xs font-mono transition',
+                children: [
+                  (0, E.jsxDEV)(IconPenLine, { className: 'w-3.5 h-3.5' }, void 0, false),
+                  showRouteEditor ? 'Ocultar Editor' : 'Editar Waypoints',
+                  showRouteEditor ? (0, E.jsxDEV)(IconChevronUp, { className: 'w-3 h-3' }, void 0, false) : (0, E.jsxDEV)(IconChevronDown, { className: 'w-3 h-3' }, void 0, false)
+                ]
+              }, void 0, true) : null
             ]
           }, void 0, true)
         ]
       }, void 0, true),
+
+      // Route Waypoint Editor (Visible when Custom Route is selected)
+      showRouteEditor && selectedRouteIdx === 3 ? (0, E.jsxDEV)('div', {
+        className: 'rounded-2xl border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/5 p-4 space-y-3 font-mono text-xs',
+        children: [
+          (0, E.jsxDEV)('div', {
+            className: 'flex items-center justify-between',
+            children: [
+              (0, E.jsxDEV)('span', { className: 'font-bold text-[var(--text-primary)] flex items-center gap-1.5', children: [(0, E.jsxDEV)(IconPenLine, { className: 'w-4 h-4 text-[var(--accent-primary)]' }, void 0, false), 'Configurador de Ruta Personalizada'] }, void 0, true),
+              (0, E.jsxDEV)('div', {
+                className: 'flex gap-2',
+                children: [
+                  (0, E.jsxDEV)('button', {
+                    onClick: handleAddWaypoint,
+                    className: 'flex items-center gap-1 px-3 py-1 rounded-xl bg-[var(--accent-primary)]/20 hover:bg-[var(--accent-primary)]/30 text-[var(--text-primary)] font-bold transition',
+                    children: [(0, E.jsxDEV)(IconPlus, { className: 'w-3 h-3' }, void 0, false), 'Añadir Waypoint']
+                  }, void 0, true),
+                  (0, E.jsxDEV)('button', {
+                    onClick: handleApplyCustomRoute,
+                    className: 'flex items-center gap-1 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition',
+                    children: 'Aplicar y Recalcular Ruta'
+                  }, void 0, false)
+                ]
+              }, void 0, true)
+            ]
+          }, void 0, true),
+          (0, E.jsxDEV)('div', {
+            className: 'space-y-2 max-h-56 overflow-y-auto pr-1',
+            children: editWaypoints.map(function(wp, idx) {
+              return (0, E.jsxDEV)('div', {
+                className: 'autoos-surface rounded-xl p-2.5 border border-[var(--border-color)] grid grid-cols-1 sm:grid-cols-5 gap-2 items-center',
+                children: [
+                  (0, E.jsxDEV)('div', {
+                    className: 'sm:col-span-2',
+                    children: [
+                      (0, E.jsxDEV)('label', { className: 'text-[9px] text-[var(--text-muted)] block uppercase font-bold', children: `Punto ${idx + 1} (${idx === 0 ? 'Inicio' : idx === editWaypoints.length - 1 ? 'Destino' : 'Vía'})` }, void 0, false),
+                      (0, E.jsxDEV)('input', {
+                        type: 'text', value: wp.name,
+                        onChange: function(e) { handleWaypointField(idx, 'name', e.target.value); },
+                        className: 'w-full autoos-surface border border-[var(--border-color)] rounded-lg px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)]'
+                      }, void 0, false)
+                    ]
+                  }, void 0, true),
+                  (0, E.jsxDEV)('div', {
+                    children: [
+                      (0, E.jsxDEV)('label', { className: 'text-[9px] text-[var(--text-muted)] block uppercase font-bold', children: 'Latitud' }, void 0, false),
+                      (0, E.jsxDEV)('input', {
+                        type: 'number', step: '0.001', value: wp.lat,
+                        onChange: function(e) { handleWaypointField(idx, 'lat', Number(e.target.value)); },
+                        className: 'w-full autoos-surface border border-[var(--border-color)] rounded-lg px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)]'
+                      }, void 0, false)
+                    ]
+                  }, void 0, true),
+                  (0, E.jsxDEV)('div', {
+                    children: [
+                      (0, E.jsxDEV)('label', { className: 'text-[9px] text-[var(--text-muted)] block uppercase font-bold', children: 'Longitud' }, void 0, false),
+                      (0, E.jsxDEV)('input', {
+                        type: 'number', step: '0.001', value: wp.lon,
+                        onChange: function(e) { handleWaypointField(idx, 'lon', Number(e.target.value)); },
+                        className: 'w-full autoos-surface border border-[var(--border-color)] rounded-lg px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)]'
+                      }, void 0, false)
+                    ]
+                  }, void 0, true),
+                  (0, E.jsxDEV)('div', {
+                    className: 'flex items-center gap-2 justify-between',
+                    children: [
+                      (0, E.jsxDEV)('div', {
+                        className: 'flex-1',
+                        children: [
+                          (0, E.jsxDEV)('label', { className: 'text-[9px] text-[var(--text-muted)] block uppercase font-bold', children: 'Vel. (km/h)' }, void 0, false),
+                          (0, E.jsxDEV)('input', {
+                            type: 'number', min: '20', max: '120', value: wp.speedLimitKmh,
+                            onChange: function(e) { handleWaypointField(idx, 'speedLimitKmh', Number(e.target.value)); },
+                            className: 'w-full autoos-surface border border-[var(--border-color)] rounded-lg px-2 py-1 text-[var(--text-primary)] text-xs focus:outline-none focus:border-[var(--accent-primary)]'
+                          }, void 0, false)
+                        ]
+                      }, void 0, true),
+                      editWaypoints.length > 2 ? (0, E.jsxDEV)('button', {
+                        onClick: function() { handleRemoveWaypoint(idx); },
+                        className: 'p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition mt-3',
+                        title: 'Eliminar punto',
+                        children: (0, E.jsxDEV)(IconTrash2, { className: 'w-4 h-4' }, void 0, false)
+                      }, void 0, false) : null
+                    ]
+                  }, void 0, true)
+                ]
+              }, wp.id, true);
+            })
+          }, void 0, false)
+        ]
+      }, void 0, true) : null,
+
+      // Failure Alert Banner
       isDeviceFailed ? (0, E.jsxDEV)('div', {
         className: 'p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-600 dark:text-red-400 text-xs font-mono flex items-center justify-between gap-3 animate-pulse',
         children: [
@@ -398,19 +626,62 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
             className: 'flex items-center gap-2',
             children: [
               (0, E.jsxDEV)(Fe, { className: 'w-4 h-4 shrink-0 text-red-500' }, void 0, false),
-              (0, E.jsxDEV)('span', { children: [(0, E.jsxDEV)('strong', { children: 'FALLA EN RECEPTOR GNSS (DEV_GPS_01):' }, void 0, false), ' Pérdida total de trama NMEA. Conmutando automáticamente a estimación inercial por Giroscopio IMU y Odometría (Dead Reckoning).'] }, void 0, true)
+              (0, E.jsxDEV)('span', {
+                children: [(0, E.jsxDEV)('strong', { children: 'FALLA EN RECEPTOR GNSS (DEV_GPS_01): ' }, void 0, false), 'Pérdida de señal satelital RTK. Conmutando a estimación inercial Dead Reckoning IMU.']
+              }, void 0, true)
             ]
           }, void 0, true),
           (0, E.jsxDEV)('span', { className: 'px-2 py-0.5 rounded bg-red-500 text-white font-bold text-[10px] shrink-0', children: 'ASIL-D FALLBACK' }, void 0, false)
         ]
       }, void 0, true) : null,
+
+      // Energy & Journey Planning Dashboard
+      (0, E.jsxDEV)('div', {
+        className: 'grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs',
+        children: [
+          (0, E.jsxDEV)('div', {
+            className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)] space-y-0.5',
+            children: [
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconRoute, { className: 'w-3 h-3 text-[var(--accent-primary)]' }, void 0, false), 'Distancia Total'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: 'text-sm text-[var(--text-primary)] block', children: `${totalDistKm.toFixed(2)} km` }, void 0, false),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)]', children: `Restante: ${distanceRemainingKm} km` }, void 0, false)
+            ]
+          }, void 0, true),
+          (0, E.jsxDEV)('div', {
+            className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)] space-y-0.5',
+            children: [
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconTimer, { className: 'w-3 h-3 text-cyan-400' }, void 0, false), 'Tiempo Estimado'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: 'text-sm text-cyan-600 dark:text-cyan-400 block', children: `~${etaMinutes} min` }, void 0, false),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)]', children: `Vel. Promedio: ${Math.round(avgSpeedKmh)} km/h` }, void 0, false)
+            ]
+          }, void 0, true),
+          (0, E.jsxDEV)('div', {
+            className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)] space-y-0.5',
+            children: [
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconZap, { className: 'w-3 h-3 text-amber-500' }, void 0, false), 'Gasto Energético'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: 'text-sm text-amber-500 block', children: `${totalEnergyKwh} kWh` }, void 0, false),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)]', children: `Por consumir: ${remainingEnergyKwh} kWh` }, void 0, false)
+            ]
+          }, void 0, true),
+          (0, E.jsxDEV)('div', {
+            className: `autoos-surface p-3 rounded-xl border space-y-0.5 ${isBatterySufficient ? 'border-[var(--border-color)]' : 'border-red-500/50 bg-red-500/10'}`,
+            children: [
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(me, { className: `w-3 h-3 ${isBatterySufficient ? 'text-emerald-500' : 'text-red-500'}` }, void 0, false), 'SoC al Destino'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: `text-sm block ${isBatterySufficient ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 animate-pulse'}`, children: `${estimatedArrivalSoc}%` }, void 0, false),
+              (0, E.jsxDEV)('span', { className: `text-[10px] font-semibold ${isBatterySufficient ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`, children: isBatterySufficient ? '✓ Autonomía OK' : '⚠ Batería Insuficiente' }, void 0, false)
+            ]
+          }, void 0, true)
+        ]
+      }, void 0, true),
+
+      // Telemetry Grid
       (0, E.jsxDEV)('div', {
         className: 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs',
         children: [
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)]',
             children: [
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconCrosshair, { className: 'w-3 h-3 text-[var(--accent-primary)]' }, void 0, false), ' Coordenadas WGS84'] }, void 0, true),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconCrosshair, { className: 'w-3 h-3 text-[var(--accent-primary)]' }, void 0, false), ' WGS84 Coords'] }, void 0, true),
               (0, E.jsxDEV)('strong', { className: 'text-xs text-[var(--text-primary)] block font-bold truncate', children: `${currentLat.toFixed(4)}° N` }, void 0, false),
               (0, E.jsxDEV)('strong', { className: 'text-xs text-[var(--text-primary)] block font-bold truncate', children: `${currentLon.toFixed(4)}° O` }, void 0, false)
             ]
@@ -418,15 +689,15 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)]',
             children: [
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(De, { className: 'w-3 h-3 text-emerald-500' }, void 0, false), ' Velocidad Real'] }, void 0, true),
-              (0, E.jsxDEV)('strong', { className: 'text-lg text-emerald-600 dark:text-emerald-400 font-bold', children: [currentSpeed, ' ', (0, E.jsxDEV)('span', { className: 'text-xs font-normal', children: 'km/h' }, void 0, false)] }, void 0, true),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(De, { className: 'w-3 h-3 text-emerald-500' }, void 0, false), ' Velocidad'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: 'text-lg text-emerald-600 dark:text-emerald-400 font-bold', children: [`${currentSpeed} `, (0, E.jsxDEV)('span', { className: 'text-xs font-normal', children: 'km/h' }, void 0, false)] }, void 0, true),
               (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] block', children: `Límite: ${isLastPoint ? 0 : pA.speedLimitKmh} km/h` }, void 0, false)
             ]
           }, void 0, true),
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)]',
             children: [
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconCompass, { className: 'w-3 h-3 text-cyan-500' }, void 0, false), ' Rumbo / Brújula'] }, void 0, true),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconCompass, { className: 'w-3 h-3 text-cyan-500' }, void 0, false), ' Rumbo / IMU'] }, void 0, true),
               (0, E.jsxDEV)('strong', { className: 'text-base text-cyan-600 dark:text-cyan-400 font-bold', children: `${headingDeg}° ${getHeadingLabel(headingDeg).split(' ')[0]}` }, void 0, false),
               (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] block truncate', children: getHeadingLabel(headingDeg) }, void 0, false)
             ]
@@ -434,7 +705,7 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)]',
             children: [
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconSignal, { className: 'w-3 h-3 text-amber-500' }, void 0, false), ' Satélites GNSS'] }, void 0, true),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(IconSignal, { className: 'w-3 h-3 text-amber-500' }, void 0, false), ' Satélites'] }, void 0, true),
               (0, E.jsxDEV)('strong', { className: `text-base font-bold ${signalColorClass}`, children: `${satellites} sat / HDOP ${hdop}` }, void 0, false),
               (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] block truncate', children: signalStatusText }, void 0, false)
             ]
@@ -450,13 +721,15 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface p-3 rounded-xl border border-[var(--border-color)]',
             children: [
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(me, { className: 'w-3 h-3 text-emerald-500' }, void 0, false), ' Proyección SoC'] }, void 0, true),
-              (0, E.jsxDEV)('strong', { className: 'text-base text-[var(--text-primary)] font-bold', children: [`${estimatedArrivalSoc}% `, (0, E.jsxDEV)('span', { className: 'text-[10px] font-normal text-[var(--text-muted)]', children: 'llegada' }, void 0, false)] }, void 0, true),
-              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] block', children: `Gasto: ~${estimatedKwhToArrival} kWh` }, void 0, false)
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] uppercase block flex items-center gap-1 font-bold', children: [(0, E.jsxDEV)(me, { className: 'w-3 h-3 text-emerald-500' }, void 0, false), ' SoC Llegada'] }, void 0, true),
+              (0, E.jsxDEV)('strong', { className: `text-base font-bold ${isBatterySufficient ? 'text-[var(--text-primary)]' : 'text-red-500 animate-pulse'}`, children: [`${estimatedArrivalSoc}% `, (0, E.jsxDEV)('span', { className: 'text-[10px] font-normal text-[var(--text-muted)]', children: 'restante' }, void 0, false)] }, void 0, true),
+              (0, E.jsxDEV)('span', { className: 'text-[10px] text-[var(--text-muted)] block', children: `Gasto: ~${remainingEnergyKwh} kWh` }, void 0, false)
             ]
           }, void 0, true)
         ]
       }, void 0, true),
+
+      // Interactive Vector Map Canvas
       (0, E.jsxDEV)('div', {
         className: 'relative autoos-surface rounded-2xl border border-[var(--border-color)] overflow-hidden p-4',
         children: [
@@ -468,7 +741,7 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
                 children: [
                   (0, E.jsxDEV)(IconRoute, { className: 'w-4 h-4 text-[var(--accent-primary)]' }, void 0, false),
                   (0, E.jsxDEV)('span', { className: 'font-bold text-[var(--text-primary)]', children: currentRoute.name }, void 0, false),
-                  (0, E.jsxDEV)('span', { className: 'text-[11px] text-[var(--text-muted)]', children: `(${currentRoute.waypoints.length} waypoints)` }, void 0, false)
+                  (0, E.jsxDEV)('span', { className: 'text-[11px] text-[var(--text-muted)]', children: `(${currentRoute.waypoints.length} waypoints · ${totalDistKm.toFixed(1)} km)` }, void 0, false)
                 ]
               }, void 0, true),
               (0, E.jsxDEV)('div', {
@@ -508,7 +781,7 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
               (function() {
                 var numPoints = currentRoute.waypoints.length;
                 var points = currentRoute.waypoints.map(function(wp, idx) {
-                  var x = 70 + (idx / (numPoints - 1)) * 660;
+                  var x = 70 + (idx / Math.max(1, numPoints - 1)) * 660;
                   var y = 120 + Math.sin(idx * 1.5) * 45;
                   return { x: x, y: y, wp: wp };
                 });
@@ -519,7 +792,7 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
                   var midX = (prev.x + curr.x) / 2;
                   pathStr += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
                 }
-                var pCurrent = points[currentWaypointIdx];
+                var pCurrent = points[currentWaypointIdx] || points[0];
                 var pNext = points[Math.min(currentWaypointIdx + 1, numPoints - 1)];
                 var carX = pCurrent.x + (pNext.x - pCurrent.x) * segmentProgress;
                 var carY = pCurrent.y + (pNext.y - pCurrent.y) * segmentProgress;
@@ -623,6 +896,8 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
           }, void 0, false)
         ]
       }, void 0, true),
+
+      // Action Bar
       (0, E.jsxDEV)('div', {
         className: 'flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[var(--border-color)]',
         children: [
@@ -633,17 +908,14 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
                 onClick: function() { setIsNavigating(!isNavigating); },
                 className: `px-3.5 py-2 rounded-xl text-xs font-bold font-mono flex items-center gap-1.5 transition shadow-sm ${isNavigating ? 'bg-amber-500 hover:bg-amber-400 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`,
                 children: [
-                  isNavigating ? (0, E.jsxDEV)(Ae, { className: 'w-3.5 h-3.5 fill-current' }, void 0, false) : (0, E.jsxDEV)(je, { className: 'w-3.5 h-3.5 fill-current' }, void 0, false),
+                  isNavigating ? (0, E.jsxDEV)(Pe, { className: 'w-3.5 h-3.5 fill-current' }, void 0, false) : (0, E.jsxDEV)(Oe, { className: 'w-3.5 h-3.5 fill-current' }, void 0, false),
                   (0, E.jsxDEV)('span', { children: isNavigating ? 'Pausar Simulación GPS' : 'Reanudar Navegación' }, void 0, false)
                 ]
               }, void 0, true),
               (0, E.jsxDEV)('button', {
                 onClick: function() { setCurrentWaypointIdx(0); setSegmentProgress(0); },
                 className: 'px-3 py-2 rounded-xl autoos-surface hover:bg-[var(--bg-card-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border-color)] text-xs font-semibold flex items-center gap-1.5 transition font-mono',
-                children: [
-                  (0, E.jsxDEV)(Pe, { className: 'w-3.5 h-3.5' }, void 0, false),
-                  (0, E.jsxDEV)('span', { children: 'Reiniciar al Origen' }, void 0, false)
-                ]
+                children: [(0, E.jsxDEV)(Re, { className: 'w-3.5 h-3.5' }, void 0, false), (0, E.jsxDEV)('span', { children: 'Reiniciar al Origen' }, void 0, false)]
               }, void 0, true)
             ]
           }, void 0, true),
@@ -666,7 +938,6 @@ var rt_gps = function({ isDeviceFailed, activeDtc, userRole, onRoleRestricted, b
   }, void 0, true);
 };
 
-// ==========================================
 // COMPONENT: CRITICAL PROCESS SIMULATOR (tt)
 // Total Custom Builder + 7 Presets + Powertrain
 // ==========================================
@@ -1164,6 +1435,12 @@ app_js = r"""
 var F = `/app/applet/src/App.tsx`;
 function st() {
   var [activeTab, setActiveTab] = (0, _.useState)('SCHEDULER');
+  (0, _.useEffect)(function() {
+    if (userRole === 'conductor' && activeTab === 'SCHEDULER') {
+      setActiveTab('COCKPIT');
+    }
+  }, [userRole, activeTab]);
+
   var [theme, setTheme] = (0, _.useState)(function() {
     try {
       return localStorage.getItem('autoos_theme') === 'light' ? 'light' : 'dark';
@@ -1630,11 +1907,11 @@ function st() {
             (0, E.jsxDEV)('div', {
               className: 'flex items-center autoos-card p-1 rounded-2xl border text-xs font-mono',
               children: [
-                (0, E.jsxDEV)('button', {
+                userRole !== 'conductor' ? (0, E.jsxDEV)('button', {
                   onClick: function() { setActiveTab('SCHEDULER'); },
                   className: `px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'SCHEDULER' ? 'bg-[var(--accent-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`,
                   children: [(0, E.jsxDEV)(Ce, { className: 'w-4 h-4' }, void 0, false), (0, E.jsxDEV)('span', { children: 'Planificador & Simuladores' }, void 0, false)]
-                }, void 0, true),
+                }, void 0, true) : null,
                 (0, E.jsxDEV)('button', {
                   onClick: function() { setActiveTab('COCKPIT'); },
                   className: `px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'COCKPIT' ? 'bg-[var(--accent-primary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`,
@@ -1703,13 +1980,14 @@ function st() {
         className: `flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' ? '' : 'hidden'}`,
         children: [
           (0, E.jsxDEV)('div', {
-            className: `p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${failingDevices.length > 0 ? 'bg-red-500/15 border-red-500 text-red-600 dark:text-red-400 ring-2 ring-red-500/30' : degradedDevices.length > 0 ? 'bg-amber-500/15 border-amber-500 text-amber-600 dark:text-amber-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'}`,
+          (0, E.jsxDEV)('div', {
+            className: `p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${failingDevices.length > 0 ? 'bg-red-500/20 border-red-500 text-red-950 dark:text-red-300 ring-2 ring-red-500/30' : degradedDevices.length > 0 ? 'bg-amber-500/25 border-amber-600 text-amber-950 dark:text-amber-300' : 'bg-emerald-500/25 border-emerald-600/60 text-emerald-950 dark:text-emerald-300'}`,
             children: [
               (0, E.jsxDEV)('div', {
                 className: 'flex items-center gap-3',
                 children: [
                   (0, E.jsxDEV)('div', {
-                    className: `p-2 rounded-xl shrink-0 ${failingDevices.length > 0 ? 'bg-red-600 text-white animate-bounce' : degradedDevices.length > 0 ? 'bg-amber-500 text-white' : 'bg-emerald-500/20 text-emerald-500'}`,
+                    className: `p-2 rounded-xl shrink-0 ${failingDevices.length > 0 ? 'bg-red-600 text-white animate-bounce' : degradedDevices.length > 0 ? 'bg-amber-600 text-white' : 'bg-emerald-600 text-white'}`,
                     children: failingDevices.length > 0 ? (0, E.jsxDEV)(Fe, { className: 'w-5 h-5' }, void 0, false) : degradedDevices.length > 0 ? (0, E.jsxDEV)(We, { className: 'w-5 h-5' }, void 0, false) : (0, E.jsxDEV)(ye, { className: 'w-5 h-5' }, void 0, false)
                   }, void 0, false),
                   (0, E.jsxDEV)('div', {
@@ -1717,17 +1995,17 @@ function st() {
                       (0, E.jsxDEV)('div', {
                         className: 'font-bold text-sm flex items-center gap-2',
                         children: [
-                          (0, E.jsxDEV)('span', { children: failingDevices.length > 0 ? `🚨 ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE` : degradedDevices.length > 0 ? `⚠️ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO` : '✓ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)' }, void 0, false),
-                          (0, E.jsxDEV)('span', { className: 'text-[10px] px-2 py-0.5 rounded-full bg-slate-900/10 dark:bg-white/10 font-bold', children: `Salud: ${avgHealth}%` }, void 0, false)
+                          (0, E.jsxDEV)('span', { className: failingDevices.length > 0 ? 'text-red-950 dark:text-red-200' : degradedDevices.length > 0 ? 'text-amber-950 dark:text-amber-200' : 'text-emerald-950 dark:text-emerald-200', children: failingDevices.length > 0 ? `🚨 ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE` : degradedDevices.length > 0 ? `⚠️ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO` : '✓ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)' }, void 0, false),
+                          (0, E.jsxDEV)('span', { className: 'text-[10px] px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10 font-bold', children: `Salud: ${avgHealth}%` }, void 0, false)
                         ]
                       }, void 0, true),
                       (0, E.jsxDEV)('p', {
-                        className: 'text-[11px] opacity-90',
+                        className: `text-[11px] font-semibold mt-0.5 ${failingDevices.length > 0 ? 'text-red-900 dark:text-red-300' : degradedDevices.length > 0 ? 'text-amber-900 dark:text-amber-300' : 'text-emerald-900 dark:text-emerald-300'}`,
                         children: failingDevices.length > 0
                           ? `Fallas detectadas en: ${failingDevices.map(function(d) { return `${d.name.split('/')[0]} [${d.activeDtc || 'DTC'}]`; }).join(', ')}. Conmutado a algoritmos de contingencia pre-emptivos.`
                           : degradedDevices.length > 0
-                          ? `Subsistemas con rendimiento reducido: ${degradedDevices.map(function(d) { return d.name.split('/')[0]; }).join(', ')}.`
-                          : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. Planificación de tiempo real en rango de latencia < 2ms.'
+                            ? `Subsistemas con rendimiento reducido: ${degradedDevices.map(function(d) { return d.name.split('/')[0]; }).join(', ')}.`
+                            : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. Planificación de tiempo real en rango de latencia < 2ms.'
                       }, void 0, false)
                     ]
                   }, void 0, true)
@@ -1852,11 +2130,6 @@ function st() {
             }, void 0, false)
           }, void 0, false),
           (0, E.jsxDEV)('section', {
-            children: (0, E.jsxDEV)(rt_gps, {
-              isDeviceFailed: isGpsFailed, activeDtc: gpsActiveDtc, userRole: userRole, onRoleRestricted: handleRoleRestricted, batteryLevel: battery.level
-            }, void 0, false)
-          }, void 0, false),
-          (0, E.jsxDEV)('section', {
             children: (0, E.jsxDEV)(Ye, {
               slots: simState.ganttSlots, currentTime: simState.currentTime, totalTime: simState.currentTime, processes: simState.processes
             }, void 0, false)
@@ -1894,9 +2167,9 @@ function st() {
                   (0, E.jsxDEV)($e, {
                     battery: battery, onUpdateBatteryLevel: handleUpdateBatteryLevel, onTogglePowerSaving: handleTogglePowerSaving, wattsSaved: battery.powerSavingWattsSaved, suspendedCount: suspendedProcesses.length, userRole: userRole, onRoleRestricted: handleRoleRestricted
                   }, void 0, false),
-                  (0, E.jsxDEV)(tt, {
+                  userRole === 'mecanico' ? (0, E.jsxDEV)(tt, {
                     onInjectCriticalProcess: handleInjectCriticalProcess, onResetDevice: handleResetDevice, onResetAllScenarios: handleResetAllDevices, currentTime: simState.currentTime, userRole: userRole, onRoleRestricted: handleRoleRestricted
-                  }, void 0, false)
+                  }, void 0, false) : null
                 ]
               }, void 0, true)
             ]
@@ -1921,6 +2194,12 @@ function st() {
       (0, E.jsxDEV)('main', {
         className: `flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`,
         children: [
+          (0, E.jsxDEV)('div', {
+            className: 'p-4 max-w-7xl mx-auto w-full',
+            children: (0, E.jsxDEV)(rt_gps, {
+              isDeviceFailed: isGpsFailed, activeDtc: gpsActiveDtc, userRole: userRole, onRoleRestricted: handleRoleRestricted, batteryLevel: battery.level
+            }, void 0, false)
+          }, void 0, false),
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]',
             children: [

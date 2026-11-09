@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlgorithmType,
   BatteryState,
@@ -52,7 +52,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_01',
     code: 'DEV_GPS_01',
     name: 'Receptor GNSS / GPS Diferencial',
-    subsystem: 'Navegación',
+    subsystem: 'NavegaciÃ³n',
     status: 'operativo',
     health: 98,
     criticalLevel: 'esencial',
@@ -63,8 +63,8 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_02',
     code: 'DEV_CAM_FRONT',
-    name: 'Cámara Estereoscópica ADAS Frontal',
-    subsystem: 'Visión',
+    name: 'CÃ¡mara EstereoscÃ³pica ADAS Frontal',
+    subsystem: 'VisiÃ³n',
     status: 'operativo',
     health: 95,
     criticalLevel: 'critico',
@@ -75,7 +75,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_03',
     code: 'DEV_LIDAR_01',
-    name: 'Sensor LiDAR 360° Solid-State',
+    name: 'Sensor LiDAR 360Â° Solid-State',
     subsystem: 'Sensores',
     status: 'operativo',
     health: 99,
@@ -87,7 +87,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_04',
     code: 'DEV_RADAR_01',
-    name: 'Radar Milimétrico 77GHz (ACC)',
+    name: 'Radar MilimÃ©trico 77GHz (ACC)',
     subsystem: 'Sensores',
     status: 'operativo',
     health: 94,
@@ -99,8 +99,8 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_05',
     code: 'DEV_BATTERY_BMS',
-    name: 'BMS Batería LiFePO4 Alta Tensión',
-    subsystem: 'Batería',
+    name: 'BMS BaterÃ­a LiFePO4 Alta TensiÃ³n',
+    subsystem: 'BaterÃ­a',
     status: 'operativo',
     health: 92,
     criticalLevel: 'critico',
@@ -112,7 +112,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_06',
     code: 'DEV_ACT_BRAKE',
     name: 'Actuador Frenado By-Wire AEB',
-    subsystem: 'Seguridad Dinámica',
+    subsystem: 'Seguridad DinÃ¡mica',
     status: 'operativo',
     health: 100,
     criticalLevel: 'critico',
@@ -123,8 +123,8 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_07',
     code: 'DEV_ACT_STEER',
-    name: 'Actuador Dirección Eléctrica EPS',
-    subsystem: 'Seguridad Dinámica',
+    name: 'Actuador DirecciÃ³n ElÃ©ctrica EPS',
+    subsystem: 'Seguridad DinÃ¡mica',
     status: 'operativo',
     health: 97,
     criticalLevel: 'critico',
@@ -135,8 +135,8 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_08',
     code: 'DEV_COM_V2X',
-    name: 'Módulo Telemetría 5G / V2X Cloud',
-    subsystem: 'Comunicación',
+    name: 'MÃ³dulo TelemetrÃ­a 5G / V2X Cloud',
+    subsystem: 'ComunicaciÃ³n',
     status: 'operativo',
     health: 91,
     criticalLevel: 'esencial',
@@ -171,7 +171,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_11',
     code: 'DEV_HVAC_CLIMA',
-    name: 'Climatización y Gestión Térmica',
+    name: 'ClimatizaciÃ³n y GestiÃ³n TÃ©rmica',
     subsystem: 'Confort',
     status: 'operativo',
     health: 89,
@@ -183,8 +183,12 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
 ];
 
 export default function App() {
-  // Navigation tabs: only 2 tabs as requested
+  // Navigation tabs
   const [activeTab, setActiveTab] = useState<'SCHEDULER' | 'COCKPIT'>('SCHEDULER');
+
+  // Navigation tabs: only 2 tabs as requested
+  // Wrap the whole UI with SimulationProvider (added later)
+
 
   // Universal Theme state: 'dark' (Purple Night) | 'light' (Soft Dove)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -275,6 +279,28 @@ export default function App() {
     };
   }, [userRole, activeTab, theme, syncIframeState]);
 
+  // If role changes to 'conductor', force COCKPIT tab
+  useEffect(() => {
+    if (userRole === 'conductor') {
+      setActiveTab('COCKPIT');
+    }
+  }, [userRole]);
+
+  // Sync scheduler metrics + device states to cockpit iframe on every sim tick
+  useEffect(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'AUTOOS_SYNC_STATE',
+          metrics: calculateMetrics(simState),
+          battery,
+          devices,
+        },
+        '*'
+      );
+    } catch (_) {}
+  }, [simState.currentTime, battery, devices]);
+
   // Bidirectional listener from Cockpit iframe
   useEffect(() => {
     const handleIframeMessage = (e: MessageEvent) => {
@@ -307,9 +333,9 @@ export default function App() {
 
   // RBAC rejection trigger
   const handleRoleRestricted = (action: string) => {
-    const roleName = userRole === 'pasajero' ? 'Pasajero' : userRole === 'conductor' ? 'Conductor' : 'Mecánico';
+    const roleName = userRole === 'pasajero' ? 'Pasajero' : userRole === 'conductor' ? 'Conductor' : 'MecÃ¡nico';
     setRbacAlertMessage(
-      `⛔ Acceso Denegado por Política RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. Cambia de rol en la barra superior para continuar.`
+      `â›” Acceso Denegado por PolÃ­tica RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. Cambia de rol en la barra superior para continuar.`
     );
   };
 
@@ -366,7 +392,7 @@ export default function App() {
 
   const handleAlgorithmChange = (newAlg: AlgorithmType) => {
     if (userRole === 'pasajero') {
-      handleRoleRestricted('Modificar Algoritmo de Planificación de CPU');
+      handleRoleRestricted('Modificar Algoritmo de PlanificaciÃ³n de CPU');
       return;
     }
     setAlgorithm(newAlg);
@@ -394,7 +420,7 @@ export default function App() {
 
   const handleTogglePlay = () => {
     if (userRole === 'pasajero') {
-      handleRoleRestricted('Iniciar / Pausar la Ejecución de CPU');
+      handleRoleRestricted('Iniciar / Pausar la EjecuciÃ³n de CPU');
       return;
     }
     setIsPlaying(!isPlaying);
@@ -473,7 +499,6 @@ export default function App() {
           }
         });
       }
-
       return {
         ...prev,
         processes: updatedProcesses,
@@ -485,8 +510,8 @@ export default function App() {
             timestamp: new Date().toLocaleTimeString(),
             type: 'BATTERY_ALERT',
             message: isLowMode
-              ? `⚡ [BATERÍA BAJA ${newLevel}%] Activado Limp-Mode: Procesos de confort y multimedia suspendidos para proteger la tracción y dirección.`
-              : `✓ [BATERÍA NOMINAL ${newLevel}%] Carga restablecida al ${newLevel}%. Procesos reactivados.`,
+              ? `âš¡ [BATERÃA BAJA ${newLevel}%] Activado Limp-Mode: Procesos de confort y multimedia suspendidos para proteger la tracciÃ³n y direcciÃ³n.`
+              : `âœ“ [BATERÃA NOMINAL ${newLevel}%] Carga restablecida al ${newLevel}%. Procesos reactivados.`,
             severity: isCritical ? 'critical' : isLow ? 'warning' : 'success',
           },
           ...prev.events,
@@ -530,7 +555,6 @@ export default function App() {
         })
       );
     }
-
     // 2. Dispatch process into CPU Scheduler
     setBaseProcesses((prev) => [...prev, fullProc]);
 
@@ -548,7 +572,7 @@ export default function App() {
         time: currentT,
         timestamp: new Date().toLocaleTimeString(),
         type: 'CRITICAL_INJECT',
-        message: `🚨 PROCESO CRÍTICO ASIL-D INYECTADO! '${newProc.name}' [DTC: ${dtc || 'U0100'}] (PID ${newProc.pid}, P${newProc.priority}) ingresa a la CPU.`,
+        message: `ðŸš¨ PROCESO CRÃTICO ASIL-D INYECTADO! '${newProc.name}' [DTC: ${dtc || 'U0100'}] (PID ${newProc.pid}, P${newProc.priority}) ingresa a la CPU.`,
         pid: newProc.pid,
         severity: 'critical',
       });
@@ -567,7 +591,7 @@ export default function App() {
           time: currentT,
           timestamp: new Date().toLocaleTimeString(),
           type: 'PREEMPTION',
-          message: `⚡ DESALOJO PREEMPTIVO! PID ${newProc.pid} (${newProc.name}) desaloja a PID ${preempted.pid} (${preempted.name}) en el núcleo.`,
+          message: `âš¡ DESALOJO PREEMPTIVO! PID ${newProc.pid} (${newProc.name}) desaloja a PID ${preempted.pid} (${preempted.name}) en el nÃºcleo.`,
           pid: newProc.pid,
           severity: 'critical',
         });
@@ -625,7 +649,7 @@ export default function App() {
           time: prev.currentTime,
           timestamp: new Date().toLocaleTimeString(),
           type: 'STATE_CHANGE',
-          message: `✓ Calibración OBD-II completada: Dispositivo [${deviceCode}] restablecido a OPERATIVO (100% Nominal).`,
+          message: `âœ“ CalibraciÃ³n OBD-II completada: Dispositivo [${deviceCode}] restablecido a OPERATIVO (100% Nominal).`,
           severity: 'success',
         },
         ...prev.events,
@@ -655,7 +679,7 @@ export default function App() {
           time: prev.currentTime,
           timestamp: new Date().toLocaleTimeString(),
           type: 'STATE_CHANGE',
-          message: `✓ RESTABLECIMIENTO GLOBAL: Todos los subsistemas y buses CAN/Ethernet restablecidos a 100% NOMINAL ASIL-D.`,
+          message: `âœ“ RESTABLECIMIENTO GLOBAL: Todos los subsistemas y buses CAN/Ethernet restablecidos a 100% NOMINAL ASIL-D.`,
           severity: 'success',
         },
         ...prev.events,
@@ -679,7 +703,7 @@ export default function App() {
     const procData: Omit<Process, 'waitingTime' | 'turnaroundTime'> = {
       pid: Math.floor(Math.random() * 800) + 200,
       name: `Falla Simulada en ${dev.name.split('/')[0]}`,
-      category: dev.subsystem === 'Seguridad Dinámica' ? 'seguridad' : dev.subsystem === 'Sensores' ? 'sensor' : 'control',
+      category: dev.subsystem === 'Seguridad DinÃ¡mica' ? 'seguridad' : dev.subsystem === 'Sensores' ? 'sensor' : 'control',
       arrivalTime: simState.currentTime,
       burstTime: 4,
       remainingTime: 4,
@@ -691,7 +715,7 @@ export default function App() {
       cpuUsagePct: 35,
       memoryMb: 128,
     };
-    handleInjectCriticalProcess(procData, deviceCode, dtc, 'Prueba de Diagnóstico Forzado OBD-II');
+    handleInjectCriticalProcess(procData, deviceCode, dtc, 'Prueba de DiagnÃ³stico Forzado OBD-II');
   };
 
   // Add custom process
@@ -726,7 +750,7 @@ export default function App() {
             time: prev.currentTime,
             timestamp: new Date().toLocaleTimeString(),
             type: 'ARRIVAL',
-            message: `Proceso '${newProc.name}' (PID ${newProc.pid}, Ráfaga: ${newProc.burstTime}s, Prio: ${newProc.priority}) añadido.`,
+            message: `Proceso '${newProc.name}' (PID ${newProc.pid}, RÃ¡faga: ${newProc.burstTime}s, Prio: ${newProc.priority}) aÃ±adido.`,
             pid: newProc.pid,
             severity: 'info',
           },
@@ -860,24 +884,26 @@ export default function App() {
                 </span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                Sistema Operativo para Vehículo Inteligente — RTOS ISO 26262 ASIL-D
+                Sistema Operativo para VehÃ­culo Inteligente â€” RTOS ISO 26262 ASIL-D
               </p>
             </div>
           </div>
 
-          {/* Navigation Tabs (Only 2 tabs as requested) */}
+          {/* Navigation Tabs */}
           <div className="flex items-center autoos-card p-1 rounded-2xl border text-xs font-mono">
-            <button
-              onClick={() => setActiveTab('SCHEDULER')}
-              className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
-                activeTab === 'SCHEDULER'
-                  ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <Cpu className="w-4 h-4" />
-              <span>Planificador & Simuladores</span>
-            </button>
+            {userRole !== 'conductor' && (
+              <button
+                onClick={() => setActiveTab('SCHEDULER')}
+                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
+                  activeTab === 'SCHEDULER'
+                    ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Cpu className="w-4 h-4" />
+                <span>Planificador &amp; Simuladores</span>
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('COCKPIT')}
               className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
@@ -902,9 +928,9 @@ export default function App() {
                 onChange={(e) => setUserRole(e.target.value as UserRole)}
                 className="bg-transparent text-[var(--text-primary)] font-bold text-xs focus:outline-none cursor-pointer"
               >
-                <option value="mecanico" className="text-black dark:text-white dark:bg-[#180E24]">🔧 Carlos Vélez (Mecánico / Admin)</option>
-                <option value="conductor" className="text-black dark:text-white dark:bg-[#180E24]">🚗 Laura Gómez (Conductora)</option>
-                <option value="pasajero" className="text-black dark:text-white dark:bg-[#180E24]">👤 Andrés Rivera (Pasajero)</option>
+                <option value="mecanico" className="text-black dark:text-white dark:bg-[#180E24]">ðŸ”§ Carlos VÃ©lez (MecÃ¡nico / Admin)</option>
+                <option value="conductor" className="text-black dark:text-white dark:bg-[#180E24]">ðŸš— Laura GÃ³mez (Conductora)</option>
+                <option value="pasajero" className="text-black dark:text-white dark:bg-[#180E24]">ðŸ‘¤ AndrÃ©s Rivera (Pasajero)</option>
               </select>
             </div>
 
@@ -994,10 +1020,10 @@ export default function App() {
               <div className="font-bold text-sm flex items-center gap-2">
                 <span>
                   {failingDevices.length > 0
-                    ? `🚨 ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE`
+                    ? `ðŸš¨ ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE`
                     : degradedDevices.length > 0
-                    ? `⚠️ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO`
-                    : '✓ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)'}
+                    ? `âš ï¸ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO`
+                    : 'âœ“ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900/10 dark:bg-white/10 font-bold">
                   Salud: {avgHealth}%
@@ -1008,7 +1034,7 @@ export default function App() {
                   ? `Fallas detectadas en: ${failingDevices.map((d) => `${d.name.split('/')[0]} [${d.activeDtc || 'DTC'}]`).join(', ')}. Conmutado a algoritmos de contingencia pre-emptivos.`
                   : degradedDevices.length > 0
                   ? `Subsistemas con rendimiento reducido: ${degradedDevices.map((d) => d.name.split('/')[0]).join(', ')}.`
-                  : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. Planificación de tiempo real en rango de latencia < 2ms.'}
+                  : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. PlanificaciÃ³n de tiempo real en rango de latencia < 2ms.'}
               </p>
             </div>
           </div>
@@ -1030,7 +1056,7 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                Algoritmo de Planificación:
+                Algoritmo de PlanificaciÃ³n:
               </label>
               <div className="flex flex-wrap gap-1.5 autoos-surface p-1.5 rounded-2xl">
                 <button
@@ -1102,7 +1128,7 @@ export default function App() {
             {/* Playback & Action Controls */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                Controles de Simulación:
+                Controles de SimulaciÃ³n:
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -1150,7 +1176,7 @@ export default function App() {
                   className="px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm hover:opacity-90"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Añadir</span>
+                  <span>AÃ±adir</span>
                 </button>
               </div>
             </div>
@@ -1248,7 +1274,7 @@ export default function App() {
           <div className="flex items-center gap-2 px-1">
             <Activity className="w-4 h-4 text-[var(--accent-primary)]" />
             <h3 className="text-sm font-serif font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              Simuladores de Contingencia y Gestión Energética
+              Simuladores de Contingencia y GestiÃ³n EnergÃ©tica
             </h3>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1295,7 +1321,7 @@ export default function App() {
         <div className="autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
           <span className="flex items-center gap-2">
             <Car className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (Velocímetro, Medidores, Audio Player, Chat y Cámaras)</span>
+            <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (VelocÃ­metro, Medidores, Audio Player, Chat y CÃ¡maras)</span>
           </span>
           <span className={`font-bold flex items-center gap-1.5 ${
             failingDevices.length > 0
@@ -1328,12 +1354,12 @@ export default function App() {
       {/* Footer */}
       <footer className="autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <span>AutoOS — Sistema Operativo Vehicular</span>
+          <span>AutoOS â€” Sistema Operativo Vehicular</span>
           <span className="text-[var(--accent-primary)] font-bold">
             {theme === 'dark' ? 'Tema: Purple Night (Oscuro)' : 'Tema: Soft Dove (Claro)'}
           </span>
           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold">
-            <CheckCircle className="w-3.5 h-3.5" /> FCFS • Round Robin • Prioridad • Batería Baja • Falla Configurable • GPS Dinámico
+            <CheckCircle className="w-3.5 h-3.5" /> FCFS â€¢ Round Robin â€¢ Prioridad â€¢ BaterÃ­a Baja â€¢ Falla Configurable â€¢ GPS DinÃ¡mico
           </span>
         </div>
       </footer>
