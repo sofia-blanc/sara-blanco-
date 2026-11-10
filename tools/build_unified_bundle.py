@@ -2198,18 +2198,16 @@ function st() {
                 children: (0, E.jsxDEV)(ot, { events: simState.events }, void 0, false)
               }, void 0, false)
             ]
-          }, void 0, true)
+          }, void 0, true),
+          (0, E.jsxDEV)(rt_gps, {
+            isDeviceFailed: isGpsFailed, activeDtc: gpsActiveDtc, userRole: userRole, onRoleRestricted: handleRoleRestricted, batteryLevel: battery.level
+          }, void 0, false)
         ]
       }, void 0, true),
       (0, E.jsxDEV)('main', {
         className: `flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`,
         children: [
-          (0, E.jsxDEV)('div', {
-            className: 'p-4 max-w-7xl mx-auto w-full',
-            children: (0, E.jsxDEV)(rt_gps, {
-              isDeviceFailed: isGpsFailed, activeDtc: gpsActiveDtc, userRole: userRole, onRoleRestricted: handleRoleRestricted, batteryLevel: battery.level
-            }, void 0, false)
-          }, void 0, false),
+
           (0, E.jsxDEV)('div', {
             className: 'autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]',
             children: [
