@@ -68,9 +68,7 @@ ROOT_DIR = CURRENT_DIR.parent
 
 bundle_candidates = [
     CURRENT_DIR / "autoos_unified.html",
-    ROOT_DIR / "autoos_unified.html",
-    ROOT_DIR / "web" / "dist" / "autoos_unified.html",
-    CURRENT_DIR / "web" / "dist" / "autoos_unified.html",
+    ROOT_DIR / "Auto" / "autoos_unified.html",
     Path("/app/applet/dist/autoos_unified.html")
 ]
 

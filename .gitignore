@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.class
@@ -7,6 +7,7 @@ __pycache__/
 env/
 venv/
 ENV/
+.venv/
 
 # Streamlit secrets (credenciales sensibles)
 .streamlit/secrets.toml
@@ -14,8 +15,20 @@ Auto/.streamlit/secrets.toml
 
 # Environment variables
 .env
+Auto/.env
 
-# OS
+# Node & Frontend
+node_modules/
+dist/
+web/dist/
+*.tsbuildinfo
+
+# OS & Editor
 .DS_Store
 Thumbs.db
 *.bak
+*.tmp
+.vscode/
+
+# Build artifacts / Tools temporaries
+tools/orig_bundle.js

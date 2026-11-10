@@ -1,6 +1,13 @@
 with open('orig_bundle.js', 'r', encoding='utf-16') as f:
     orig_js = f.read()
 
+# Strip any previously-injected custom code (from earlier rebuilds).
+# Our custom additions always start with the ADDITIONAL LUCIDE ICONS block.
+custom_injection_marker = '// ADDITIONAL LUCIDE ICONS'
+custom_start = orig_js.find(custom_injection_marker)
+if custom_start > 0:
+    orig_js = orig_js[:custom_start].rstrip(' \n\r') + '\n'
+
 cps_marker = '/app/applet/src/components/CriticalProcessSimulator.tsx'
 cps_pos = orig_js.find(cps_marker)
 m_decl = orig_js.rfind('M=`', 0, cps_pos)
@@ -9,8 +16,12 @@ base_js = orig_js[:m_decl].rstrip(' ,\n\r') + ';\n'
 
 p_acm = orig_js.find('N=`/app/applet/src/components/AlgorithmComparisonModal.tsx`')
 p_app = orig_js.find('F=`/app/applet/src/App.tsx`')
-middle_raw = orig_js[p_acm:p_app].rstrip(' ,\n\r')
-middle_components = 'var ' + middle_raw + ';\n'
+
+if p_acm >= 0 and p_app >= 0 and p_acm < p_app:
+    middle_raw = orig_js[p_acm:p_app].rstrip(' ,\n\r')
+    middle_components = 'var ' + middle_raw + ';\n'
+else:
+    middle_components = ''
 
 custom_js = r"""
 // ==========================================
@@ -1979,7 +1990,6 @@ function st() {
       (0, E.jsxDEV)('main', {
         className: `flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' ? '' : 'hidden'}`,
         children: [
-          (0, E.jsxDEV)('div', {
           (0, E.jsxDEV)('div', {
             className: `p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${failingDevices.length > 0 ? 'bg-red-500/20 border-red-500 text-red-950 dark:text-red-300 ring-2 ring-red-500/30' : degradedDevices.length > 0 ? 'bg-amber-500/25 border-amber-600 text-amber-950 dark:text-amber-300' : 'bg-emerald-500/25 border-emerald-600/60 text-emerald-950 dark:text-emerald-300'}`,
             children: [
