@@ -244,22 +244,19 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
           pid: Date.now(),
           name: 'Calibración Simulada',
           category: 'seguridad',
-          arrivalTime: simState?.currentTime ?? 0,
+          arrivalTime: currentTime,
           burstTime: 5,
           remainingTime: 5,
           priority: 1,
           critical: true,
           color: '#ff0000',
-          state: 'LISTO', // using ProcessState enum string
-          powerConsumptionWatts: 10,
-          cpuUsagePct: 10,
-          memoryMb: 50,
-          // waitingTime and turnaroundTime are omitted per prop definition
+          state: 'LISTO',
+          // waitingTime and turnaroundTime are optional, omitted
         },
         dev.code,
         dev.activeDtc,
         dev.failureMode
-      );
+    );
   }}
   className="mt-1 text-xs text-[var(--accent-primary)] underline"
 >
