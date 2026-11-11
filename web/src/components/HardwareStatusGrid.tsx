@@ -138,6 +138,20 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
             <RotateCcw className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
             <span>Restablecer Todo a Nominal</span>
           </button>
+          {/* Calibrar Todo – calls the new callback */}
+          <button
+            onClick={() => {
+              if (!canModify) {
+                onRoleRestricted('Calibrar todo el sistema desde la matriz');
+                return;
+              }
+              onResetAllScenarios();
+            }}
+            className="px-3.5 py-2 rounded-xl autoos-surface bg-[var(--accent-primary)] text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-sm hover:opacity-90"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Calibrar Todo</span>
+          </button>
         </div>
       </div>
 
@@ -218,6 +232,30 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
               </div>
 
               {/* Active DTC info if failing */}
+{/* Calibrar este dispositivo */}
+<button
+  onClick={() => {
+    if (!canModify) {
+      onRoleRestricted('Calibrar dispositivo desde la matriz');
+      return;
+    }
+    onInjectCriticalProcess(
+      {
+        id: `proc-${Date.now()}`,
+        name: 'Calibración Simulada',
+        priority: 1,
+        state: 'ready',
+        // you can add other required Process fields here if needed
+      },
+      dev.code,
+      dev.activeDtc,
+      dev.failureMode
+    );
+  }}
+  className="mt-1 text-xs text-[var(--accent-primary)] underline"
+>
+  Calibrar
+</button>
               {dev.activeDtc && (
                 <div className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-[10px] font-mono text-red-600 dark:text-red-400">
                   <span className="font-bold">DTC: {dev.activeDtc}</span>
