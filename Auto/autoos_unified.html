@@ -2996,16 +2996,11 @@ function st() {
                 ]
               }, void 0, true),
               (0, E.jsxDEV)('div', {
-                className: 'grid grid-cols-1 lg:grid-cols-2 gap-6',
-                children: [
-                  (0, E.jsxDEV)($e, {
-                    battery: battery, onUpdateBatteryLevel: handleUpdateBatteryLevel, onTogglePowerSaving: handleTogglePowerSaving, wattsSaved: battery.powerSavingWattsSaved, suspendedCount: suspendedProcesses.length, userRole: userRole, onRoleRestricted: handleRoleRestricted
-                  }, void 0, false),
-                  userRole === 'mecanico' ? (0, E.jsxDEV)(tt, {
-                    onInjectCriticalProcess: handleInjectCriticalProcess, onResetDevice: handleResetDevice, onResetAllScenarios: handleResetAllDevices, currentTime: simState.currentTime, userRole: userRole, onRoleRestricted: handleRoleRestricted
-                  }, void 0, false) : null
-                ]
-              }, void 0, true)
+                className: 'grid grid-cols-1 gap-6',
+                children: (0, E.jsxDEV)($e, {
+                  battery: battery, onUpdateBatteryLevel: handleUpdateBatteryLevel, onTogglePowerSaving: handleTogglePowerSaving, wattsSaved: battery.powerSavingWattsSaved, suspendedCount: suspendedProcesses.length, userRole: userRole, onRoleRestricted: handleRoleRestricted
+                }, void 0, false)
+              }, void 0, false)
             ]
           }, void 0, true),
           (0, E.jsxDEV)('section', {
