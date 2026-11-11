@@ -626,6 +626,10 @@ export default function App() {
 
   // Reset single device
   const handleResetDevice = (deviceCode: string) => {
+    if (userRole !== 'mecanico') {
+      handleRoleRestricted('Restablecer Dispositivo de Hardware (Acción exclusiva del Administrador / Mecánico)');
+      return;
+    }
     setDevices((prev) =>
       prev.map((d) => {
         if (d.code === deviceCode) {
@@ -669,6 +673,10 @@ export default function App() {
 
   // Reset all devices and faults
   const handleResetAllDevices = () => {
+    if (userRole !== 'mecanico') {
+      handleRoleRestricted('Restablecer Fallas del Sistema (Acción exclusiva del Administrador / Mecánico)');
+      return;
+    }
     setDevices(INITIAL_VEHICLE_DEVICES);
 
     setSimState((prev) => ({
@@ -1042,7 +1050,13 @@ export default function App() {
           {/* Quick Clear Faults Button */}
           {failingDevices.length > 0 && (
             <button
-              onClick={handleResetAllDevices}
+              onClick={() => {
+                if (userRole !== 'mecanico') {
+                  handleRoleRestricted('Restablecer Fallas del Sistema (Acción exclusiva del Administrador / Mecánico)');
+                  return;
+                }
+                handleResetAllDevices();
+              }}
               className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs uppercase tracking-wider shadow-md hover:scale-105 transition flex items-center gap-1.5"
             >
               <RotateCcw className="w-4 h-4" />
