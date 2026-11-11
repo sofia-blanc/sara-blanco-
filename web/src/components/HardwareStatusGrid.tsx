@@ -18,6 +18,9 @@ import {
   Zap,
 } from 'lucide-react';
 import { VehicleDevice, UserRole } from '../types/scheduler';
+import { CriticalProcessSimulator } from './CriticalProcessSimulator';
+
+
 
 interface HardwareStatusGridProps {
   devices: VehicleDevice[];
@@ -26,6 +29,15 @@ interface HardwareStatusGridProps {
   onTriggerQuickFault: (deviceCode: string) => void;
   userRole: UserRole;
   onRoleRestricted: (action: string) => void;
+  // New callbacks for fault injection and time
+  onInjectCriticalProcess: (
+    proc: Omit<Process, 'waitingTime' | 'turnaroundTime'>,
+    deviceCode?: string,
+    dtc?: string,
+    failureMode?: string
+  ) => void;
+  onResetAllScenarios: () => void;
+  currentTime: number;
 }
 
 export const HARDWARE_DEVICE_ICONS: Record<string, React.FC<{ className?: string }>> = {
@@ -49,6 +61,10 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
   onTriggerQuickFault,
   userRole,
   onRoleRestricted,
+  // New callbacks for fault injection and time
+  onInjectCriticalProcess,
+  onResetAllScenarios,
+  currentTime,
 }) => {
   const canModify = userRole === 'mecanico';
 

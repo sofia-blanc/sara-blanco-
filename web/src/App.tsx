@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlgorithmType,
   BatteryState,
@@ -1222,6 +1222,9 @@ export default function App() {
             onTriggerQuickFault={handleTriggerQuickFault}
             userRole={userRole}
             onRoleRestricted={handleRoleRestricted}
+            onInjectCriticalProcess={handleInjectCriticalProcess}
+            onResetAllScenarios={handleResetAllDevices}
+            currentTime={simState.currentTime}
           />
         </section>
 

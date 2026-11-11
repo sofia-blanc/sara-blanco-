@@ -31,24 +31,7 @@
           console.error('Error decoding embedded cockpit HTML:', e);
         }
       })();
-    <script>
-// Relocate fault configurator into health matrix and hide original navigation
-function relocateFaultConfigurator(){
-  const healthHeader = Array.from(document.querySelectorAll('h3')).find(el=>el.textContent.includes('Matriz de Salud de Hardware'));
-  const faultHeader = Array.from(document.querySelectorAll('h3')).find(el=>el.textContent.includes('Simulador & Configurador Total de Fallas Vehiculares'));
-  if(!healthHeader||!faultHeader) return;
-  const healthContainer = healthHeader.closest('div');
-  const faultContainer = faultHeader.closest('div');
-  if(!healthContainer||!faultContainer) return;
-  // Move all child nodes except the fault header itself
-  const nodes = Array.from(faultContainer.childNodes).filter(n=>n!==faultHeader);
-  nodes.forEach(n=> healthContainer.appendChild(n));
-  // Remove the original fault container
-  faultContainer.remove();
-}
-if (document.readyState === 'complete') { relocateFaultConfigurator(); } else { window.addEventListener('load', relocateFaultConfigurator); }
-</script>
-</script>
+    </script>
   </head>
   <body class="bg-[var(--bg-base)] text-[var(--text-primary)] antialiased transition-colors duration-200">
     <div id="root"></div>
@@ -3029,23 +3012,6 @@ function st() {
 
 (0, v.createRoot)(document.getElementById('root')).render((0, E.jsxDEV)(st, {}, void 0, false));
 
-    <script>
-// Relocate fault configurator into health matrix and hide original navigation
-function relocateFaultConfigurator(){
-  const healthHeader = Array.from(document.querySelectorAll('h3')).find(el=>el.textContent.includes('Matriz de Salud de Hardware'));
-  const faultHeader = Array.from(document.querySelectorAll('h3')).find(el=>el.textContent.includes('Simulador & Configurador Total de Fallas Vehiculares'));
-  if(!healthHeader||!faultHeader) return;
-  const healthContainer = healthHeader.closest('div');
-  const faultContainer = faultHeader.closest('div');
-  if(!healthContainer||!faultContainer) return;
-  // Move all child nodes except the fault header itself
-  const nodes = Array.from(faultContainer.childNodes).filter(n=>n!==faultHeader);
-  nodes.forEach(n=> healthContainer.appendChild(n));
-  // Remove the original fault container
-  faultContainer.remove();
-}
-if (document.readyState === 'complete') { relocateFaultConfigurator(); } else { window.addEventListener('load', relocateFaultConfigurator); }
-</script>
-</script>
+    </script>
   </body>
 </html>
