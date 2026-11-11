@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Navigation,
   Eye,
@@ -16,6 +16,7 @@ import {
   RotateCcw,
   Wrench,
   Zap,
+  Sliders,
 } from 'lucide-react';
 import { VehicleDevice, UserRole, Process } from '../types/scheduler';
 import { CriticalProcessSimulator } from './CriticalProcessSimulator';
@@ -67,6 +68,7 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
   currentTime,
 }) => {
   const canModify = userRole === 'mecanico';
+  const [calibratingDevice, setCalibratingDevice] = useState<string | null>(null);
 
   // Calculate overall health
   const totalHealth = devices.reduce((acc, d) => acc + d.health, 0);
@@ -232,36 +234,6 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
               </div>
 
               {/* Active DTC info if failing */}
-{/* Calibrar este dispositivo */}
-<button
-  onClick={() => {
-    if (!canModify) {
-      onRoleRestricted('Calibrar dispositivo desde la matriz');
-      return;
-    }
-    onInjectCriticalProcess(
-        {
-          pid: Date.now(),
-          name: 'Calibración Simulada',
-          category: 'seguridad',
-          arrivalTime: currentTime,
-          burstTime: 5,
-          remainingTime: 5,
-          priority: 1,
-          critical: true,
-          color: '#ff0000',
-          state: 'LISTO',
-          // waitingTime and turnaroundTime are optional, omitted
-        },
-        dev.code,
-        dev.activeDtc,
-        dev.failureMode
-    );
-  }}
-  className="mt-1 text-xs text-[var(--accent-primary)] underline"
->
-  Calibrar
-</button>
               {dev.activeDtc && (
                 <div className="p-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-[10px] font-mono text-red-600 dark:text-red-400">
                   <span className="font-bold">DTC: {dev.activeDtc}</span>
@@ -270,41 +242,95 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--border-color)]">
+              <div className="flex items-center gap-1.5 pt-1 border-t border-[var(--border-color)]">
                 {isFailing || isDegraded ? (
-                  <button
-                    onClick={() => {
-                      if (!canModify) {
-                        onRoleRestricted('Calibrar / Restablecer Dispositivo de Hardware');
-                        return;
-                      }
-                      onResetDevice(dev.code);
-                    }}
-                    className="w-full py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm"
-                  >
-                    <Wrench className="w-3 h-3" />
-                    <span>Calibrar / Restaurar</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        if (!canModify) {
+                          onRoleRestricted('Calibrar / Configurar Dispositivo de Hardware');
+                          return;
+                        }
+                        setCalibratingDevice(dev.code);
+                      }}
+                      className="flex-1 py-1 px-1.5 rounded-lg bg-[var(--accent-primary)] hover:opacity-90 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm"
+                    >
+                      <Sliders className="w-3 h-3" />
+                      <span>Calibrar</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!canModify) {
+                          onRoleRestricted('Restaurar Dispositivo de Hardware');
+                          return;
+                        }
+                        onResetDevice(dev.code);
+                      }}
+                      className="flex-1 py-1 px-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm"
+                    >
+                      <Wrench className="w-3 h-3" />
+                      <span>Restaurar</span>
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    onClick={() => {
-                      if (!canModify) {
-                        onRoleRestricted('Inyectar Fallas en Sensores o Actuadores');
-                        return;
-                      }
-                      onTriggerQuickFault(dev.code);
-                    }}
-                    className="w-full py-1 px-2 rounded-lg autoos-card hover:bg-red-500/15 hover:text-red-500 hover:border-red-500/30 text-[var(--text-muted)] font-mono text-[10px] font-semibold flex items-center justify-center gap-1 transition border border-[var(--border-color)]"
-                  >
-                    <Zap className="w-3 h-3" />
-                    <span>Inyectar Falla de Prueba</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        if (!canModify) {
+                          onRoleRestricted('Calibrar / Configurar Dispositivo de Hardware');
+                          return;
+                        }
+                        setCalibratingDevice(dev.code);
+                      }}
+                      className="flex-1 py-1 px-1.5 rounded-lg bg-[var(--accent-primary)] hover:opacity-90 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm"
+                    >
+                      <Sliders className="w-3 h-3" />
+                      <span>Calibrar</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!canModify) {
+                          onRoleRestricted('Inyectar Fallas en Sensores o Actuadores');
+                          return;
+                        }
+                        onTriggerQuickFault(dev.code);
+                      }}
+                      className="flex-1 py-1 px-1.5 rounded-lg autoos-card hover:bg-red-500/15 hover:text-red-500 hover:border-red-500/30 text-[var(--text-muted)] font-mono text-[10px] font-semibold flex items-center justify-center gap-1 transition border border-[var(--border-color)]"
+                    >
+                      <Zap className="w-3 h-3" />
+                      <span>Inyectar Falla</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Modal Configurador de Calibración / Fallas Vehiculares */}
+      {calibratingDevice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+          <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto my-6">
+            <CriticalProcessSimulator
+              initialDeviceCode={calibratingDevice}
+              onClose={() => setCalibratingDevice(null)}
+              onInjectCriticalProcess={(proc, devCode, dtc, mode) => {
+                onInjectCriticalProcess(proc, devCode, dtc, mode);
+                setCalibratingDevice(null);
+              }}
+              onResetDevice={(code) => {
+                onResetDevice(code);
+                setCalibratingDevice(null);
+              }}
+              onResetAllScenarios={onResetAllScenarios}
+              currentTime={currentTime}
+              userRole={userRole}
+              onRoleRestricted={onRoleRestricted}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

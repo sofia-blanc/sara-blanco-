@@ -339,7 +339,8 @@ var DEVICE_ICON_MAP = {
 // ==========================================
 // COMPONENT: HARDWARE STATUS GRID (rt_hw)
 // ==========================================
-var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuickFault, userRole, onRoleRestricted }) {
+var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuickFault, userRole, onRoleRestricted, onInjectCriticalProcess, currentTime }) {
+  var [calibratingDevice, setCalibratingDevice] = (0, _.useState)(null);
   var canModify = userRole === 'mecanico';
   var totalHealth = devices.reduce(function(acc, d) { return acc + d.health; }, 0);
   var averageHealth = Math.round(totalHealth / devices.length);
@@ -462,33 +463,81 @@ var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuick
                 ]
               }, void 0, true) : null,
               (0, E.jsxDEV)('div', {
-                className: 'flex items-center justify-between gap-2 pt-1 border-t border-[var(--border-color)]',
-                children: isFailing || isDegraded ? (0, E.jsxDEV)('button', {
-                  onClick: function() {
-                    if (!canModify) { onRoleRestricted('Calibrar / Restablecer Dispositivo de Hardware'); return; }
-                    onResetDevice(dev.code);
-                  },
-                  className: 'w-full py-1 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm',
-                  children: [
-                    (0, E.jsxDEV)(IconWrench, { className: 'w-3 h-3' }, void 0, false),
-                    (0, E.jsxDEV)('span', { children: 'Calibrar / Restaurar' }, void 0, false)
-                  ]
-                }, void 0, true) : (0, E.jsxDEV)('button', {
-                  onClick: function() {
-                    if (!canModify) { onRoleRestricted('Inyectar Fallas en Sensores o Actuadores'); return; }
-                    onTriggerQuickFault(dev.code);
-                  },
-                  className: 'w-full py-1 px-2 rounded-lg autoos-card hover:bg-red-500/15 hover:text-red-500 hover:border-red-500/30 text-[var(--text-muted)] font-mono text-[10px] font-semibold flex items-center justify-center gap-1 transition border border-[var(--border-color)]',
-                  children: [
-                    (0, E.jsxDEV)(qe, { className: 'w-3 h-3' }, void 0, false),
-                    (0, E.jsxDEV)('span', { children: 'Inyectar Falla de Prueba' }, void 0, false)
-                  ]
-                }, void 0, true)
+                className: 'flex items-center gap-1.5 pt-1 border-t border-[var(--border-color)]',
+                children: isFailing || isDegraded ? [
+                  (0, E.jsxDEV)('button', {
+                    onClick: function() {
+                      if (!canModify) { onRoleRestricted('Calibrar / Configurar Dispositivo de Hardware'); return; }
+                      setCalibratingDevice(dev.code);
+                    },
+                    className: 'flex-1 py-1 px-1.5 rounded-lg bg-[var(--accent-primary)] hover:opacity-90 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm',
+                    children: [
+                      (0, E.jsxDEV)(IconSliders, { className: 'w-3 h-3' }, void 0, false),
+                      (0, E.jsxDEV)('span', { children: 'Calibrar' }, void 0, false)
+                    ]
+                  }, void 0, true),
+                  (0, E.jsxDEV)('button', {
+                    onClick: function() {
+                      if (!canModify) { onRoleRestricted('Restaurar Dispositivo de Hardware'); return; }
+                      onResetDevice(dev.code);
+                    },
+                    className: 'flex-1 py-1 px-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm',
+                    children: [
+                      (0, E.jsxDEV)(IconWrench, { className: 'w-3 h-3' }, void 0, false),
+                      (0, E.jsxDEV)('span', { children: 'Restaurar' }, void 0, false)
+                    ]
+                  }, void 0, true)
+                ] : [
+                  (0, E.jsxDEV)('button', {
+                    onClick: function() {
+                      if (!canModify) { onRoleRestricted('Calibrar / Configurar Dispositivo de Hardware'); return; }
+                      setCalibratingDevice(dev.code);
+                    },
+                    className: 'flex-1 py-1 px-1.5 rounded-lg bg-[var(--accent-primary)] hover:opacity-90 text-white font-mono text-[10px] font-bold flex items-center justify-center gap-1 transition shadow-sm',
+                    children: [
+                      (0, E.jsxDEV)(IconSliders, { className: 'w-3 h-3' }, void 0, false),
+                      (0, E.jsxDEV)('span', { children: 'Calibrar' }, void 0, false)
+                    ]
+                  }, void 0, true),
+                  (0, E.jsxDEV)('button', {
+                    onClick: function() {
+                      if (!canModify) { onRoleRestricted('Inyectar Fallas en Sensores o Actuadores'); return; }
+                      onTriggerQuickFault(dev.code);
+                    },
+                    className: 'flex-1 py-1 px-1.5 rounded-lg autoos-card hover:bg-red-500/15 hover:text-red-500 hover:border-red-500/30 text-[var(--text-muted)] font-mono text-[10px] font-semibold flex items-center justify-center gap-1 transition border border-[var(--border-color)]',
+                    children: [
+                      (0, E.jsxDEV)(qe, { className: 'w-3 h-3' }, void 0, false),
+                      (0, E.jsxDEV)('span', { children: 'Inyectar Falla' }, void 0, false)
+                    ]
+                  }, void 0, true)
+                ]
               }, void 0, false)
             ]
           }, dev.id, true);
         })
-      }, void 0, false)
+      }, void 0, false),
+      calibratingDevice ? (0, E.jsxDEV)('div', {
+        className: 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto',
+        children: (0, E.jsxDEV)('div', {
+          className: 'relative w-full max-w-4xl max-h-[92vh] overflow-y-auto my-6',
+          children: (0, E.jsxDEV)(tt, {
+            initialDeviceCode: calibratingDevice,
+            onClose: function() { setCalibratingDevice(null); },
+            onInjectCriticalProcess: function(proc, devCode, dtc, mode) {
+              if (onInjectCriticalProcess) onInjectCriticalProcess(proc, devCode, dtc, mode);
+              setCalibratingDevice(null);
+            },
+            onResetDevice: function(code) {
+              onResetDevice(code);
+              setCalibratingDevice(null);
+            },
+            onResetAllScenarios: onResetAllDevices,
+            currentTime: currentTime,
+            userRole: userRole,
+            onRoleRestricted: onRoleRestricted
+          }, void 0, false)
+        }, void 0, false)
+      }, void 0, false) : null
     ]
   }, void 0, true);
 };
@@ -1233,10 +1282,16 @@ var PRESET_INCIDENT_SCENARIOS = [
   { id: 'scen_steer', name: 'Fallo Crítico Dirección By-Wire', dispositivo: 'DEV_ACT_STEER', dtc: 'C0040-04', burstTime: 4, category: 'control', color: '#e11d48', icon: _e, desc: 'Desfase anómalo en servomotores EPS. Requiere conmutación a canal redundante.', powerWatts: 55, memoryMb: 96 }
 ];
 
-var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios, currentTime, userRole, onRoleRestricted }) {
+var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios, currentTime, userRole, onRoleRestricted, initialDeviceCode, onClose }) {
   var [viewSubtab, setViewSubtab] = (0, _.useState)('CUSTOM');
 
-  var [targetDeviceCode, setTargetDeviceCode] = (0, _.useState)('DEV_GPS_01');
+  var [targetDeviceCode, setTargetDeviceCode] = (0, _.useState)(initialDeviceCode || 'DEV_GPS_01');
+
+  (0, _.useEffect)(function() {
+    if (initialDeviceCode) {
+      handleDeviceChange(initialDeviceCode);
+    }
+  }, [initialDeviceCode]);
   var [selectedFailureType, setSelectedFailureType] = (0, _.useState)(CUSTOM_FAILURE_TYPES[0]);
   var [customFaultName, setCustomFaultName] = (0, _.useState)('Falla Crítica de Navegación GNSS');
   var [customDtc, setCustomDtc] = (0, _.useState)('U0100-87');
@@ -1371,7 +1426,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                 ]
               }, void 0, true)
             ]
-          }, void 0, true)
+          }, void 0, true),
+          onClose ? (0, E.jsxDEV)('button', {
+            onClick: onClose,
+            className: 'px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-500 border border-red-500/30 font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-sm',
+            children: [
+              (0, E.jsxDEV)('span', { children: '✕ Cerrar' }, void 0, false)
+            ]
+          }, void 0, true) : null
         ]
       }, void 0, true),
       !canInject ? (0, E.jsxDEV)('div', {
@@ -1720,10 +1782,16 @@ var PRESET_INCIDENT_SCENARIOS = [
   { id: 'scen_steer', name: 'Fallo Crítico Dirección By-Wire', dispositivo: 'DEV_ACT_STEER', dtc: 'C0040-04', burstTime: 4, category: 'control', color: '#e11d48', icon: _e, desc: 'Desfase anómalo en servomotores EPS. Requiere conmutación a canal redundante.', powerWatts: 55, memoryMb: 96 }
 ];
 
-var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios, currentTime, userRole, onRoleRestricted }) {
+var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios, currentTime, userRole, onRoleRestricted, initialDeviceCode, onClose }) {
   var [viewSubtab, setViewSubtab] = (0, _.useState)('CUSTOM');
 
-  var [targetDeviceCode, setTargetDeviceCode] = (0, _.useState)('DEV_GPS_01');
+  var [targetDeviceCode, setTargetDeviceCode] = (0, _.useState)(initialDeviceCode || 'DEV_GPS_01');
+
+  (0, _.useEffect)(function() {
+    if (initialDeviceCode) {
+      handleDeviceChange(initialDeviceCode);
+    }
+  }, [initialDeviceCode]);
   var [selectedFailureType, setSelectedFailureType] = (0, _.useState)(CUSTOM_FAILURE_TYPES[0]);
   var [customFaultName, setCustomFaultName] = (0, _.useState)('Falla Crítica de Navegación GNSS');
   var [customDtc, setCustomDtc] = (0, _.useState)('U0100-87');
@@ -1858,7 +1926,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                 ]
               }, void 0, true)
             ]
-          }, void 0, true)
+          }, void 0, true),
+          onClose ? (0, E.jsxDEV)('button', {
+            onClick: onClose,
+            className: 'px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-500 border border-red-500/30 font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-sm',
+            children: [
+              (0, E.jsxDEV)('span', { children: '✕ Cerrar' }, void 0, false)
+            ]
+          }, void 0, true) : null
         ]
       }, void 0, true),
       !canInject ? (0, E.jsxDEV)('div', {
@@ -2885,7 +2960,7 @@ function st() {
           }, void 0, true),
           (0, E.jsxDEV)('section', {
             children: (0, E.jsxDEV)(rt_hw, {
-              devices: devices, onResetDevice: handleResetDevice, onResetAllDevices: handleResetAllDevices, onTriggerQuickFault: handleTriggerQuickFault, userRole: userRole, onRoleRestricted: handleRoleRestricted
+              devices: devices, onResetDevice: handleResetDevice, onResetAllDevices: handleResetAllDevices, onTriggerQuickFault: handleTriggerQuickFault, userRole: userRole, onRoleRestricted: handleRoleRestricted, onInjectCriticalProcess: handleInjectCriticalProcess, currentTime: simState.currentTime
             }, void 0, false)
           }, void 0, false),
           (0, E.jsxDEV)('section', {

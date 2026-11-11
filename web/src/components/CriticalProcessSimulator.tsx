@@ -19,6 +19,7 @@ import {
   Sliders,
   Wrench,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { Process, UserRole, ProcessCategory, ProcessPriority } from '../types/scheduler';
 
@@ -35,6 +36,8 @@ interface CriticalProcessSimulatorProps {
   userRole: UserRole;
   onRoleRestricted: (action: string) => void;
   activeFaultDeviceCode?: string | null;
+  initialDeviceCode?: string | null;
+  onClose?: () => void;
 }
 
 export const AVAILABLE_DEVICES = [
@@ -164,12 +167,14 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
   currentTime,
   userRole,
   onRoleRestricted,
+  initialDeviceCode,
+  onClose,
 }) => {
   // Subtab navigation: 'CUSTOM' | 'PRESETS' | 'POWERTRAIN'
   const [viewSubtab, setViewSubtab] = useState<'CUSTOM' | 'PRESETS' | 'POWERTRAIN'>('CUSTOM');
 
   // Custom Failure Builder State
-  const [targetDeviceCode, setTargetDeviceCode] = useState<string>('DEV_GPS_01');
+  const [targetDeviceCode, setTargetDeviceCode] = useState<string>(initialDeviceCode || 'DEV_GPS_01');
   const [selectedFailureType, setSelectedFailureType] = useState<string>(FAILURE_TYPES[0]);
   const [customFaultName, setCustomFaultName] = useState<string>('Falla Crítica de Navegación GNSS');
   const [customDtc, setCustomDtc] = useState<string>('U0100-87');
@@ -209,6 +214,12 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
       }
     }
   };
+
+  React.useEffect(() => {
+    if (initialDeviceCode) {
+      handleDeviceChange(initialDeviceCode);
+    }
+  }, [initialDeviceCode]);
 
   // Inject from Custom Builder
   const handleInjectCustomFault = () => {
@@ -331,6 +342,16 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
             <span>Tren Motriz</span>
           </button>
         </div>
+
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-500 border border-red-500/30 font-mono text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+          >
+            <X className="w-4 h-4" />
+            <span>Cerrar</span>
+          </button>
+        )}
       </div>
 
       {!canInject && (
