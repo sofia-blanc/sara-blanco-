@@ -17,7 +17,7 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react';
-import { VehicleDevice, UserRole } from '../types/scheduler';
+import { VehicleDevice, UserRole, Process } from '../types/scheduler';
 import { CriticalProcessSimulator } from './CriticalProcessSimulator';
 
 
@@ -240,17 +240,26 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
       return;
     }
     onInjectCriticalProcess(
-      {
-        id: `proc-${Date.now()}`,
-        name: 'Calibración Simulada',
-        priority: 1,
-        state: 'ready',
-        // you can add other required Process fields here if needed
-      },
-      dev.code,
-      dev.activeDtc,
-      dev.failureMode
-    );
+        {
+          pid: Date.now(),
+          name: 'Calibración Simulada',
+          category: 'seguridad',
+          arrivalTime: simState?.currentTime ?? 0,
+          burstTime: 5,
+          remainingTime: 5,
+          priority: 1,
+          critical: true,
+          color: '#ff0000',
+          state: 'LISTO', // using ProcessState enum string
+          powerConsumptionWatts: 10,
+          cpuUsagePct: 10,
+          memoryMb: 50,
+          // waitingTime and turnaroundTime are omitted per prop definition
+        },
+        dev.code,
+        dev.activeDtc,
+        dev.failureMode
+      );
   }}
   className="mt-1 text-xs text-[var(--accent-primary)] underline"
 >
