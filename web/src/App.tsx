@@ -20,7 +20,7 @@ import { QueueVisualizer } from './components/QueueVisualizer';
 import { ProcessTable } from './components/ProcessTable';
 import { BatterySimulatorPanel } from './components/BatterySimulatorPanel';
 import { CriticalProcessSimulator } from './components/CriticalProcessSimulator';
-import { GPSSimulatorPanel } from './components/GPSSimulatorPanel';
+
 import { HardwareStatusGrid } from './components/HardwareStatusGrid';
 import { AlgorithmComparisonModal } from './components/AlgorithmComparisonModal';
 import { NewProcessModal } from './components/NewProcessModal';
@@ -1228,16 +1228,6 @@ export default function App() {
           />
         </section>
 
-        {/* Real-Time Dynamic GPS Navigation Simulator */}
-        <section>
-          <GPSSimulatorPanel
-            isDeviceFailed={isGpsFailed}
-            activeDtc={gpsActiveDtc}
-            userRole={userRole}
-            onRoleRestricted={handleRoleRestricted}
-            batteryLevel={battery.level}
-          />
-        </section>
 
         {/* Gantt Chart */}
         <section>
@@ -1290,14 +1280,7 @@ export default function App() {
               userRole={userRole}
               onRoleRestricted={handleRoleRestricted}
             />
-            <CriticalProcessSimulator
-              onInjectCriticalProcess={handleInjectCriticalProcess}
-              onResetDevice={handleResetDevice}
-              onResetAllScenarios={handleResetAllDevices}
-              currentTime={simState.currentTime}
-              userRole={userRole}
-              onRoleRestricted={handleRoleRestricted}
-            />
+
           </div>
         </section>
 
