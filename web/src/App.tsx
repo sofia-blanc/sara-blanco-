@@ -933,7 +933,13 @@ export default function App() {
               <span className="text-[11px] text-[var(--text-muted)] font-semibold">Usuario:</span>
               <select
                 value={userRole}
-                onChange={(e) => setUserRole(e.target.value as UserRole)}
+                onChange={(e) => {
+                const newR = e.target.value as UserRole;
+                setUserRole(newR);
+                if (newR === 'conductor' || newR === 'pasajero') {
+                  setActiveTab('COCKPIT');
+                }
+              }}
                 className="bg-transparent text-[var(--text-primary)] font-bold text-xs focus:outline-none cursor-pointer"
               >
                 <option value="mecanico" className="text-black dark:text-white dark:bg-[#180E24]">ðŸ”§ Carlos VÃ©lez (MecÃ¡nico / Admin)</option>
@@ -999,7 +1005,7 @@ export default function App() {
       )}
 
       {/* TAB 1: SCHEDULER & SIMULATORS */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' ? '' : 'hidden'}`}>
+      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' && userRole !== 'conductor' && userRole !== 'pasajero' ? '' : 'hidden'}`}>
         {/* Dynamic Global Vehicle Health HUD Banner */}
         <div className={`p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${
           failingDevices.length > 0
@@ -1316,7 +1322,7 @@ export default function App() {
       </main>
 
       {/* TAB 2: ORIGINAL FULL VEHICLE COCKPIT */}
-      <main className={`flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`}>
+      <main className={`flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' || userRole === 'conductor' || userRole === 'pasajero' ? '' : 'hidden'}`}>
         <div className="autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
           <span className="flex items-center gap-2">
             <Car className="w-4 h-4 text-[var(--accent-primary)]" />
