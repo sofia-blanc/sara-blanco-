@@ -20,6 +20,9 @@ import { QueueVisualizer } from './components/QueueVisualizer';
 import { ProcessTable } from './components/ProcessTable';
 import { BatterySimulatorPanel } from './components/BatterySimulatorPanel';
 import { CriticalProcessSimulator } from './components/CriticalProcessSimulator';
+import { SimulationCenter } from './components/SimulationCenter';
+import { initialScenarioState, applyScenarioAction, makeBattery, markFault, insertWorkload, applyWeather, simEvent, recoverFault } from './simulation/engine';
+import type { ScenarioId, SimulationAction, Weather } from './simulation/scenarios';
 
 import { HardwareStatusGrid } from './components/HardwareStatusGrid';
 import { AlgorithmComparisonModal } from './components/AlgorithmComparisonModal';
@@ -45,6 +48,7 @@ import {
   AlertTriangle,
   Zap,
   Navigation,
+  FlaskConical,
 } from 'lucide-react';
 
 const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
@@ -52,7 +56,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_01',
     code: 'DEV_GPS_01',
     name: 'Receptor GNSS / GPS Diferencial',
-    subsystem: 'NavegaciÃ³n',
+    subsystem: 'Navegación',
     status: 'operativo',
     health: 98,
     criticalLevel: 'esencial',
@@ -64,7 +68,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_02',
     code: 'DEV_CAM_FRONT',
     name: 'CÃ¡mara EstereoscÃ³pica ADAS Frontal',
-    subsystem: 'VisiÃ³n',
+    subsystem: 'Visión',
     status: 'operativo',
     health: 95,
     criticalLevel: 'critico',
@@ -100,7 +104,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_05',
     code: 'DEV_BATTERY_BMS',
     name: 'BMS BaterÃ­a LiFePO4 Alta TensiÃ³n',
-    subsystem: 'BaterÃ­a',
+    subsystem: 'Batería',
     status: 'operativo',
     health: 92,
     criticalLevel: 'critico',
@@ -112,7 +116,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_06',
     code: 'DEV_ACT_BRAKE',
     name: 'Actuador Frenado By-Wire AEB',
-    subsystem: 'Seguridad DinÃ¡mica',
+    subsystem: 'Seguridad Dinámica',
     status: 'operativo',
     health: 100,
     criticalLevel: 'critico',
@@ -124,7 +128,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_07',
     code: 'DEV_ACT_STEER',
     name: 'Actuador DirecciÃ³n ElÃ©ctrica EPS',
-    subsystem: 'Seguridad DinÃ¡mica',
+    subsystem: 'Seguridad Dinámica',
     status: 'operativo',
     health: 97,
     criticalLevel: 'critico',
@@ -136,7 +140,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
     id: 'dev_08',
     code: 'DEV_COM_V2X',
     name: 'MÃ³dulo TelemetrÃ­a 5G / V2X Cloud',
-    subsystem: 'ComunicaciÃ³n',
+    subsystem: 'Comunicación',
     status: 'operativo',
     health: 91,
     criticalLevel: 'esencial',
@@ -184,7 +188,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
 
 export default function App() {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'SCHEDULER' | 'COCKPIT'>('SCHEDULER');
+  const [activeTab, setActiveTab] = useState<'SCHEDULER' | 'COCKPIT' | 'SIMULATOR'>('SCHEDULER');
 
   // Navigation tabs: only 2 tabs as requested
   // Wrap the whole UI with SimulationProvider (added later)
@@ -286,21 +290,6 @@ export default function App() {
     }
   }, [userRole]);
 
-  // Sync scheduler metrics + device states to cockpit iframe on every sim tick
-  useEffect(() => {
-    try {
-      iframeRef.current?.contentWindow?.postMessage(
-        {
-          type: 'AUTOOS_SYNC_STATE',
-          metrics: calculateMetrics(simState),
-          battery,
-          devices,
-        },
-        '*'
-      );
-    } catch (_) {}
-  }, [simState.currentTime, battery, devices]);
-
   // Bidirectional listener from Cockpit iframe
   useEffect(() => {
     const handleIframeMessage = (e: MessageEvent) => {
@@ -376,6 +365,23 @@ export default function App() {
 
   // Metrics
   const metrics = calculateMetrics(simState);
+
+  // Sync scheduler metrics + device states to cockpit iframe on every sim tick
+  useEffect(() => {
+    try {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: 'AUTOOS_SYNC_STATE',
+          metrics: calculateMetrics(simState),
+          battery,
+          devices,
+        },
+        '*'
+      );
+    } catch (_) {}
+  }, [simState.currentTime, battery, devices]);
+
+
 
   // Reset simulation handler
   const handleReset = useCallback(
@@ -711,7 +717,7 @@ export default function App() {
     const procData: Omit<Process, 'waitingTime' | 'turnaroundTime'> = {
       pid: Math.floor(Math.random() * 800) + 200,
       name: `Falla Simulada en ${dev.name.split('/')[0]}`,
-      category: dev.subsystem === 'Seguridad DinÃ¡mica' ? 'seguridad' : dev.subsystem === 'Sensores' ? 'sensor' : 'control',
+      category: dev.subsystem === 'Seguridad Dinámica' ? 'seguridad' : dev.subsystem === 'Sensores' ? 'sensor' : 'control',
       arrivalTime: simState.currentTime,
       burstTime: 4,
       remainingTime: 4,
@@ -851,6 +857,72 @@ export default function App() {
     });
   };
 
+
+  // Centro de Simulación: estos controladores modifican el mismo estado que usa
+  // el scheduler, la matriz de dispositivos y el cockpit (no son datos de maqueta).
+  const handleSimulatorStart = useCallback((id: ScenarioId) => {
+    setIsPlaying(false);
+    const fresh = initialScenarioState(id, INITIAL_VEHICLE_DEVICES);
+    setAlgorithm('PRIORITY_PREEMPTIVE');
+    setQuantum(2);
+    setBaseProcesses(INITIAL_VEHICLE_PROCESSES.map((p) => ({ ...p, waitingTime: 0, turnaroundTime: 0 })));
+    setBattery(fresh.battery);
+    setDevices(fresh.devices);
+    setSimState(fresh.state);
+    try {
+      iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_RESET_ALL_FAULTS' }, '*');
+      const affected = fresh.devices.filter((d) => d.status !== 'operativo');
+      affected.forEach((d) => iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_HARDWARE_FAULT', deviceCode: d.code, dtc: d.activeDtc, name: d.failureMode }, '*'));
+    } catch (_) {}
+  }, []);
+
+  const handleSimulatorAction = useCallback((action: SimulationAction) => {
+    setSimState((prev) => applyScenarioAction(prev, action));
+    if (action === 'power_save') setBattery((prev) => makeBattery(prev.level, true));
+    if (action === 'restart_gps') setDevices((prev) => recoverFault(prev, 'DEV_GPS_01'));
+    if (action === 'restart_network') setDevices((prev) => recoverFault(prev, 'DEV_COM_V2X'));
+    if (action === 'isolate_camera') setDevices((prev) => prev.map((d) =>
+      d.code === 'DEV_CAM_FRONT' ? { ...d, status: 'desconectado' as const, health: 0, failureMode: 'Aislada por el operador' } : d));
+    if (action === 'sensor_backup') setDevices((prev) => prev.map((d) =>
+      (d.code === 'DEV_RADAR_01' || d.code === 'DEV_LIDAR_01') && d.status === 'operativo'
+        ? { ...d, health: 100 } : d));
+    if (action === 'prioritize' || action === 'sensor_backup') setAlgorithm('PRIORITY_PREEMPTIVE');
+    if (action === 'restart_gps' || action === 'restart_network') {
+      const code = action === 'restart_gps' ? 'DEV_GPS_01' : 'DEV_COM_V2X';
+      iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_RESET_DEVICE', deviceCode: code }, '*');
+    }
+  }, []);
+
+  const handleSimulatorDriveTick = useCallback((velocity: number, weather: Weather) => {
+    setSimState((prev) => prev.isFinished ? prev : stepSimulationTick(prev, battery.isLowBatteryMode));
+    setBattery((prev) => {
+      const climate = weather === 'soleado' ? 1 : weather === 'lluvia' ? 1.25 : 1.18;
+      const drain = (0.004 + velocity * velocity / 180000) * climate * (prev.isLowBatteryMode ? 0.7 : 1);
+      const next = makeBattery(Math.max(0, prev.level - drain), prev.isLowBatteryMode);
+      return { ...next, temperature: prev.temperature };
+    });
+  }, [battery.isLowBatteryMode]);
+
+  const handleSimulatorBattery = useCallback((level: number) => {
+    setBattery(makeBattery(level, level <= 10));
+    setSimState((prev) => simEvent(prev, `Batería configurada a ${level}% desde laboratorio libre.`, level <= 20 ? 'warning' : 'info'));
+  }, []);
+
+  const handleSimulatorFault = useCallback((deviceCode: string) => {
+    setDevices((prev) => markFault(prev, deviceCode));
+    setSimState((prev) => insertWorkload(simEvent(prev, `Falla OBD simulada en dispositivo ${deviceCode}`, 'critical'), 'diagnostic'));
+    iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_HARDWARE_FAULT', deviceCode, dtc: 'SIM-FAULT-01', name: 'Falla de laboratorio' }, '*');
+  }, []);
+
+  const handleSimulatorStress = useCallback(() => {
+    setSimState((prev) => insertWorkload(prev, 'cpu'));
+  }, []);
+
+  const handleSimulatorWeather = useCallback((weather: Weather) => {
+    setDevices((prev) => applyWeather(prev, weather));
+    setSimState((prev) => simEvent(prev, `Clima de simulación actualizado: ${weather}. Se recalcula el estado de percepción de sensores.`, weather === 'soleado' ? 'success' : 'warning'));
+  }, []);
+
   const suspendedProcesses = simState.processes.filter((p) => p.state === 'SUSPENDIDO');
 
   // Hardware health calculations for top banner
@@ -912,6 +984,17 @@ export default function App() {
                 <span>Planificador &amp; Simuladores</span>
               </button>
             )}
+            <button
+              onClick={() => setActiveTab('SIMULATOR')}
+              className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
+                activeTab === 'SIMULATOR'
+                  ? 'bg-[var(--accent-primary)] text-white shadow-sm'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              <FlaskConical className="w-4 h-4" />
+              <span>Centro de Simulación</span>
+            </button>
             <button
               onClick={() => setActiveTab('COCKPIT')}
               className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
@@ -1353,6 +1436,23 @@ export default function App() {
           title="AutoOS Cockpit Completo"
           className="w-full flex-1 border-none"
           style={{ height: 'calc(100vh - 120px)' }}
+        />
+      </main>
+
+      {/* TAB 3: INTERACTIVE SCENARIO SIMULATION CENTER */}
+      <main className={`flex-1 w-full ${activeTab === 'SIMULATOR' ? '' : 'hidden'}`}>
+        <SimulationCenter
+          battery={battery}
+          devices={devices}
+          state={simState}
+          userRole={userRole}
+          onStart={handleSimulatorStart}
+          onAction={handleSimulatorAction}
+          onDriveTick={handleSimulatorDriveTick}
+          onBattery={handleSimulatorBattery}
+          onFault={handleSimulatorFault}
+          onCpuStress={handleSimulatorStress}
+          onWeather={handleSimulatorWeather}
         />
       </main>
 
