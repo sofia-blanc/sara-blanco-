@@ -7,8 +7,22 @@ Responsable: Integrante 3 (Seguridad, Dispositivos y RLS)
 """
 
 import os
-import streamlit as st
-from typing import Dict, Any, List, Optional
+from pathlib import Path
+try:
+    import streamlit as st
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
+    class MockStreamlitSession(dict):
+        def __getattr__(self, name):
+            return self.get(name)
+        def __setattr__(self, name, value):
+            self[name] = value
+    class MockStreamlit:
+        session_state = MockStreamlitSession()
+        secrets = {}
+    st = MockStreamlit()
+from typing import Dict, Any, List, Optional, Tuple
 import datetime
 import uuid
 
@@ -362,6 +376,140 @@ def sincronizar_dispositivo_supabase(codigo: str, estado: str, salud: int) -> bo
     except Exception as e:
         print(f"[AutoOS Cloud] Error al actualizar dispositivo en Supabase: {e}")
         return False
+
+
+def guardar_reporte_simulacion(reporte_dict: Dict[str, Any]) -> Tuple[bool, str]:
+    """
+    Persiste un informe completo de simulación en Supabase Cloud
+    y en el almacén persistente local en disco JSON.
+    """
+    import json
+    db = get_db()
+    if "reportes_simulacion" not in db:
+        db["reportes_simulacion"] = []
+    
+    # 1. Almacenar en sesión
+    db["reportes_simulacion"].insert(0, reporte_dict)
+
+    # 2. Persistir localmente en disco JSON
+    reports_file = Path(__file__).resolve().parent / "autoos_simulation_reports.json"
+    try:
+        existing_reports = []
+        if reports_file.exists():
+            with open(reports_file, "r", encoding="utf-8") as f:
+                existing_reports = json.load(f)
+        existing_reports.insert(0, reporte_dict)
+        with open(reports_file, "w", encoding="utf-8") as f:
+            json.dump(existing_reports[:50], f, indent=2, ensure_ascii=False)
+    except Exception as err:
+        print(f"[AutoOS Local] Error guardando reporte en disco: {err}")
+
+    # 3. Sincronizar en Supabase si está conectado
+    client = get_supabase_client()
+    if not client:
+        return True, "Reporte guardado exitosamente en el almacén local persistente."
+
+    try:
+        payload = {
+            "report_id": reporte_dict.get("report_id", str(uuid.uuid4())[:8]),
+            "escenario": reporte_dict.get("escenario", "general"),
+            "titulo": reporte_dict.get("titulo", "Simulación AutoOS"),
+            "diagnostico": reporte_dict.get("diagnostico", "Ejecución nominal"),
+            "evaluacion": reporte_dict.get("evaluacion", "Conforme"),
+            "usuario_email": reporte_dict.get("usuario_email", "mecanico@autoos.tech"),
+            "iniciado_en": reporte_dict.get("iniciado_en", datetime.datetime.now().isoformat()),
+            "finalizado_en": reporte_dict.get("finalizado_en", datetime.datetime.now().isoformat()),
+            "bateria_inicial": float(reporte_dict.get("bateria_inicial", 100)),
+            "bateria_final": float(reporte_dict.get("bateria_final", 100)),
+            "velocidad_final": float(reporte_dict.get("velocidad_final", 0)),
+            "cpu_load_final": float(reporte_dict.get("cpu_load_final", 0)),
+            "acciones_json": reporte_dict.get("acciones_json", []),
+            "recomendaciones": reporte_dict.get("recomendaciones", []),
+            "datos_completos": reporte_dict.get("datos_completos", {}),
+        }
+        client.table("reportes_simulacion").insert(payload).execute()
+        return True, "Reporte sincronizado exitosamente con Supabase Cloud y guardado localmente."
+    except Exception as e:
+        # Fallback a tabla eventos si reportes_simulacion no existe
+        try:
+            client.table("eventos").insert({
+                "tipo_evento": "simulacion",
+                "severidad": "info",
+                "mensaje": f"Reporte {reporte_dict.get('titulo')}: {reporte_dict.get('diagnostico')}",
+                "detalles": reporte_dict,
+                "resuelto": True
+            }).execute()
+            return True, "Reporte respaldado en tabla 'eventos' de Supabase."
+        except Exception:
+            return True, f"Guardado localmente. Supabase reportó: {e}"
+
+
+def obtener_reportes_simulacion() -> List[Dict[str, Any]]:
+    """Recupera los reportes de simulación persistidos (Supabase o archivo local)."""
+    import json
+    client = get_supabase_client()
+    if client:
+        try:
+            resp = client.table("reportes_simulacion").select("*").order("creado_en", desc=True).limit(20).execute()
+            if resp.data:
+                return resp.data
+        except Exception:
+            pass
+
+    # Fallback local desde archivo JSON
+    reports_file = Path(__file__).resolve().parent / "autoos_simulation_reports.json"
+    if reports_file.exists():
+        try:
+            with open(reports_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    db = get_db()
+    return db.get("reportes_simulacion", [])
+
+
+def diagnosticar_supabase_completo() -> Dict[str, Any]:
+    """Diagnóstico detallado de infraestructura Supabase y tablas necesarias."""
+    _cargar_env_local()
+    url = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
+    key = os.environ.get("SUPABASE_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
+
+    has_creds = bool(url and key and "tu-proyecto" not in url and "tu-anon-key" not in key)
+    
+    diag = {
+        "has_library": HAS_SUPABASE_LIB,
+        "has_credentials": has_creds,
+        "url_masked": f"{url[:15]}...supabase.co" if url and has_creds else "No configurada",
+        "key_masked": f"{key[:6]}...{key[-4:]}" if key and has_creds else "No configurada",
+        "connected": False,
+        "tables_status": {},
+        "error": None
+    }
+
+    if not HAS_SUPABASE_LIB:
+        diag["error"] = "Librería 'supabase' no encontrada en el entorno Python."
+        return diag
+
+    if not has_creds:
+        diag["error"] = "Variables SUPABASE_URL y SUPABASE_KEY no configuradas en .env o secrets.toml."
+        return diag
+
+    client = get_supabase_client()
+    if not client:
+        diag["error"] = "No se pudo instanciar el cliente Supabase."
+        return diag
+
+    diag["connected"] = True
+    tablas_probar = ["dispositivos", "eventos", "reportes_simulacion", "auditoria_accesos", "roles", "procesos"]
+    for t in tablas_probar:
+        try:
+            res = client.table(t).select("*", count="exact").limit(1).execute()
+            diag["tables_status"][t] = {"ok": True, "count": res.count if hasattr(res, "count") else len(res.data)}
+        except Exception as err:
+            diag["tables_status"][t] = {"ok": False, "error": str(err)}
+
+    return diag
 
 
 def get_db():

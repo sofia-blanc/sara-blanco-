@@ -12,11 +12,11 @@ Implementa:
 - Registro de auditoría de intentos autorizados y bloqueados (403 Forbidden)
 """
 
-import streamlit as st
 import datetime
 import uuid
 from typing import Dict, Any, Tuple, List, Optional
 from config import (
+    st,
     get_db,
     get_supabase_client,
     sincronizar_evento_supabase,

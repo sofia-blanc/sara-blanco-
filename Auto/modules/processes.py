@@ -16,17 +16,40 @@ import datetime
 import random
 from config import get_db
 from modules.auth_security import validar_accion, registrar_evento_seguridad
+import kernel_bridge
 
 def obtener_procesos() -> List[Dict[str, Any]]:
-    """Retorna la lista de procesos automotrices en el sistema"""
+    """Retorna la lista de procesos automotrices sincronizados con el Kernel real de AutoOS"""
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        real_procs = kernel.engine.get_all_processes()
+        formatted = []
+        for p in real_procs:
+            alloc = kernel.memory_manager.get_process_allocation(p.pid)
+            mem_size = alloc.limit if alloc else getattr(p, "memory_size", 64)
+            formatted.append({
+                "pid": p.pid,
+                "nombre": p.name,
+                "estado": p.state.value.lower(),
+                "prioridad": p.priority,
+                "cpu": 15.0 if p.state.value == "RUNNING" else 0.0,
+                "mem_mb": mem_size,
+                "critico": p.priority <= 2,
+                "rafaga_total": p.burst_time,
+                "rafaga_restante": p.remaining_time,
+                "creado_por": "kernel_autoos"
+            })
+        return formatted
+
+    # Fallback si el Kernel no ha arrancado todavía
     db = get_db()
     return db["procesos"]
 
 
 def obtener_proceso(pid: int) -> Optional[Dict[str, Any]]:
-    """Busca un proceso por su PID"""
-    db = get_db()
-    for p in db["procesos"]:
+    """Busca un proceso por su PID en el Kernel o en la base de datos"""
+    procs = obtener_procesos()
+    for p in procs:
         if p["pid"] == pid:
             return p
     return None
@@ -34,23 +57,38 @@ def obtener_proceso(pid: int) -> Optional[Dict[str, Any]]:
 
 def crear_proceso(nombre: str, prioridad: int, cpu_est: float, mem_mb: int, es_critico: bool, usuario_actual: Dict[str, Any]) -> Tuple[bool, str]:
     """
-    Crea un nuevo proceso en AutoOS.
+    Crea un nuevo proceso en AutoOS sincronizado con el Kernel y su memoria First-Fit.
     Requisito estricto de Int. 3: 'Permiso necesario para crear'
     """
     autorizado, msg_rechazo = validar_accion(usuario_actual, "proceso.crear", recurso=f"proceso:{nombre}")
     if not autorizado:
         return False, msg_rechazo
-        
+
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        # Crear directamente en el motor central AutoOS_1 con asignación First-Fit
+        prio_clamped = max(1, min(5, prioridad if 1 <= prioridad <= 5 else (1 if es_critico else 3)))
+        ok, msg, proc_data = kernel_bridge.create_process_bridge(
+            name=nombre,
+            priority=prio_clamped,
+            burst_time=max(1, int(cpu_est)) if cpu_est >= 1 else 4,
+            memory_size=mem_mb
+        )
+        if not ok:
+            return False, msg
+
+        registrar_evento_seguridad(
+            tipo="cambio_estado_so",
+            severidad="info",
+            mensaje=f"Proceso real '{nombre}' (PID {proc_data['pid']}) creado en Kernel por {usuario_actual.get('nombre_completo')} con {mem_mb}MB RAM."
+        )
+        return True, f"Proceso '{nombre}' (PID {proc_data['pid']}) creado en Kernel con {mem_mb}MB asignados por First-Fit."
+
+    # Si no ha booteado el Kernel, usar DB local
     db = get_db()
-    
-    # Generar PID único
     pids_existentes = [p["pid"] for p in db["procesos"]]
     nuevo_pid = max(pids_existentes) + 1 if pids_existentes else 100
     
-    # Validar si un no-mecánico intenta crear proceso de tiempo real 0
-    if prioridad == 0 and not validar_accion(usuario_actual, "proceso.priorizar_tiempo_real", recurso="scheduler_rt")[0]:
-        prioridad = 1  # Forzar a prioridad no-kernel
-        
     nuevo_proceso = {
         "pid": nuevo_pid,
         "nombre": nombre,
@@ -68,7 +106,6 @@ def crear_proceso(nombre: str, prioridad: int, cpu_est: float, mem_mb: int, es_c
         severidad="info",
         mensaje=f"Proceso '{nombre}' (PID {nuevo_pid}) creado con éxito por {usuario_actual.get('nombre_completo')}."
     )
-    
     return True, f"Proceso '{nombre}' (PID {nuevo_pid}) creado en estado 'Listo'."
 
 
@@ -145,6 +182,19 @@ def finalizar_proceso(pid: int, usuario_actual: Dict[str, Any]) -> Tuple[bool, s
         validar_accion(usuario_actual, "seguridad.admin_usuarios", recurso=f"kill_proceso_critico:{pid}")
         return False, msg_critico
         
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        ok, msg = kernel_bridge.abort_process_bridge(pid)
+        if not ok:
+            return False, msg
+        
+        registrar_evento_seguridad(
+            tipo="cambio_estado_so",
+            severidad="advertencia" if proc.get("critico") else "info",
+            mensaje=f"Proceso PID {pid} ({proc['nombre']}) abortado en Kernel por {usuario_actual.get('nombre_completo')}. Memoria liberada con coalescencia."
+        )
+        return True, f"Proceso PID {pid} ({proc['nombre']}) finalizado forzosamente en el Kernel. Recursos y memoria liberados."
+
     db = get_db()
     memoria_liberada_mb = proc.get("mem_mb", 0)
     

@@ -13,12 +13,27 @@ Implementa los requisitos asignados a Int. 2 en la matriz:
 from typing import Dict, Any, List
 import datetime
 from config import get_db
+import kernel_bridge
 
 MEMORIA_TOTAL_MB = 16384  # 16 GB de RAM simulada
 ALMACENAMIENTO_TOTAL_GB = 512  # SSD automotriz de 512 GB
 
 def obtener_uso_memoria() -> Dict[str, Any]:
-    """Retorna métricas de memoria RAM del vehículo inteligente"""
+    """Retorna métricas de memoria RAM del vehículo inteligente sincronizadas con el Kernel"""
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        mm = kernel.memory_manager
+        return {
+            "total_mb": mm.total_memory,
+            "usado_mb": mm.used_memory,
+            "libre_mb": mm.free_memory,
+            "kernel_mb": sum(b.limit for b in mm._blocks if b.pid is None and not b.is_free),
+            "procesos_mb": sum(b.limit for b in mm._blocks if b.pid is not None and not b.is_free),
+            "pct_usado": mm.usage_percentage,
+            "mapa": mm.get_memory_map(),
+            "fragmentacion_pct": mm.fragmentation_percentage,
+        }
+
     db = get_db()
     procesos = db["procesos"]
     
@@ -39,7 +54,26 @@ def obtener_uso_memoria() -> Dict[str, Any]:
 
 
 def obtener_sistema_archivos() -> List[Dict[str, Any]]:
-    """Estructura de archivos y directorios del vehículo inteligente"""
+    """Estructura de archivos y directorios del vehículo inteligente extraída del VFS real"""
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        vfs_items = []
+        for folder, files in kernel.file_system.structure.items():
+            for fname, meta in files.items():
+                vfs_items.append({
+                    "ruta": f"/{folder}/{fname}",
+                    "carpeta": f"/{folder}",
+                    "nombre": fname,
+                    "tipo": "Configuración" if "config" in folder else "Log" if "log" in folder else "Sistema",
+                    "tamano_kb": meta.get("size", 1) * 1024,
+                    "tamano_mb": meta.get("size", 1),
+                    "permisos": meta.get("permissions", "0644"),
+                    "descripcion": meta.get("content", "")[:60] or "(Sin contenido)",
+                    "actualizado_en": meta.get("updated_at", ""),
+                })
+        if vfs_items:
+            return vfs_items
+
     return [
         {"ruta": "/config/vehicle_params.json", "carpeta": "/config", "tipo": "Configuración", "tamano_kb": 12, "permisos": "0600 (Mecánico)", "descripcion": "Constantes de calibración de dirección, frenado y torque"},
         {"ruta": "/config/adas_network_weights.bin", "carpeta": "/config", "tipo": "Modelo IA", "tamano_kb": 184000, "permisos": "0444 (Lectura)", "descripcion": "Pesos de la red neuronal convolucional de visión artificial"},
@@ -51,7 +85,20 @@ def obtener_sistema_archivos() -> List[Dict[str, Any]]:
 
 
 def obtener_logs_sistema(limite: int = 20) -> List[Dict[str, Any]]:
-    """Genera y retorna trazas de log del sistema operativo vehicular"""
+    """Genera y retorna trazas de log del sistema operativo vehicular desde el EventLogger real"""
+    kernel = kernel_bridge.get_kernel()
+    if kernel and kernel.is_booted:
+        real_events = kernel.logger.get_events()
+        formatted = []
+        for ev in reversed(real_events[-limite:]):
+            formatted.append({
+                "hora": ev.timestamp[-8:],
+                "nivel": "WARN" if "ALERT" in ev.event_type or "FAILED" in ev.event_type else "INFO",
+                "modulo": ev.event_type,
+                "mensaje": ev.description,
+            })
+        return formatted
+
     db = get_db()
     logs = [
         {"hora": "23:00:01", "nivel": "INFO", "modulo": "KERNEL", "mensaje": "Inicializando capas de seguridad vehicular AutoOS v2.4."},
