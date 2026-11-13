@@ -139,11 +139,13 @@ class Terminal:
         eng = snap["simulation"]
         mem = snap["memory_physical"]
         vmem = snap["memory_virtual"]
+        cpu_desc = "LIBRE" if eng["cpu"]["is_idle"] else f"OCUPADA (PID={eng['cpu']['current_process']['pid']})"
+        boot_desc = "OPERACIONAL" if snap["is_booted"] else "NO INICIALIZADO"
         lines = [
             "=== ESTADO DEL KERNEL AUTOOS ===",
-            f"  Estado de Arranque: {'OPERACIONAL' if snap['is_booted'] else 'NO INICIALIZADO'}",
+            f"  Estado de Arranque: {boot_desc}",
             f"  Ciclo de Reloj (Tick): {snap['tick']}",
-            f"  CPU: {'LIBRE' if eng['cpu']['is_idle'] else f'OCUPADA (PID={eng['cpu']['current_process']['pid']})'}",
+            f"  CPU: {cpu_desc}",
             f"  Procesos Totales: {eng['total_registered_processes']}",
             f"  Memoria RAM: {mem['used_memory']} MB usados / {mem['total_memory']} MB totales",
             f"  Memoria SWAP: {vmem['used_swap']} MB usados / {vmem['swap_size']} MB totales",

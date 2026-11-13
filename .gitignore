@@ -42,3 +42,7 @@ Thumbs.db
 
 # Build artifacts / Tools temporaries
 tools/orig_bundle.js
+
+# AutoOS runtime data
+Auto/autoos_simulation_reports.json
+Auto/autoos_vfs_storage.json

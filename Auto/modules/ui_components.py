@@ -27,10 +27,21 @@ Paleta Modo Oscuro (Purple Night):
 ====================================================================
 """
 
-import streamlit as st
-import streamlit.components.v1 as components
-import plotly.graph_objects as go
-import plotly.express as px
+try:
+    import streamlit as st
+    import streamlit.components.v1 as components
+except ImportError:
+    from config import st
+    components = None
+
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    HAS_PLOTLY = True
+except ImportError:
+    go = None
+    px = None
+    HAS_PLOTLY = False
 from typing import Dict, Any
 
 
