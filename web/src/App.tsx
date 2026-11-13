@@ -864,7 +864,7 @@ export default function App() {
   const gpsActiveDtc = gpsDevice?.activeDtc;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)]">
+    <div className={`flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)] ${activeTab === 'COCKPIT' ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       {/* Top Header with Universal Theme Switcher & RBAC Role Selector */}
       <header className="sticky top-0 z-40 autoos-surface border-b px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
@@ -1346,7 +1346,7 @@ export default function App() {
           srcDoc={cockpitHtml || undefined}
           title="AutoOS Cockpit Completo"
           className="w-full flex-1 border-none"
-          style={{ minHeight: 'calc(100vh - 120px)' }}
+          style={{ height: 'calc(100vh - 120px)' }}
         />
       </main>
 

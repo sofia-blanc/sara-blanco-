@@ -2713,7 +2713,7 @@ function st() {
   var gpsActiveDtc = gpsDevice && gpsDevice.activeDtc;
 
   return (0, E.jsxDEV)('div', {
-    className: 'min-h-screen flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)]',
+    className: `flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)] ${activeTab === 'COCKPIT' ? 'h-screen overflow-hidden' : 'min-h-screen'}`,
     children: [
       (0, E.jsxDEV)('header', {
         className: 'sticky top-0 z-40 autoos-surface border-b px-4 lg:px-8 py-3',
@@ -3064,7 +3064,7 @@ function st() {
             srcDoc: cockpitHtml || void 0,
             title: 'AutoOS Cockpit Completo',
             className: 'w-full flex-1 border-none',
-            style: { minHeight: 'calc(100vh - 120px)' }
+            style: { height: 'calc(100vh - 120px)' }
           }, void 0, false)
         ]
       }, void 0, true),
