@@ -3064,11 +3064,11 @@ function st() {
             srcDoc: cockpitHtml || void 0,
             title: 'AutoOS Cockpit Completo',
             className: 'w-full flex-1 border-none',
-            style: { minHeight: 'calc(100vh - 120px)' }
+            style: { height: 'calc(100vh - 110px)', minHeight: '750px' }
           }, void 0, false)
         ]
       }, void 0, true),
-      (0, E.jsxDEV)('footer', {
+      (activeTab === 'COCKPIT' || userRole === 'conductor' || userRole === 'pasajero') ? null : (0, E.jsxDEV)('footer', {
         className: 'autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono',
         children: (0, E.jsxDEV)('div', {
           className: 'max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2',

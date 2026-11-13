@@ -1435,7 +1435,7 @@ export default function App() {
           srcDoc={cockpitHtml || undefined}
           title="AutoOS Cockpit Completo"
           className="w-full flex-1 border-none"
-          style={{ minHeight: 'calc(100vh - 120px)' }}
+          style={{ height: 'calc(100vh - 110px)', minHeight: '750px' }}
         />
       </main>
 
@@ -1457,6 +1457,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
+      {activeTab !== 'COCKPIT' && userRole !== 'conductor' && userRole !== 'pasajero' && (
       <footer className="autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <span>AutoOS â€” Sistema Operativo Vehicular</span>
@@ -1468,6 +1469,7 @@ export default function App() {
           </span>
         </div>
       </footer>
+      )}
 
       {/* Modals */}
       <AlgorithmComparisonModal
