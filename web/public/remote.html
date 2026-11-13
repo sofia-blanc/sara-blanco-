@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>AutoOS — Mando Remoto</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0c1a;color:#f0edf8;min-height:100dvh;display:flex;flex-direction:column;}
+    header{background:#1a1030;border-bottom:1px solid #2d1f4e;padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10;}
+    .logo{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#1db954);display:flex;align-items:center;justify-content:center;font-size:18px;}
+    h1{font-size:17px;font-weight:700;}
+    .sub{font-size:11px;color:#8d7aa8;}
+    main{flex:1;padding:16px;max-width:480px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:14px;}
+
+    /* Connect card */
+    .card{background:#1a1030;border:1px solid #2d1f4e;border-radius:16px;padding:18px;}
+    .card h2{font-size:13px;font-weight:700;margin-bottom:12px;color:#c4b5fd;text-transform:uppercase;letter-spacing:.06em;}
+    .input-row{display:flex;gap:8px;margin-bottom:10px;}
+    input[type=text]{flex:1;background:#0f0c1a;border:1px solid #2d1f4e;border-radius:10px;padding:10px 14px;color:#f0edf8;font-size:14px;outline:none;transition:.2s;}
+    input[type=text]:focus{border-color:#7c3aed;}
+    .btn{padding:10px 18px;border-radius:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;white-space:nowrap;}
+    .btn-purple{background:#7c3aed;color:#fff;}
+    .btn-purple:hover{background:#6d28d9;}
+    .btn-purple:disabled{background:#3b2063;color:#8d7aa8;cursor:not-allowed;}
+    .btn-green{background:#1db954;color:#fff;}
+    .btn-green:hover{background:#1aa34a;}
+    .btn-outline{background:transparent;border:1px solid #2d1f4e;color:#f0edf8;}
+    .btn-outline:hover{border-color:#7c3aed;background:#1a1030;}
+    .btn-sm{padding:8px 14px;font-size:12px;}
+
+    /* Status */
+    .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;}
+    .s-waiting{background:#2d1f4e;color:#8d7aa8;}
+    .s-connecting{background:#3b2063;color:#c4b5fd;}
+    .s-connected{background:#052e16;color:#34d399;}
+    .dot{width:8px;height:8px;border-radius:50%;}
+    .dot-gray{background:#8d7aa8;}
+    .dot-pulse{background:#34d399;animation:pulse 1.5s infinite;}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* Now playing */
+    .np{background:#0f2318;border:1px solid #1db954/30;border-color:rgba(29,185,84,.25);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+    .np-icon{width:40px;height:40px;border-radius:10px;background:#1db954;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+    .np-title{font-size:14px;font-weight:700;}
+    .np-desc{font-size:11px;color:#6ee7b7;margin-top:2px;}
+
+    /* Controls */
+    .controls{display:flex;gap:10px;justify-content:center;}
+    .ctrl-btn{width:52px;height:52px;border-radius:50%;border:1.5px solid #2d1f4e;background:#1a1030;color:#f0edf8;font-size:20px;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;}
+    .ctrl-btn:active{background:#2d1f4e;transform:scale(.93);}
+    .ctrl-btn-main{width:62px;height:62px;background:#1db954;border-color:#1db954;font-size:24px;}
+    .ctrl-btn-main:active{background:#1aa34a;}
+
+    /* Playlists */
+    .pl-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100dvh - 460px);overflow-y:auto;padding-right:4px;}
+    .pl-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid #2d1f4e;background:#1a1030;cursor:pointer;transition:.2s;}
+    .pl-item:hover,.pl-item:active{border-color:#1db954;background:#0f2318;}
+    .pl-item.active{border-color:#1db954;background:#0f2318;}
+    .pl-title{font-size:13px;font-weight:700;}
+    .pl-desc{font-size:11px;color:#8d7aa8;margin-top:2px;}
+    .badge-active{background:#1db954;color:#fff;font-size:10px;font-weight:800;padding:4px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
+    .badge-load{background:transparent;border:1px solid #2d1f4e;color:#c4b5fd;font-size:10px;font-weight:700;padding:4px 8px;border-radius:6px;text-transform:uppercase;flex-shrink:0;}
+
+    /* Toast */
+    .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1db954;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:.3s;pointer-events:none;z-index:999;}
+    .toast.show{opacity:1;}
+
+    /* Scroll style */
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:#2d1f4e;border-radius:999px;}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">🎵</div>
+  <div>
+    <h1>AutoOS Mando</h1>
+    <div class="sub">Control remoto de Spotify</div>
+  </div>
+  <div id="statusPill" class="status-pill s-waiting" style="margin-left:auto;">
+    <div class="dot dot-gray"></div>
+    <span>Sin conectar</span>
+  </div>
+</header>
+
+<main>
+  <!-- Connect card -->
+  <div class="card" id="connectCard">
+    <h2>Conectar al Vehículo</h2>
+    <div class="input-row">
+      <input type="text" id="roomInput" placeholder="Código de sala (ej: AUTOOS-X7K2)" maxlength="20"/>
+      <button class="btn btn-purple" id="connectBtn" onclick="doConnect()">Conectar</button>
+    </div>
+    <p style="font-size:11px;color:#8d7aa8;line-height:1.5;">
+      Escanea el QR en el panel del vehículo para conectarte automáticamente,<br>
+      o ingresa el código de sala manualmente.
+    </p>
+  </div>
+
+  <!-- Now playing -->
+  <div class="card" id="nowPlayingCard" style="display:none;">
+    <h2>Reproduciendo ahora</h2>
+    <div class="np">
+      <div class="np-icon" id="npIcon">🎵</div>
+      <div>
+        <div class="np-title" id="npTitle">—</div>
+        <div class="np-desc" id="npDesc">Conecta una playlist para empezar</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls" style="margin-top:14px;">
+      <button class="ctrl-btn" onclick="sendCmd('prev')" title="Anterior">⏮</button>
+      <button class="ctrl-btn ctrl-btn-main" id="playBtn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" onclick="sendCmd('next')" title="Siguiente">⏭</button>
+    </div>
+
+    <!-- Volume -->
+    <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
+      <span style="font-size:16px;">🔈</span>
+      <input type="range" id="volSlider" min="0" max="100" value="78"
+        style="flex:1;accent-color:#1db954;cursor:pointer;"
+        oninput="sendCmd('volume', this.value)"/>
+      <span style="font-size:12px;width:30px;text-align:right;" id="volLabel">78%</span>
+    </div>
+  </div>
+
+  <!-- Playlists -->
+  <div class="card" id="playlistCard" style="display:none;">
+    <h2>Playlists de Conducción</h2>
+    <div class="pl-list" id="plList"></div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PLAYLISTS = [
+  {id:"playlist/37i9dQZF1DXcBWIGoYBM5M", title:"Today's Top Hits", desc:"Spotify Editorial • Carretera / Pop", icon:"🏆"},
+  {id:"playlist/37i9dQZF1DWWQRwui0ExPn", title:"Night Rider — Lo-Fi & Synth", desc:"Conducción Nocturna • Nocturno / Focus", icon:"🌙"},
+  {id:"playlist/37i9dQZF1DX10zKzsJ2jva", title:"Viva Latino Mix", desc:"Spotify Hits Latinos • Urbano / Energía", icon:"💃"},
+  {id:"playlist/37i9dQZF1DX6xOPeSOGone", title:"Rock Classics Roadtrip", desc:"Autopista FM • Autopista / Rock", icon:"🎸"},
+  {id:"track/0VjIjW4GlUZAMYd2vXMi3b",   title:"Blinding Lights", desc:"The Weeknd • Synthpop Conducción", icon:"✨"},
+  {id:"playlist/37i9dQZF1DXdPec7aLTmlC", title:"Driving Hits Essentials", desc:"AutoOS Master • Ritmo de Viaje", icon:"🚗"},
+];
+
+let peer = null, conn = null, playing = true, currentUri = "";
+
+// ─── Auto-fill from URL param ─────────────────
+const params = new URLSearchParams(location.search);
+const roomParam = params.get('room') || params.get('r') || '';
+if (roomParam) {
+  document.getElementById('roomInput').value = roomParam;
+  // Auto-connect after a short delay
+  setTimeout(doConnect, 600);
+}
+
+function doConnect() {
+  const room = document.getElementById('roomInput').value.trim().toUpperCase();
+  if (!room) { showToast('⚠️ Ingresa el código de sala'); return; }
+  document.getElementById('connectBtn').disabled = true;
+  document.getElementById('connectBtn').textContent = 'Conectando...';
+  setStatus('connecting', 'Conectando...');
+
+  // Create a unique peer ID for this mobile client
+  const clientId = 'remote-' + Math.random().toString(36).substr(2, 6);
+  peer = new Peer(clientId, {
+    host: '0.peerjs.com', port: 443, path: '/', secure: true,
+    config: {iceServers: [{urls:'stun:stun.l.google.com:19302'}]}
+  });
+
+  peer.on('open', () => {
+    conn = peer.connect(room, {reliable: true});
+    conn.on('open', () => {
+      setStatus('connected', 'Conectado ✓');
+      showConnected();
+      showToast('🎵 Conectado al vehículo');
+      // Ask for current state
+      conn.send({type: 'hello'});
+    });
+    conn.on('data', handleData);
+    conn.on('close', () => {
+      setStatus('waiting', 'Desconectado');
+      showToast('⚠️ Conexión perdida');
+      hideConnected();
+    });
+    conn.on('error', e => {
+      setStatus('waiting', 'Error');
+      showToast('❌ Error: ' + e.message);
+      document.getElementById('connectBtn').disabled = false;
+      document.getElementById('connectBtn').textContent = 'Conectar';
+    });
+  });
+
+  peer.on('error', e => {
+    setStatus('waiting', 'Sin conectar');
+    document.getElementById('connectBtn').disabled = false;
+    document.getElementById('connectBtn').textContent = 'Conectar';
+    if (e.type === 'peer-unavailable') {
+      showToast('❌ Vehículo no disponible. Verifica el código.');
+    } else {
+      showToast('❌ ' + (e.message || 'Error de conexión'));
+    }
+  });
+}
+
+function handleData(data) {
+  if (data.type === 'state') {
+    currentUri = data.uri || '';
+    playing = data.playing !== false;
+    updatePlayBtn();
+    updateNowPlaying();
+    if (data.volume !== undefined) {
+      document.getElementById('volSlider').value = data.volume;
+      document.getElementById('volLabel').textContent = data.volume + '%';
+    }
+  }
+}
+
+function sendCmd(type, value) {
+  if (!conn || !conn.open) { showToast('⚠️ No conectado'); return; }
+  conn.send({type, value});
+  if (type === 'volume') {
+    document.getElementById('volLabel').textContent = value + '%';
+  }
+}
+
+function togglePlay() {
+  playing = !playing;
+  updatePlayBtn();
+  sendCmd(playing ? 'play' : 'pause');
+}
+
+function updatePlayBtn() {
+  document.getElementById('playBtn').textContent = playing ? '⏸' : '▶';
+}
+
+function loadPlaylist(pl) {
+  if (!conn || !conn.open) { showToast('⚠️ No conectado al vehículo'); return; }
+  currentUri = pl.id;
+  conn.send({type: 'load', uri: pl.id, title: pl.title});
+  playing = true;
+  updatePlayBtn();
+  updateNowPlaying();
+  showToast('🎵 Cargando: ' + pl.title);
+  renderPlaylists();
+}
+
+function updateNowPlaying() {
+  const pl = PLAYLISTS.find(p => p.id === currentUri) || {title: currentUri || '—', desc: 'Reproducción personalizada', icon: '🎵'};
+  document.getElementById('npIcon').textContent = pl.icon || '🎵';
+  document.getElementById('npTitle').textContent = pl.title;
+  document.getElementById('npDesc').textContent = pl.desc || '';
+  renderPlaylists();
+}
+
+function renderPlaylists() {
+  const list = document.getElementById('plList');
+  list.innerHTML = '';
+  PLAYLISTS.forEach(pl => {
+    const active = pl.id === currentUri;
+    const div = document.createElement('div');
+    div.className = 'pl-item' + (active ? ' active' : '');
+    div.innerHTML = `
+      <div>
+        <div class="pl-title">${pl.icon || '🎵'} ${pl.title}</div>
+        <div class="pl-desc">${pl.desc}</div>
+      </div>
+      ${active
+        ? '<span class="badge-active">ACTIVO</span>'
+        : '<span class="badge-load">CARGAR</span>'
+      }
+    `;
+    if (!active) div.onclick = () => loadPlaylist(pl);
+    list.appendChild(div);
+  });
+}
+
+function showConnected() {
+  document.getElementById('nowPlayingCard').style.display = '';
+  document.getElementById('playlistCard').style.display = '';
+  renderPlaylists();
+}
+
+function hideConnected() {
+  document.getElementById('connectBtn').disabled = false;
+  document.getElementById('connectBtn').textContent = 'Conectar';
+}
+
+function setStatus(type, label) {
+  const pill = document.getElementById('statusPill');
+  pill.className = 'status-pill s-' + type;
+  const dot = pill.querySelector('.dot');
+  dot.className = 'dot ' + (type === 'connected' ? 'dot-pulse' : 'dot-gray');
+  pill.querySelector('span').textContent = label;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Volume label sync
+document.getElementById('volSlider').addEventListener('input', function() {
+  document.getElementById('volLabel').textContent = this.value + '%';
+});
+</script>
+</body>
+</html>
