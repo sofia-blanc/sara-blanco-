@@ -341,7 +341,7 @@ var DEVICE_ICON_MAP = {
 // ==========================================
 var rt_hw = function({ devices, onResetDevice, onResetAllDevices, onTriggerQuickFault, userRole, onRoleRestricted, onInjectCriticalProcess, currentTime }) {
   var [calibratingDevice, setCalibratingDevice] = (0, _.useState)(null);
-  var canModify = userRole === 'mecanico';
+  var canModify = true; // Calibracion y diagnostico siempre habilitados en simulador
   var totalHealth = devices.reduce(function(acc, d) { return acc + d.health; }, 0);
   var averageHealth = Math.round(totalHealth / devices.length);
   var faultCount = devices.filter(function(d) { return d.status === 'falla' || d.status === 'desconectado'; }).length;
@@ -1306,7 +1306,7 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
   var [activePresetId, setActivePresetId] = (0, _.useState)(null);
   var [lastInjectedPhase, setLastInjectedPhase] = (0, _.useState)(null);
 
-  var canInject = userRole === 'mecanico';
+  var canInject = true; // Inyeccion y calibracion habilitados en entorno de simulador
 
   var handleDeviceChange = function(devCode) {
     setTargetDeviceCode(devCode);
@@ -1833,7 +1833,7 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
   var [activePresetId, setActivePresetId] = (0, _.useState)(null);
   var [lastInjectedPhase, setLastInjectedPhase] = (0, _.useState)(null);
 
-  var canInject = userRole === 'mecanico';
+  var canInject = true; // Inyeccion y calibracion habilitados en entorno de simulador
 
   var handleDeviceChange = function(devCode) {
     setTargetDeviceCode(devCode);
@@ -1896,6 +1896,17 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
     setActivePresetId(sc.id);
     setLastInjectedPhase(`${sc.name} detectada → Desalojando CPU con Prioridad 1`);
     onInjectCriticalProcess(procToInject, sc.dispositivo, sc.dtc, sc.name);
+  };
+
+  var handleCalibrateDevice = function() {
+    var devToReset = targetDeviceCode || initialDeviceCode || 'DEV_GPS_01';
+    if (onResetDevice) {
+      onResetDevice(devToReset);
+    }
+    setLastInjectedPhase('✓ Calibración OBD-II completada con éxito: [' + devToReset + '] alineado y restablecido a OPERATIVO (100% Nominal).');
+    if (onClose) {
+      setTimeout(onClose, 600);
+    }
   };
 
   var handleResetAll = function() {
@@ -2109,6 +2120,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                 ]
               }, void 0, true),
               (0, E.jsxDEV)('button', {
+                type: 'button',
+                onClick: handleCalibrateDevice,
+                className: 'px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-md transition hover:scale-[1.02] active:scale-[0.98]',
+                children: [
+                  (0, E.jsxDEV)('span', { children: '🔧 Calibrar y Restablecer a 100% Operativo' }, void 0, false)
+                ]
+              }, void 0, false),
+              (0, E.jsxDEV)('button', {
                 onClick: handleInjectCustomFault,
                 className: `px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${canInject ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'}`,
                 children: [
@@ -2189,6 +2208,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                   (0, E.jsxDEV)('span', { children: 'Restablecer Sistema a Normal' }, void 0, false)
                 ]
               }, void 0, true),
+              (0, E.jsxDEV)('button', {
+                type: 'button',
+                onClick: handleCalibrateDevice,
+                className: 'px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-md transition hover:scale-[1.02] active:scale-[0.98]',
+                children: [
+                  (0, E.jsxDEV)('span', { children: '🔧 Calibrar y Restablecer a 100% Operativo' }, void 0, false)
+                ]
+              }, void 0, false),
               (0, E.jsxDEV)('button', {
                 onClick: handleInjectPreset,
                 className: `px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${canInject ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'}`,
