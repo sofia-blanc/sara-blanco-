@@ -281,7 +281,7 @@ export default function App() {
 
   // If role changes to 'conductor', force COCKPIT tab
   useEffect(() => {
-    if (userRole === 'conductor') {
+    if (userRole === 'conductor' || userRole === 'pasajero') {
       setActiveTab('COCKPIT');
     }
   }, [userRole]);
@@ -899,7 +899,7 @@ export default function App() {
 
           {/* Navigation Tabs */}
           <div className="flex items-center autoos-card p-1 rounded-2xl border text-xs font-mono">
-            {userRole !== 'conductor' && (
+            {userRole !== 'conductor' && userRole !== 'pasajero' && (
               <button
                 onClick={() => setActiveTab('SCHEDULER')}
                 className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
