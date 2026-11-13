@@ -131,10 +131,10 @@ USING (
     OR (fn_obtener_rol_actual() = 'guest' AND severidad IN ('info', 'advertencia'))
 );
 
--- Cualquier subsistema o usuario autenticado puede disparar un registro de evento (ej. alerta)
-CREATE POLICY "Insercion de eventos autenticados"
+-- Cualquier subsistema o usuario (autenticado o simulación anon) puede registrar eventos
+CREATE POLICY "Insercion de eventos del vehiculo"
 ON eventos FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (true);
 
 -- --------------------------------------------------------------------
@@ -152,7 +152,7 @@ USING (
 -- Inserción permitida por el backend del SO para registrar intentos válidos o bloqueados
 CREATE POLICY "Registro de auditoria del sistema"
 ON auditoria_accesos FOR INSERT
-TO authenticated
+TO anon, authenticated
 WITH CHECK (true);
 
 -- --------------------------------------------------------------------
@@ -194,3 +194,19 @@ USING (
     fn_obtener_rol_actual() = 'admin'
     OR (fn_obtener_rol_actual() = 'user' AND nivel IN ('INFO', 'WARN'))
 );
+
+-- --------------------------------------------------------------------
+-- POLÍTICAS RLS: reportes_simulacion
+-- --------------------------------------------------------------------
+ALTER TABLE reportes_simulacion ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Lectura publica de reportes de simulacion"
+ON reportes_simulacion FOR SELECT
+TO anon, authenticated
+USING (true);
+
+CREATE POLICY "Insercion de reportes de simulacion"
+ON reportes_simulacion FOR INSERT
+TO anon, authenticated
+WITH CHECK (true);
+

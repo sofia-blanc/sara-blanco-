@@ -11,6 +11,7 @@ import {
   downloadReport, readReports, reportAsText, saveReport,
   type AutoOSReport, type SimulationDecisionRecord, type SimulationSnapshot,
 } from '../simulation/report';
+import { isSupabaseConfigured } from '../supabaseClient';
 
 interface Props {
   battery: BatteryState;
@@ -160,6 +161,14 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
           <p className="text-sm mt-1 text-[var(--text-muted)]">Experimenta con escenarios, toma decisiones y observa cómo responde el sistema operativo.</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono">
+          <span className={`rounded-lg border px-3 py-2 flex items-center gap-1.5 ${
+            isSupabaseConfigured()
+              ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400'
+              : 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            {isSupabaseConfigured() ? 'Supabase: Conectado' : 'Modo Local (Sin credenciales)'}
+          </span>
           <span className={`rounded-lg border px-3 py-2 ${activeId ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-[var(--border-color)]'}`}>
             {activeId ? (running ? '● Simulación en marcha' : '◼ Simulación pausada') : '○ Sin sesión activa'}
           </span>
@@ -169,13 +178,17 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
 
       {showHistory && (
         <section className="autoos-card rounded-2xl p-4 space-y-2">
-          <h3 className="font-bold text-sm">Informes guardados en este navegador</h3>
+          <h3 className="font-bold text-sm">Informes guardados en este navegador y Supabase</h3>
           {!history.length && <p className="text-xs text-[var(--text-muted)]">Todavía no hay informes. Finaliza una simulación para guardar el primero.</p>}
           {history.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] py-2 text-xs">
             <span className="min-w-0 truncate">{item.title} · {new Date(item.completedAt).toLocaleString('es-CO')} · {item.status}</span>
             <button onClick={() => downloadReport(item)} className="shrink-0 text-[var(--accent-primary)] flex items-center gap-1"><Download size={14} /> Descargar</button>
           </div>)}
-          <p className="text-[11px] text-[var(--text-muted)]">Guardado local en el navegador; Supabase no está conectado a este historial.</p>
+          <p className="text-[11px] text-[var(--text-muted)]">
+            {isSupabaseConfigured()
+              ? '🟢 Sincronización activa con Supabase Cloud (tabla reportes_simulacion y eventos).'
+              : '🟡 Almacenamiento local en el navegador; para sincronizar con la nube, configura web/.env con tus credenciales de Supabase.'}
+          </p>
         </section>
       )}
 

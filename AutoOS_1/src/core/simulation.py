@@ -8,7 +8,8 @@ from src.core.process import Process
 from src.core.cpu import CPU
 from src.core.scheduler import Scheduler
 from src.core.event_logger import EventLogger
-from src.core.exceptions import InvalidProcessAttributeError
+from src.core.exceptions import InvalidProcessAttributeError, InsufficientMemoryError
+from src.memory.memory import MemoryManager
 
 
 class SimulationEngine:
@@ -25,6 +26,7 @@ class SimulationEngine:
         cpu: Optional[CPU] = None,
         scheduler: Optional[Scheduler] = None,
         logger: Optional[EventLogger] = None,
+        memory_manager: Optional[MemoryManager] = None,
     ):
         """
         Inicializa el motor de simulación.
@@ -32,10 +34,12 @@ class SimulationEngine:
         :param cpu: Instancia de CPU (por defecto una nueva CPU).
         :param scheduler: Instancia de Scheduler (por defecto un nuevo Scheduler).
         :param logger: Instancia de EventLogger (por defecto un nuevo EventLogger).
+        :param memory_manager: Instancia de MemoryManager (por defecto un nuevo MemoryManager).
         """
         self.cpu: CPU = cpu if cpu is not None else CPU()
         self.scheduler: Scheduler = scheduler if scheduler is not None else Scheduler()
         self.logger: EventLogger = logger if logger is not None else EventLogger()
+        self.memory_manager: MemoryManager = memory_manager if memory_manager is not None else MemoryManager()
 
         self._current_tick: int = 0
         self._is_paused: bool = False
@@ -59,11 +63,56 @@ class SimulationEngine:
 
     # --- Gestión y Admisión de Procesos ---
 
+    def _ensure_memory_allocated(self, process: Process) -> None:
+        """
+        Garantiza que el proceso tenga un bloque de memoria física asignado.
+        Si ya tiene asignación, no hace nada (idempotente).
+        Si no cabe en memoria, registra MEMORY_ALLOCATION_FAILED y lanza InsufficientMemoryError.
+        """
+        if self.memory_manager.get_process_allocation(process.pid) is None:
+            mem_size = getattr(process, "memory_size", 64)
+            alloc = self.memory_manager.allocate_for_process(
+                pid=process.pid,
+                size=mem_size,
+                process_name=process.name,
+            )
+            if alloc is None:
+                self.logger.log(
+                    tick=self._current_tick,
+                    event_type="MEMORY_ALLOCATION_FAILED",
+                    message=(
+                        f"Fallo de asignación de memoria para PID={process.pid} ('{process.name}'). "
+                        f"Requerido: {mem_size}MB, Libre: {self.memory_manager.free_memory}MB"
+                    ),
+                    pid=process.pid,
+                    data={
+                        "requested": mem_size,
+                        "free": self.memory_manager.free_memory,
+                        "total": self.memory_manager.total_memory,
+                    },
+                )
+                raise InsufficientMemoryError(
+                    pid=process.pid,
+                    requested=mem_size,
+                    available=self.memory_manager.free_memory,
+                )
+            self.logger.log(
+                tick=self._current_tick,
+                event_type="MEMORY_ALLOCATED",
+                message=(
+                    f"Memoria asignada a PID={process.pid} ('{process.name}'): {alloc.limit}MB "
+                    f"[0x{alloc.base_address:08X} - 0x{alloc.end_address:08X}]"
+                ),
+                pid=process.pid,
+                data=alloc.to_dict(),
+            )
+
     def create_process(
         self,
         name: str,
         priority: int = 3,
         burst_time: int = 1,
+        memory_size: int = 64,
         auto_admit: bool = True,
     ) -> Process:
         """
@@ -73,7 +122,7 @@ class SimulationEngine:
         
         :return: La instancia de Process creada.
         """
-        process = Process(name=name, priority=priority, burst_time=burst_time)
+        process = Process(name=name, priority=priority, burst_time=burst_time, memory_size=memory_size)
         if auto_admit:
             return self.submit_process(process)
         return self.register_process(process)
@@ -86,6 +135,7 @@ class SimulationEngine:
         if not isinstance(process, Process):
             raise InvalidProcessAttributeError("El parámetro proporcionado debe ser una instancia de Process.")
 
+        self._ensure_memory_allocated(process)
         self._processes[process.pid] = process
         self.logger.log(
             tick=self._current_tick,
@@ -96,7 +146,6 @@ class SimulationEngine:
         )
         return process
 
-
     def submit_process(self, process: Process) -> Process:
         """
         Registra un proceso existente en el motor y lo ingresa a la cola del planificador.
@@ -105,6 +154,7 @@ class SimulationEngine:
         if not isinstance(process, Process):
             raise InvalidProcessAttributeError("El parámetro proporcionado debe ser una instancia de Process.")
 
+        self._ensure_memory_allocated(process)
         self._processes[process.pid] = process
 
         # Si es un proceso recién creado en NEW, registramos creación y lo admitimos
@@ -211,12 +261,40 @@ class SimulationEngine:
             if active_proc.is_finished:
                 if active_proc not in self._terminated_processes:
                     self._terminated_processes.append(active_proc)
+
+                freed = self.memory_manager.release_for_process(pid)
+                if freed:
+                    self.logger.log(
+                        tick=self._current_tick,
+                        event_type="MEMORY_RELEASED",
+                        message=(
+                            f"Memoria liberada para PID={pid} ('{name}'). "
+                            f"RAM libre actual: {self.memory_manager.free_memory}MB"
+                        ),
+                        pid=pid,
+                        data={
+                            "released_pid": pid,
+                            "free_memory": self.memory_manager.free_memory,
+                            "used_memory": self.memory_manager.used_memory,
+                        },
+                    )
+
                 self.logger.log(
                     tick=self._current_tick,
                     event_type="PROCESS_TERMINATED",
                     message=f"Proceso PID={pid} ('{name}') finalizó su ejecución en el ciclo {self._current_tick}",
                     pid=pid,
                 )
+            elif self.scheduler.algorithm == "ROUND_ROBIN":
+                next_proc = self.scheduler.handle_round_robin_tick(self.cpu)
+                if next_proc is not None:
+                    self.logger.log(
+                        tick=self._current_tick,
+                        event_type="PROCESS_PREEMPTED",
+                        message=f"Quantum agotado para PID={pid} ('{name}'). Despachado PID={next_proc.pid} ('{next_proc.name}')",
+                        pid=pid,
+                        data={"preempted_pid": pid, "next_pid": next_proc.pid},
+                    )
         else:
             # CPU ociosa en este ciclo (sin tareas para ejecutar)
             self.cpu.tick()
@@ -317,6 +395,25 @@ class SimulationEngine:
         if process not in self._terminated_processes:
             self._terminated_processes.append(process)
 
+        # Liberar memoria asignada al proceso abortado
+        freed = self.memory_manager.release_for_process(pid)
+        if freed:
+            self.logger.log(
+                tick=self._current_tick,
+                event_type="MEMORY_RELEASED",
+                message=(
+                    f"Memoria liberada por aborto de PID={pid} ('{process.name}'). "
+                    f"RAM libre actual: {self.memory_manager.free_memory}MB"
+                ),
+                pid=pid,
+                data={
+                    "aborted": True,
+                    "released_pid": pid,
+                    "free_memory": self.memory_manager.free_memory,
+                    "used_memory": self.memory_manager.used_memory,
+                },
+            )
+
         self.logger.log(
             tick=self._current_tick,
             event_type="PROCESS_TERMINATED",
@@ -357,6 +454,8 @@ class SimulationEngine:
             "is_paused": self._is_paused,
             "cpu": self.cpu.to_dict(),
             "scheduler": self.scheduler.to_dict(),
+            "memory": self.memory_manager.to_dict(),
+            "memory_map": self.memory_manager.get_memory_map(),
             "process_distribution": state_distribution,
             "total_registered_processes": len(self._processes),
             "waiting_processes": [p.to_dict() for p in self._waiting_processes.values()],

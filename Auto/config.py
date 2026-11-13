@@ -226,43 +226,142 @@ def _inicializar_mock_db():
         }
 
 
+def _cargar_env_local():
+    """Lee variables de archivo .env en directorio actual o raíz si existen"""
+    for env_path in [Path(".env"), Path("../.env"), Path("../web/.env"), Path("web/.env")]:
+        if env_path.exists():
+            try:
+                with open(env_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k, v = k.strip(), v.strip().strip('"').strip("'")
+                            if k not in os.environ and v:
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+
 def get_supabase_client() -> Optional[Client]:
     """
     Intenta obtener cliente oficial Supabase si hay credenciales configuradas
-    en st.secrets o en variables de entorno.
+    en st.secrets, en variables de entorno o en archivos .env locales.
+    Soporta formato plano y formato anidado [supabase] de Streamlit secrets.
     """
+    _cargar_env_local()
     url = None
     key = None
     
-    # Revisar st.secrets
+    # 1. Revisar st.secrets
     try:
-        if "SUPABASE_URL" in st.secrets:
-            url = st.secrets["SUPABASE_URL"]
-        elif "NEXT_PUBLIC_SUPABASE_URL" in st.secrets:
-            url = st.secrets["NEXT_PUBLIC_SUPABASE_URL"]
-
-        if "SUPABASE_KEY" in st.secrets:
-            key = st.secrets["SUPABASE_KEY"]
-        elif "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" in st.secrets:
-            key = st.secrets["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"]
-        elif "SUPABASE_ANON_KEY" in st.secrets:
-            key = st.secrets["SUPABASE_ANON_KEY"]
+        if hasattr(st, "secrets"):
+            # Formato anidado [supabase]
+            if "supabase" in st.secrets:
+                sub = st.secrets["supabase"]
+                url = sub.get("url") or sub.get("SUPABASE_URL")
+                key = sub.get("key") or sub.get("SUPABASE_KEY") or sub.get("anon_key")
+                
+            # Formato plano
+            if not url:
+                url = st.secrets.get("SUPABASE_URL") or st.secrets.get("NEXT_PUBLIC_SUPABASE_URL") or st.secrets.get("VITE_SUPABASE_URL")
+            if not key:
+                key = st.secrets.get("SUPABASE_KEY") or st.secrets.get("SUPABASE_ANON_KEY") or st.secrets.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or st.secrets.get("VITE_SUPABASE_ANON_KEY")
     except Exception:
         pass
         
-    # Revisar variables de entorno
+    # 2. Revisar variables de entorno (incluidas las leídas de .env)
     if not url:
-        url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+        url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL")
     if not key:
-        key = os.environ.get("SUPABASE_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or os.environ.get("SUPABASE_ANON_KEY")
+        key = os.environ.get("SUPABASE_KEY") or os.environ.get("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or os.environ.get("VITE_SUPABASE_ANON_KEY")
         
+    # Validar que no sean placeholders
     if url and key and HAS_SUPABASE_LIB:
+        if "tu-proyecto" in url or "your-project" in url or "tu-anon-key" in key:
+            return None
         try:
             return create_client(url, key)
         except Exception:
             return None
     return None
 
+
+def is_supabase_connected() -> bool:
+    """Verifica de forma rápida si el cliente oficial Supabase está inicializado y operativo"""
+    client = get_supabase_client()
+    return client is not None
+
+
+def test_supabase_connection_py() -> Dict[str, Any]:
+    """Ejecuta una prueba de conectividad y latencia contra Supabase Cloud"""
+    if not HAS_SUPABASE_LIB:
+        return {"ok": False, "mensaje": "Librería 'supabase' no instalada en Python. Ejecuta: pip install supabase"}
+        
+    client = get_supabase_client()
+    if not client:
+        return {"ok": False, "mensaje": "Credenciales no encontradas o inválidas. Configura .streamlit/secrets.toml o .env"}
+        
+    try:
+        resp = client.table("dispositivos").select("codigo, estado").limit(1).execute()
+        return {"ok": True, "mensaje": f"Conexión exitosa a Supabase Cloud ({len(resp.data)} registros leídos)."}
+    except Exception as e:
+        return {"ok": False, "mensaje": f"Error al consultar Supabase: {str(e)}"}
+
+
+def sincronizar_evento_supabase(evento: Dict[str, Any]) -> bool:
+    """Sincroniza un evento vehicular con la tabla 'eventos' de Supabase si está conectado"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table("eventos").insert({
+            "tipo_evento": evento.get("tipo_evento", "cambio_estado_so"),
+            "severidad": evento.get("severidad", "info"),
+            "mensaje": evento.get("mensaje", ""),
+            "detalles": evento.get("detalles", {}),
+            "resuelto": evento.get("resuelto", True)
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"[AutoOS Cloud] Error al sincronizar evento: {e}")
+        return False
+
+
+def sincronizar_auditoria_supabase(registro: Dict[str, Any]) -> bool:
+    """Sincroniza un intento de auditoría RBAC con Supabase si está conectado"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table("auditoria_accesos").insert({
+            "usuario_email": registro.get("usuario_email"),
+            "rol_nombre": registro.get("rol"),
+            "recurso": registro.get("recurso"),
+            "accion": registro.get("accion"),
+            "autorizado": registro.get("autorizado", False),
+            "motivo_rechazo": registro.get("motivo_rechazo")
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"[AutoOS Cloud] Error al sincronizar auditoría: {e}")
+        return False
+
+
+def sincronizar_dispositivo_supabase(codigo: str, estado: str, salud: int) -> bool:
+    """Actualiza el estado de hardware en Supabase si está conectado"""
+    client = get_supabase_client()
+    if not client:
+        return False
+    try:
+        client.table("dispositivos").update({
+            "estado": estado,
+            "salud_porcentaje": salud
+        }).eq("codigo", codigo).execute()
+        return True
+    except Exception as e:
+        print(f"[AutoOS Cloud] Error al actualizar dispositivo en Supabase: {e}")
+        return False
 
 
 def get_db():

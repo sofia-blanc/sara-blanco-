@@ -16,6 +16,16 @@ Auto/.streamlit/secrets.toml
 # Environment variables
 .env
 Auto/.env
+# Environment variables
+.env
+.env.*
+!.env.example
+Auto/.env
+
+# Frontend environment variables
+web/.env
+web/.env.*
+!web/.env.example
 
 # Node & Frontend
 node_modules/

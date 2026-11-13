@@ -97,7 +97,7 @@ CREATE TABLE dispositivos (
 -- --------------------------------------------------------------------
 CREATE TABLE eventos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tipo_evento VARCHAR(50) NOT NULL CHECK (tipo_evento IN ('seguridad', 'dispositivo_fallo', 'bateria_critica', 'intento_no_autorizado', 'cambio_estado_so')),
+    tipo_evento VARCHAR(50) NOT NULL CHECK (tipo_evento IN ('seguridad', 'dispositivo_fallo', 'bateria_critica', 'intento_no_autorizado', 'cambio_estado_so', 'simulacion', 'contingencia')),
     severidad VARCHAR(20) NOT NULL CHECK (severidad IN ('info', 'advertencia', 'critico', 'emergencia')),
     dispositivo_id UUID REFERENCES dispositivos(id) ON DELETE SET NULL,
     usuario_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -204,6 +204,30 @@ CREATE TABLE logs (
     creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- --------------------------------------------------------------------
+-- 9. TABLA: reportes_simulacion
+-- Almacena los informes generados por el Centro de Simulación Web
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reportes_simulacion (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    report_id VARCHAR(100) NOT NULL,
+    escenario VARCHAR(50) NOT NULL,
+    titulo VARCHAR(150) NOT NULL,
+    diagnostico TEXT,
+    evaluacion VARCHAR(100),
+    usuario_email VARCHAR(255) DEFAULT 'conductor@autoos.tech',
+    iniciado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    finalizado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    bateria_inicial NUMERIC(5,2),
+    bateria_final NUMERIC(5,2),
+    velocidad_final NUMERIC(5,2),
+    cpu_load_final NUMERIC(5,2),
+    acciones_json JSONB DEFAULT '[]'::jsonb,
+    recomendaciones JSONB DEFAULT '[]'::jsonb,
+    datos_completos JSONB DEFAULT '{}'::jsonb,
+    creado_en TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Índices para optimización de consultas en tiempo real
 CREATE INDEX idx_dispositivos_estado ON dispositivos(estado);
 CREATE INDEX idx_eventos_severidad ON eventos(severidad);
@@ -212,3 +236,5 @@ CREATE INDEX idx_procesos_estado ON procesos(estado);
 CREATE INDEX idx_perfiles_rol ON perfiles(rol_id);
 CREATE INDEX idx_auditoria_usuario ON auditoria_accesos(usuario_id);
 CREATE INDEX idx_auditoria_autorizado ON auditoria_accesos(autorizado);
+CREATE INDEX idx_reportes_escenario ON reportes_simulacion(escenario);
+CREATE INDEX idx_reportes_creado_en ON reportes_simulacion(creado_en DESC);

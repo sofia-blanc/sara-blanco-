@@ -13,7 +13,7 @@ Implementa:
 """
 
 from typing import List, Dict, Any, Optional, Tuple
-from config import get_db
+from config import get_db, sincronizar_dispositivo_supabase
 from modules.auth_security import validar_accion, registrar_evento_seguridad
 
 def obtener_dispositivos(filtro_estado: Optional[str] = None, filtro_bus: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -87,6 +87,9 @@ def cambiar_estado_dispositivo(codigo: str, nuevo_estado: str, usuario_actual: D
         mensaje=f"Dispositivo {dev['nombre']} ({codigo}) transitó de [{estado_previo.upper()}] a [{nuevo_estado.upper()}]. Motivo: {motivo or 'Comando manual'}",
         detalles={"salud_actual": dev["salud_porcentaje"], "bus": dev["puerto_bus"], "critico": dev["nivel_critico"]}
     )
+    
+    # Sincronizar en la nube si Supabase está activo
+    sincronizar_dispositivo_supabase(codigo, nuevo_estado, dev["salud_porcentaje"])
     
     return True, f"Dispositivo {codigo} actualizado exitosamente a '{nuevo_estado}'."
 

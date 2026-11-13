@@ -36,6 +36,7 @@ class Process:
         name: str,
         priority: int = 3,
         burst_time: int = 1,
+        memory_size: int = 64,
     ):
         """
         Inicializa un nuevo proceso (PCB) en estado NEW.
@@ -43,6 +44,7 @@ class Process:
         :param name: Nombre descriptivo de la tarea vehicular (ej. 'Frenado Autónomo').
         :param priority: Nivel de prioridad (1 = Crítica a 5 = Baja). Por defecto 3.
         :param burst_time: Tiempo total estimado de CPU requerido en ciclos/ticks (> 0).
+        :param memory_size: Memoria RAM requerida en MB (> 0). Por defecto 64 MB.
         """
         if not name or not isinstance(name, str) or not name.strip():
             raise InvalidProcessAttributeError("El nombre del proceso debe ser una cadena de texto no vacía.")
@@ -53,6 +55,11 @@ class Process:
                 f"El tiempo de ráfaga (burst_time) debe ser un entero mayor a 0. Recibido: {burst_time}"
             )
 
+        if isinstance(memory_size, bool) or not isinstance(memory_size, int) or memory_size <= 0:
+            raise InvalidProcessAttributeError(
+                f"El tamaño de memoria (memory_size) debe ser un entero mayor a 0. Recibido: {memory_size}"
+            )
+
         # Campos del Bloque de Control de Proceso (PCB):
         self._pid: int = next(self._pid_counter)
         self._name: str = name.strip()
@@ -60,6 +67,7 @@ class Process:
         self._state: ProcessState = ProcessState.NEW
         self._burst_time: int = burst_time
         self._remaining_time: int = burst_time
+        self._memory_size: int = memory_size
 
     @classmethod
     def _reset_pid_generator(cls, start: int = 1) -> None:
@@ -122,6 +130,11 @@ class Process:
     def remaining_time(self) -> int:
         """Tiempo de CPU restante que el proceso aún necesita ejecutar."""
         return self._remaining_time
+
+    @property
+    def memory_size(self) -> int:
+        """Tamaño de memoria asignada/requerida en MB."""
+        return self._memory_size
 
     @property
     def is_finished(self) -> bool:
@@ -228,6 +241,7 @@ class Process:
             "state": self._state.value,
             "burst_time": self._burst_time,
             "remaining_time": self._remaining_time,
+            "memory_size": self._memory_size,
             "is_finished": self.is_finished,
         }
 
@@ -235,5 +249,6 @@ class Process:
         return (
             f"Process(PID={self._pid}, Name='{self._name}', "
             f"Priority={self._priority}, State={self._state.value}, "
+            f"Memory={self._memory_size}MB, "
             f"Remaining={self._remaining_time}/{self._burst_time})"
         )
