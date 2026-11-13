@@ -280,6 +280,17 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
     onInjectCriticalProcess(procToInject, sc.dispositivo, sc.dtc.split(' ')[0], sc.name);
   };
 
+    const handleCalibrateDevice = () => {
+    const devToReset = targetDeviceCode || initialDeviceCode || 'DEV_GPS_01';
+    if (onResetDevice) {
+      onResetDevice(devToReset);
+    }
+    setLastInjectedPhase(`✓ Calibración OBD-II completada con éxito: [${devToReset}] alineado y restablecido a OPERATIVO (100% Nominal).`);
+    if (onClose) {
+      setTimeout(onClose, 600);
+    }
+  };
+
   const handleResetAll = () => {
     setActivePresetId(null);
     setLastInjectedPhase('Todos los subsistemas restablecidos a Nominal ISO 26262 ASIL-D.');
@@ -513,6 +524,15 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
             >
               <RotateCcw className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
               <span>Restablecer Todo a Nominal</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCalibrateDevice}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-md transition hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Wrench className="w-4 h-4" />
+              <span>Calibrar y Restablecer Dispositivo a 100%</span>
             </button>
 
             <button

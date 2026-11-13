@@ -1371,6 +1371,17 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
     onInjectCriticalProcess(procToInject, sc.dispositivo, sc.dtc, sc.name);
   };
 
+  var handleCalibrateDevice = function() {
+    var devToReset = targetDeviceCode || initialDeviceCode || 'DEV_GPS_01';
+    if (onResetDevice) {
+      onResetDevice(devToReset);
+    }
+    setLastInjectedPhase('✓ Calibración OBD-II completada con éxito: [' + devToReset + '] alineado y restablecido a OPERATIVO (100% Nominal).');
+    if (onClose) {
+      setTimeout(onClose, 600);
+    }
+  };
+
   var handleResetAll = function() {
     setActivePresetId(null);
     setLastInjectedPhase('Todos los escenarios restablecidos. Parámetros nominales ISO 26262 ASIL-D.');
@@ -1582,6 +1593,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                 ]
               }, void 0, true),
               (0, E.jsxDEV)('button', {
+                type: 'button',
+                onClick: handleCalibrateDevice,
+                className: 'px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-md transition hover:scale-[1.02] active:scale-[0.98]',
+                children: [
+                  (0, E.jsxDEV)('span', { children: '🔧 Calibrar y Restablecer Dispositivo a 100% Operativo' }, void 0, false)
+                ]
+              }, void 0, false),
+              (0, E.jsxDEV)('button', {
                 onClick: handleInjectCustomFault,
                 className: `px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${canInject ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'}`,
                 children: [
@@ -1662,6 +1681,14 @@ var tt = function({ onInjectCriticalProcess, onResetDevice, onResetAllScenarios,
                   (0, E.jsxDEV)('span', { children: 'Restablecer Sistema a Normal' }, void 0, false)
                 ]
               }, void 0, true),
+              (0, E.jsxDEV)('button', {
+                type: 'button',
+                onClick: handleCalibrateDevice,
+                className: 'px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold flex items-center gap-2 shadow-md transition hover:scale-[1.02] active:scale-[0.98]',
+                children: [
+                  (0, E.jsxDEV)('span', { children: '🔧 Calibrar y Restablecer a 100%' }, void 0, false)
+                ]
+              }, void 0, false),
               (0, E.jsxDEV)('button', {
                 onClick: handleInjectPreset,
                 className: `px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md transition font-mono ${canInject ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 hover:scale-[1.02] active:scale-[0.98]' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--border-color)] cursor-not-allowed opacity-60'}`,
@@ -2553,13 +2580,9 @@ function st() {
   };
 
   var handleResetDevice = function(deviceCode) {
-    if (userRole !== 'mecanico') {
-      handleRoleRestricted('Restablecer Dispositivo de Hardware (Acción exclusiva del Administrador / Mecánico)');
-      return;
-    }
     setDevices(function(prev) {
       return prev.map(function(d) {
-        if (d.code === deviceCode) return { ...d, status: 'operativo', health: 98, activeDtc: null, failureMode: null };
+        if (d.code === deviceCode) return { ...d, status: 'operativo', health: 100, activeDtc: null, failureMode: null };
         return d;
       });
     });
@@ -3062,7 +3085,7 @@ function st() {
             ref: iframeRef, onLoad: syncIframeState,
             src: cockpitHtml ? void 0 : '/autoos_interactive.html',
             srcDoc: cockpitHtml || void 0,
-            title: 'AutoOS Cockpit Completo', allow: 'bluetooth; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', sandbox: 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals',
+            id: 'cockpit-frame', title: 'AutoOS Cockpit Completo', allow: 'bluetooth; autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', sandbox: 'allow-scripts allow-same-origin allow-popups allow-forms allow-modals',
             className: 'w-full flex-1 border-none',
             style: { height: 'calc(100vh - 110px)', minHeight: '750px' }
           }, void 0, false)
