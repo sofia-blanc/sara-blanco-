@@ -77,6 +77,6 @@ bundle_path = next((p for p in bundle_candidates if p.exists()), None)
 if bundle_path:
     with open(bundle_path, "r", encoding="utf-8") as f:
         app_html = f.read()
-    components.html(app_html, height=1080, scrolling=True)
+    components.html(app_html, height=2400, scrolling=True)
 else:
     st.error("No se encontró el paquete unificado de AutoOS.")

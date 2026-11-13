@@ -1,25 +1,40 @@
 import React, { useState } from 'react';
-import {
-  Navigation,
-  Eye,
-  Radio,
-  Disc,
-  Flame,
-  ShieldAlert,
-  Car,
-  Wifi,
-  Cpu,
-  Monitor,
-  Thermometer,
-  CheckCircle,
-  AlertTriangle,
-  RotateCcw,
-  Wrench,
-  Zap,
-  Sliders,
-} from 'lucide-react';
 import { VehicleDevice, UserRole, Process } from '../types/scheduler';
 import { CriticalProcessSimulator } from './CriticalProcessSimulator';
+
+type IconProps = { className?: string };
+
+const createIcon = (glyph: string): React.FC<IconProps> => ({ className }) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <text x="12" y="18" textAnchor="middle" fontSize="19" fill="currentColor">
+      {glyph}
+    </text>
+  </svg>
+);
+
+const Navigation = createIcon('⌖');
+const Eye = createIcon('◉');
+const Radio = createIcon(')))');
+const Disc = createIcon('◎');
+const Flame = createIcon('♨');
+const ShieldAlert = createIcon('⚠');
+const Car = createIcon('▰');
+const Wifi = createIcon('◔');
+const Cpu = createIcon('▦');
+const Monitor = createIcon('▣');
+const Thermometer = createIcon('♨');
+const CheckCircle = createIcon('✓');
+const AlertTriangle = createIcon('⚠');
+const RotateCcw = createIcon('↻');
+const Wrench = createIcon('⚒');
+const Zap = createIcon('ϟ');
+const Sliders = createIcon('☷');
 
 
 
