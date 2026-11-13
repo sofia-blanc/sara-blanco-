@@ -73,3 +73,13 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-primary);
 }
+
+/* Movimiento visible de las marcas de carretera durante los ticks de conducción. */
+@keyframes autoos-lane-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -76; }
+}
+.autoos-lane-moving { animation: autoos-lane-flow 1.2s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .autoos-lane-moving { animation: none; }
+}
