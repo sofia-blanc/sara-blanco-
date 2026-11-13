@@ -28,6 +28,7 @@ import { HardwareStatusGrid } from './components/HardwareStatusGrid';
 import { AlgorithmComparisonModal } from './components/AlgorithmComparisonModal';
 import { NewProcessModal } from './components/NewProcessModal';
 import { EventsLog } from './components/EventsLog';
+import { isSupabaseConfigured } from './supabaseClient';
 import {
   Play,
   Pause,
@@ -67,7 +68,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_02',
     code: 'DEV_CAM_FRONT',
-    name: 'CÃ¡mara EstereoscÃ³pica ADAS Frontal',
+    name: 'Cámara Estereoscópica ADAS Frontal',
     subsystem: 'Visión',
     status: 'operativo',
     health: 95,
@@ -79,7 +80,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_03',
     code: 'DEV_LIDAR_01',
-    name: 'Sensor LiDAR 360Â° Solid-State',
+    name: 'Sensor LiDAR 360° Solid-State',
     subsystem: 'Sensores',
     status: 'operativo',
     health: 99,
@@ -91,7 +92,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_04',
     code: 'DEV_RADAR_01',
-    name: 'Radar MilimÃ©trico 77GHz (ACC)',
+    name: 'Radar Milimétrico 77GHz (ACC)',
     subsystem: 'Sensores',
     status: 'operativo',
     health: 94,
@@ -103,7 +104,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_05',
     code: 'DEV_BATTERY_BMS',
-    name: 'BMS BaterÃ­a LiFePO4 Alta TensiÃ³n',
+    name: 'BMS Batería LiFePO4 Alta Tensión',
     subsystem: 'Batería',
     status: 'operativo',
     health: 92,
@@ -127,7 +128,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_07',
     code: 'DEV_ACT_STEER',
-    name: 'Actuador DirecciÃ³n ElÃ©ctrica EPS',
+    name: 'Actuador Dirección Eléctrica EPS',
     subsystem: 'Seguridad Dinámica',
     status: 'operativo',
     health: 97,
@@ -139,7 +140,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_08',
     code: 'DEV_COM_V2X',
-    name: 'MÃ³dulo TelemetrÃ­a 5G / V2X Cloud',
+    name: 'Módulo Telemetría 5G / V2X Cloud',
     subsystem: 'Comunicación',
     status: 'operativo',
     health: 91,
@@ -175,7 +176,7 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
   {
     id: 'dev_11',
     code: 'DEV_HVAC_CLIMA',
-    name: 'ClimatizaciÃ³n y GestiÃ³n TÃ©rmica',
+    name: 'Climatización y Gestión Térmica',
     subsystem: 'Confort',
     status: 'operativo',
     health: 89,
@@ -962,9 +963,17 @@ export default function App() {
                   }`}></span>
                   {failingDevices.length > 0 ? 'FALLA ACTIVA' : degradedDevices.length > 0 ? 'DEGRADADO' : 'OPERATIVO 100%'}
                 </span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono border ${
+                  isSupabaseConfigured()
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                  {isSupabaseConfigured() ? 'Supabase: Conectado' : 'Supabase: Modo Local'}
+                </span>
               </div>
               <p className="text-[11px] text-[var(--text-muted)]">
-                Sistema Operativo para VehÃ­culo Inteligente â€” RTOS ISO 26262 ASIL-D
+                Sistema Operativo para Vehículo Inteligente — RTOS ISO 26262 ASIL-D
               </p>
             </div>
           </div>

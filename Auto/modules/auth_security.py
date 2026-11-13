@@ -16,7 +16,12 @@ import streamlit as st
 import datetime
 import uuid
 from typing import Dict, Any, Tuple, List, Optional
-from config import get_db, get_supabase_client
+from config import (
+    get_db,
+    get_supabase_client,
+    sincronizar_evento_supabase,
+    sincronizar_auditoria_supabase
+)
 
 # Definición de Roles del Sistema AutoOS
 ROLES_INFO = {
@@ -101,7 +106,7 @@ def validar_accion(usuario: Dict[str, Any], accion: str, recurso: str) -> Tuple[
             detalles={"recurso": recurso, "rol": usuario.get("rol"), "motivo": motivo_rechazo}
         )
     
-    # Guardar en auditoría
+    # Guardar en auditoría local
     registro_auditoria = {
         "id": str(uuid.uuid4()),
         "usuario_email": usuario.get("email"),
@@ -114,11 +119,14 @@ def validar_accion(usuario: Dict[str, Any], accion: str, recurso: str) -> Tuple[
     }
     db["auditoria"].insert(0, registro_auditoria)
     
+    # Sincronizar en la nube si Supabase está activo
+    sincronizar_auditoria_supabase(registro_auditoria)
+    
     return autorizado, motivo_rechazo
 
 
 def registrar_evento_seguridad(tipo: str, severidad: str, mensaje: str, dispositivo_codigo: Optional[str] = None, detalles: Optional[Dict] = None):
-    """Registra un evento en la tabla 'eventos' de AutoOS"""
+    """Registra un evento en la tabla 'eventos' de AutoOS (local y Supabase)"""
     db = get_db()
     usuario = st.session_state.get("current_user", {})
     evento = {
@@ -133,6 +141,9 @@ def registrar_evento_seguridad(tipo: str, severidad: str, mensaje: str, disposit
         "creado_en": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     }
     db["eventos"].insert(0, evento)
+    
+    # Sincronizar en la nube si Supabase está activo
+    sincronizar_evento_supabase(evento)
 
 
 def obtener_auditoria(limite: int = 15) -> List[Dict[str, Any]]:

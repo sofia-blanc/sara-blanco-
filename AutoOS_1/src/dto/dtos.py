@@ -23,6 +23,7 @@ class ProcessDTO:
     burst_time: int
     remaining_time: int
     is_finished: bool
+    memory_size: int = 64
 
     @classmethod
     def from_process(cls, process: Process) -> "ProcessDTO":
@@ -35,6 +36,7 @@ class ProcessDTO:
             burst_time=process.burst_time,
             remaining_time=process.remaining_time,
             is_finished=process.is_finished,
+            memory_size=getattr(process, "memory_size", 64),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -47,6 +49,7 @@ class ProcessDTO:
             "burst_time": self.burst_time,
             "remaining_time": self.remaining_time,
             "is_finished": self.is_finished,
+            "memory_size": self.memory_size,
         }
 
 
@@ -157,6 +160,8 @@ class SystemStatusDTO:
     waiting_processes: List[ProcessDTO]
     terminated_processes: List[ProcessDTO]
     total_events: int
+    memory: Optional[Dict[str, Any]] = None
+    memory_map: Optional[List[Dict[str, Any]]] = None
 
     @classmethod
     def from_engine(cls, engine: SimulationEngine) -> "SystemStatusDTO":
@@ -180,11 +185,13 @@ class SystemStatusDTO:
                 if p.state.value == "TERMINATED"
             ],
             total_events=raw_status["total_events"],
+            memory=raw_status.get("memory"),
+            memory_map=raw_status.get("memory_map"),
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convierte el estado completo a un diccionario anidado compatible con JSON."""
-        return {
+        result: Dict[str, Any] = {
             "current_tick": self.current_tick,
             "is_paused": self.is_paused,
             "cpu": self.cpu.to_dict(),
@@ -195,3 +202,8 @@ class SystemStatusDTO:
             "terminated_processes": [p.to_dict() for p in self.terminated_processes],
             "total_events": self.total_events,
         }
+        if self.memory is not None:
+            result["memory"] = self.memory
+        if self.memory_map is not None:
+            result["memory_map"] = self.memory_map
+        return result

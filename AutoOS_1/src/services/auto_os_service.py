@@ -66,6 +66,7 @@ class AutoOSService:
         name: str,
         priority: int = 3,
         burst_time: int = 1,
+        memory_size: int = 64,
         auto_admit: bool = True,
     ) -> Dict[str, Any]:
         """
@@ -79,6 +80,7 @@ class AutoOSService:
             name=name,
             priority=priority,
             burst_time=burst_time,
+            memory_size=memory_size,
             auto_admit=auto_admit,
         )
         return ProcessDTO.from_process(process).to_dict()
@@ -211,4 +213,12 @@ class AutoOSService:
         if limit is not None and limit > 0:
             events = events[-limit:]
         return [EventDTO.from_event(e).to_dict() for e in events]
+
+    def get_memory_status(self) -> Dict[str, Any]:
+        """Retorna el estado de la memoria RAM y contadores de bloques."""
+        return self._engine.memory_manager.to_dict()
+
+    def get_memory_map(self) -> List[Dict[str, Any]]:
+        """Retorna el mapa dinámico de bloques físicos (base, límite, ocupación, PID)."""
+        return self._engine.memory_manager.get_memory_map()
 

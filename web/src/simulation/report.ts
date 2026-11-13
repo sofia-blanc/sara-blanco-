@@ -1,4 +1,5 @@
 import type { ScenarioId, Weather } from './scenarios';
+import { saveSimulationReportToSupabase } from '../supabaseClient';
 
 export interface SimulationSnapshot {
   battery: number;
@@ -67,6 +68,11 @@ export function saveReport(report: AutoOSReport): void {
     const previous: AutoOSReport[] = JSON.parse(localStorage.getItem(key) || '[]');
     localStorage.setItem(key, JSON.stringify([report, ...previous.filter((r) => r.id !== report.id)].slice(0, 20)));
   } catch { /* almacenamiento del navegador deshabilitado: aún es posible exportar */ }
+
+  // Sincronizar de manera asíncrona con Supabase Cloud si está configurado
+  saveSimulationReportToSupabase(report).catch((err) => {
+    console.debug('[AutoOS] Fallback local activo para reporte:', err);
+  });
 }
 
 export function readReports(): AutoOSReport[] {

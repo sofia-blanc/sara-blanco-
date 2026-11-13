@@ -68,3 +68,19 @@ class DuplicateProcessError(AutoOSError):
         )
 
 
+class InsufficientMemoryError(AutoOSError):
+    """
+    Se lanza cuando no hay suficiente memoria física contigua disponible
+    para asignar a un proceso en el simulador.
+    """
+    def __init__(self, pid: int, requested: int, available: int):
+        self.pid = pid
+        self.requested = requested
+        self.available = available
+        super().__init__(
+            f"[PID {pid}] Memoria insuficiente: se solicitaron {requested} MB, "
+            f"pero solo hay {available} MB disponibles."
+        )
+
+
+
