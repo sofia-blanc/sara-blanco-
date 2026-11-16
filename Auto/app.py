@@ -471,7 +471,7 @@ with tab_proc:
                 "Prioridad": f"{p.priority} ({'ASIL-D' if p.priority<=2 else 'Confort'})",
                 "Estado": p.state.value,
                 "Ráfaga Restante": f"{p.remaining_time} / {p.burst_time} ticks",
-                "Avance": f"{p.progress_percentage}%",
+                "Avance": f"{getattr(p, 'progress_percentage', round(((p.burst_time - p.remaining_time) / p.burst_time) * 100, 1) if getattr(p, 'burst_time', 0) > 0 else 100.0)}%",
                 "RAM Física": f"{alloc.limit if alloc else getattr(p, 'memory_size', 64)} MB",
                 "Dirección Base": f"0x{alloc.base_address:04X}" if alloc else "N/A",
             })

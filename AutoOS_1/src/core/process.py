@@ -141,6 +141,14 @@ class Process:
         """Indica si el proceso ha finalizado su ciclo de vida."""
         return self._state == ProcessState.TERMINATED
 
+    @property
+    def progress_percentage(self) -> float:
+        """Porcentaje de avance en la ejecución de la ráfaga de CPU (0.0 a 100.0)."""
+        if self._burst_time <= 0 or self._state == ProcessState.TERMINATED:
+            return 100.0
+        ejecutado = max(0, self._burst_time - self._remaining_time)
+        return round((ejecutado / self._burst_time) * 100, 1)
+
     # --- Máquina de Estados: Transiciones estrictas ---
 
     def transition_to(self, target_state: ProcessState) -> None:
@@ -242,6 +250,7 @@ class Process:
             "burst_time": self._burst_time,
             "remaining_time": self._remaining_time,
             "memory_size": self._memory_size,
+            "progress_percentage": self.progress_percentage,
             "is_finished": self.is_finished,
         }
 
