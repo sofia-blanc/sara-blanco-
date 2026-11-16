@@ -46,50 +46,50 @@ from typing import Dict, Any
 
 
 def obtener_paleta(modo: str = "oscuro") -> Dict[str, str]:
-    """Retorna el diccionario de colores según el tema activo."""
+    """Retorna el diccionario de colores para la interfaz automotriz de AutoOS."""
     if modo == "claro":
         return {
-            "bg_base":        "#C0BAB3",
-            "bg_surface":     "#D5CFC9",
-            "bg_card":        "#E3DDD7",
-            "bg_card_hover":  "#EDE7E1",
-            "border":         "#887D77",
-            "border_accent":  "#391214",
-            "accent_primary": "#391214",
-            "accent_second":  "#52423D",
-            "text_primary":   "#160F0C",
-            "text_secondary": "#391214",
-            "text_muted":     "#52423D",
-            "success":        "#15803d",
-            "warning":        "#b45309",
-            "danger":         "#b91c1c",
-            "tab_active_bg":  "#391214",
+            "bg_base":        "#F1F5F9",
+            "bg_surface":     "#FFFFFF",
+            "bg_card":        "#FFFFFF",
+            "bg_card_hover":  "#F8FAFC",
+            "border":         "#E2E8F0",
+            "border_accent":  "#2563EB",
+            "accent_primary": "#2563EB",
+            "accent_second":  "#0D9488",
+            "text_primary":   "#0F172A",
+            "text_secondary": "#334155",
+            "text_muted":     "#64748B",
+            "success":        "#16A34A",
+            "warning":        "#D97706",
+            "danger":         "#DC2626",
+            "tab_active_bg":  "#2563EB",
             "tab_active_text":"#FFFFFF",
-            "gauge_bg":       "#D0C9C2",
-            "gauge_text":     "#160F0C",
-            "shadow":         "0 4px 16px rgba(57, 18, 20, 0.12)"
+            "gauge_bg":       "#E2E8F0",
+            "gauge_text":     "#0F172A",
+            "shadow":         "0 2px 10px rgba(0, 0, 0, 0.06)"
         }
     else:
         return {
-            "bg_base":        "#040607",
-            "bg_surface":     "#0D0714",
-            "bg_card":        "#180E24",
-            "bg_card_hover":  "#241438",
-            "border":         "#331E4D",
-            "border_accent":  "#BF40FA",
-            "accent_primary": "#BF40FA",
-            "accent_second":  "#4928C2",
-            "text_primary":   "#E3D9FC",
-            "text_secondary": "#B8A8DC",
-            "text_muted":     "#8D7AA8",
-            "success":        "#34d399",
-            "warning":        "#fbbf24",
-            "danger":         "#f87171",
-            "tab_active_bg":  "linear-gradient(135deg, #BF40FA 0%, #4928C2 100%)",
+            "bg_base":        "#0B0F19",
+            "bg_surface":     "#111827",
+            "bg_card":        "#151E2E",
+            "bg_card_hover":  "#1E293B",
+            "border":         "#1E293B",
+            "border_accent":  "#3B82F6",
+            "accent_primary": "#3B82F6",
+            "accent_second":  "#10B981",
+            "text_primary":   "#F8FAFC",
+            "text_secondary": "#CBD5E1",
+            "text_muted":     "#94A3B8",
+            "success":        "#10B981",
+            "warning":        "#F59E0B",
+            "danger":         "#EF4444",
+            "tab_active_bg":  "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
             "tab_active_text":"#FFFFFF",
-            "gauge_bg":       "#12091C",
-            "gauge_text":     "#E3D9FC",
-            "shadow":         "0 4px 24px rgba(191, 64, 250, 0.18)"
+            "gauge_bg":       "#1E293B",
+            "gauge_text":     "#F8FAFC",
+            "shadow":         "0 4px 18px rgba(0, 0, 0, 0.35)"
         }
 
 
@@ -105,54 +105,54 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
     if modo == "claro":
         override_css = """
         :root, .stApp {
-            --bg-base: #C0BAB3 !important;
-            --bg-surface: #D5CFC9 !important;
-            --bg-card: #E3DDD7 !important;
-            --bg-card-hover: #EDE7E1 !important;
-            --border: #A8A096 !important;
-            --border-accent: #391214 !important;
-            --accent-primary: #391214 !important;
-            --accent-second: #52423D !important;
-            --text-primary: #160F0C !important;
-            --text-secondary: #391214 !important;
-            --text-muted: #52423D !important;
-            --success: #15803d !important;
-            --warning: #b45309 !important;
-            --danger: #b91c1c !important;
-            --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            --bg-base: #F1F5F9 !important;
+            --bg-surface: #FFFFFF !important;
+            --bg-card: #FFFFFF !important;
+            --bg-card-hover: #F8FAFC !important;
+            --border: #E2E8F0 !important;
+            --border-accent: #2563EB !important;
+            --accent-primary: #2563EB !important;
+            --accent-second: #0D9488 !important;
+            --text-primary: #0F172A !important;
+            --text-secondary: #334155 !important;
+            --text-muted: #64748B !important;
+            --success: #16A34A !important;
+            --warning: #D97706 !important;
+            --danger: #DC2626 !important;
+            --tab-active-bg: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
             --tab-active-text: #FFFFFF !important;
-            --gauge-bg: #D0C9C2 !important;
-            --gauge-text: #160F0C !important;
-            --shadow: 0 4px 18px rgba(57, 18, 20, 0.14) !important;
+            --gauge-bg: #E2E8F0 !important;
+            --gauge-text: #0F172A !important;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
         }
         """
     elif modo == "oscuro":
         override_css = """
         :root, .stApp {
-            --bg-base: #040607 !important;
-            --bg-surface: #0D0714 !important;
-            --bg-card: #180E24 !important;
-            --bg-card-hover: #241438 !important;
-            --border: #331E4D !important;
-            --border-accent: #BF40FA !important;
-            --accent-primary: #BF40FA !important;
-            --accent-second: #4928C2 !important;
-            --text-primary: #E3D9FC !important;
-            --text-secondary: #B8A8DC !important;
-            --text-muted: #8D7AA8 !important;
-            --success: #34d399 !important;
-            --warning: #fbbf24 !important;
-            --danger: #f87171 !important;
-            --tab-active-bg: linear-gradient(135deg, #BF40FA 0%, #4928C2 100%) !important;
+            --bg-base: #0B0F19 !important;
+            --bg-surface: #111827 !important;
+            --bg-card: #151E2E !important;
+            --bg-card-hover: #1E293B !important;
+            --border: #1E293B !important;
+            --border-accent: #3B82F6 !important;
+            --accent-primary: #3B82F6 !important;
+            --accent-second: #10B981 !important;
+            --text-primary: #F8FAFC !important;
+            --text-secondary: #CBD5E1 !important;
+            --text-muted: #94A3B8 !important;
+            --success: #10B981 !important;
+            --warning: #F59E0B !important;
+            --danger: #EF4444 !important;
+            --tab-active-bg: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
             --tab-active-text: #FFFFFF !important;
-            --gauge-bg: #12091C !important;
-            --gauge-text: #E3D9FC !important;
-            --shadow: 0 4px 24px rgba(191, 64, 250, 0.22) !important;
+            --gauge-bg: #1E293B !important;
+            --gauge-text: #F8FAFC !important;
+            --shadow: 0 4px 18px rgba(0, 0, 0, 0.35) !important;
         }
         """
 
     css_cockpit = f"<style>\n{override_css}\n" + """
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
 
         /* ============================================================
@@ -167,25 +167,25 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         [data-theme="dark"],
         .stApp[data-theme="dark"],
         .st-theme-dark {
-            --bg-base: #040607;
-            --bg-surface: #0D0714;
-            --bg-card: #180E24;
-            --bg-card-hover: #241438;
-            --border: #331E4D;
-            --border-accent: #BF40FA;
-            --accent-primary: #BF40FA;
-            --accent-second: #4928C2;
-            --text-primary: #E3D9FC;
-            --text-secondary: #B8A8DC;
-            --text-muted: #8D7AA8;
-            --success: #34d399;
-            --warning: #fbbf24;
-            --danger: #f87171;
-            --tab-active-bg: linear-gradient(135deg, #BF40FA 0%, #4928C2 100%);
+            --bg-base: #0B0F19;
+            --bg-surface: #111827;
+            --bg-card: #151E2E;
+            --bg-card-hover: #1E293B;
+            --border: #1E293B;
+            --border-accent: #3B82F6;
+            --accent-primary: #3B82F6;
+            --accent-second: #10B981;
+            --text-primary: #F8FAFC;
+            --text-secondary: #CBD5E1;
+            --text-muted: #94A3B8;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --tab-active-bg: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
             --tab-active-text: #FFFFFF;
-            --gauge-bg: #12091C;
-            --gauge-text: #E3D9FC;
-            --shadow: 0 4px 24px rgba(191, 64, 250, 0.22);
+            --gauge-bg: #1E293B;
+            --gauge-text: #F8FAFC;
+            --shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
         }
 
         /* Preferencia nativa de sistema operativo en Modo Claro */
@@ -194,25 +194,25 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
             html:not([data-theme="dark"]):not([data-base-theme="dark"]),
             body:not([data-theme="dark"]):not([data-base-theme="dark"]),
             .stApp:not([data-theme="dark"]):not([data-base-theme="dark"]) {
-                --bg-base: #C0BAB3;
-                --bg-surface: #D5CFC9;
-                --bg-card: #E3DDD7;
-                --bg-card-hover: #EDE7E1;
-                --border: #A8A096;
-                --border-accent: #391214;
-                --accent-primary: #391214;
-                --accent-second: #52423D;
-                --text-primary: #160F0C;
-                --text-secondary: #391214;
-                --text-muted: #52423D;
-                --success: #15803d;
-                --warning: #b45309;
-                --danger: #b91c1c;
-                --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%);
+                --bg-base: #F1F5F9;
+                --bg-surface: #FFFFFF;
+                --bg-card: #FFFFFF;
+                --bg-card-hover: #F8FAFC;
+                --border: #E2E8F0;
+                --border-accent: #2563EB;
+                --accent-primary: #2563EB;
+                --accent-second: #0D9488;
+                --text-primary: #0F172A;
+                --text-secondary: #334155;
+                --text-muted: #64748B;
+                --success: #16A34A;
+                --warning: #D97706;
+                --danger: #DC2626;
+                --tab-active-bg: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
                 --tab-active-text: #FFFFFF;
-                --gauge-bg: #D0C9C2;
-                --gauge-text: #160F0C;
-                --shadow: 0 4px 18px rgba(57, 18, 20, 0.14);
+                --gauge-bg: #E2E8F0;
+                --gauge-text: #0F172A;
+                --shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
             }
         }
 
@@ -233,25 +233,25 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .st-theme-light [data-testid="stAppViewContainer"],
         body.st-theme-light,
         html.st-theme-light {
-            --bg-base: #C0BAB3 !important;
-            --bg-surface: #D5CFC9 !important;
-            --bg-card: #E3DDD7 !important;
-            --bg-card-hover: #EDE7E1 !important;
-            --border: #A8A096 !important;
-            --border-accent: #391214 !important;
-            --accent-primary: #391214 !important;
-            --accent-second: #52423D !important;
-            --text-primary: #160F0C !important;
-            --text-secondary: #391214 !important;
-            --text-muted: #52423D !important;
-            --success: #15803d !important;
-            --warning: #b45309 !important;
-            --danger: #b91c1c !important;
-            --tab-active-bg: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            --bg-base: #F1F5F9 !important;
+            --bg-surface: #FFFFFF !important;
+            --bg-card: #FFFFFF !important;
+            --bg-card-hover: #F8FAFC !important;
+            --border: #E2E8F0 !important;
+            --border-accent: #2563EB !important;
+            --accent-primary: #2563EB !important;
+            --accent-second: #0D9488 !important;
+            --text-primary: #0F172A !important;
+            --text-secondary: #334155 !important;
+            --text-muted: #64748B !important;
+            --success: #16A34A !important;
+            --warning: #D97706 !important;
+            --danger: #DC2626 !important;
+            --tab-active-bg: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
             --tab-active-text: #FFFFFF !important;
-            --gauge-bg: #D0C9C2 !important;
-            --gauge-text: #160F0C !important;
-            --shadow: 0 4px 18px rgba(57, 18, 20, 0.14) !important;
+            --gauge-bg: #E2E8F0 !important;
+            --gauge-text: #0F172A !important;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
         }
 
         /* Reglas explícitas directas para Modo Claro (Garantía Visual Total) */
@@ -260,13 +260,13 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .st-theme-light .stApp,
         html[data-theme="light"] .stApp,
         body[data-theme="light"] .stApp {
-            background-color: #C0BAB3 !important;
-            color: #160F0C !important;
+            background-color: #F1F5F9 !important;
+            color: #0F172A !important;
         }
         [data-theme="light"] [data-testid="stSidebar"],
         .st-theme-light [data-testid="stSidebar"] {
-            background-color: #D5CFC9 !important;
-            border-right: 1px solid #A8A096 !important;
+            background-color: #FFFFFF !important;
+            border-right: 1px solid #E2E8F0 !important;
         }
         [data-theme="light"] .auto-card,
         .st-theme-light .auto-card,
@@ -276,9 +276,9 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .st-theme-light .semaforo-hud,
         [data-theme="light"] .rol-card,
         .st-theme-light .rol-card {
-            background: #E3DDD7 !important;
-            border: 1px solid #A8A096 !important;
-            box-shadow: 0 4px 18px rgba(57, 18, 20, 0.12) !important;
+            background: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06) !important;
         }
         [data-theme="light"] .auto-card h4,
         .st-theme-light .auto-card h4,
@@ -292,36 +292,36 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .st-theme-light .rol-card .rol-name,
         [data-theme="light"] h1, [data-theme="light"] h2, [data-theme="light"] h3,
         .st-theme-light h1, .st-theme-light h2, .st-theme-light h3 {
-            color: #160F0C !important;
+            color: #0F172A !important;
         }
         [data-theme="light"] p, [data-theme="light"] span, [data-theme="light"] label,
         .st-theme-light p, .st-theme-light span, .st-theme-light label {
-            color: #391214 !important;
+            color: #334155 !important;
         }
         [data-theme="light"] [data-testid="stTabs"] [role="tablist"],
         .st-theme-light [data-testid="stTabs"] [role="tablist"] {
-            background-color: #D5CFC9 !important;
-            border: 1px solid #A8A096 !important;
+            background-color: #E2E8F0 !important;
+            border: 1px solid #CBD5E1 !important;
         }
         [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]),
         .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) {
-            color: #160F0C !important;
+            color: #334155 !important;
         }
         [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
         .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) p,
         [data-theme="light"] [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span,
         .st-theme-light [data-testid="stTabs"] [role="tab"]:not([aria-selected="true"]) span {
-            color: #160F0C !important;
+            color: #334155 !important;
         }
         [data-theme="light"] [data-testid="stTabs"] [role="tab"][aria-selected="true"],
         .st-theme-light [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-            background: linear-gradient(135deg, #391214 0%, #52423D 100%) !important;
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
             color: #FFFFFF !important;
-            box-shadow: 0 4px 18px rgba(57, 18, 20, 0.25) !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
         }
 
         /* ============================================================
-           TIPOGRAFÍA PLAYFAIR DISPLAY PARA CONTENIDO TEXTUAL
+           TIPOGRAFÍA MODERNA AUTOMOTRIZ (INTER / SYSTEM-UI)
            ============================================================ */
         html, body, .stApp, 
         h1, h2, h3, h4, h5, h6, 
@@ -332,7 +332,7 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         [data-testid="stMarkdownContainer"] p,
         [data-testid="stMarkdownContainer"] span:not([data-testid="stIconMaterial"]):not([class*="material"]),
         [data-testid="stMarkdownContainer"] div:not([data-testid="stIconMaterial"]):not([class*="material"]) {
-            font-family: 'Playfair Display', Georgia, serif !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         }
 
         /* ============================================================
@@ -855,7 +855,7 @@ def aplicar_estilos_cockpit(modo: str = "auto"):
         .stPlotlyChart .legendtext,
         .stPlotlyChart .g-title text,
         .stPlotlyChart .pielabel text {
-            font-family: 'Playfair Display', Georgia, serif !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
             fill: var(--text-primary) !important;
             color: var(--text-primary) !important;
         }
@@ -1036,13 +1036,13 @@ def render_reloj_en_vivo(modo: str = "oscuro"):
     <!DOCTYPE html>
     <html>
     <head>
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
             * {{
                 margin: 0;
                 padding: 0;
                 box-sizing: border-box;
-                font-family: 'Playfair Display', Georgia, serif;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 transition: all 0.25s ease;
             }}
             body {{
@@ -1286,7 +1286,7 @@ def render_card_telemetria(
     valor: float,
     unidad: str = "%",
     subtexto: str = "",
-    color_acento: str = "#BF40FA",
+    color_acento: str = "#3B82F6",
     max_val: float = 100.0,
     modo: str = "oscuro"
 ):
@@ -1301,7 +1301,7 @@ def render_card_telemetria(
     offset = circunferencia * (1.0 - pct_val)
 
     color_stroke = color_acento if modo == "oscuro" else (
-        "#391214" if color_acento in ["#BF40FA", "#4928C2"] else color_acento
+        "#2563EB" if color_acento in ["#3B82F6", "#BF40FA", "#4928C2"] else color_acento
     )
 
     st.markdown(f"""
@@ -1597,7 +1597,7 @@ def render_reproductor_spotify(modo: str = "oscuro", pista: dict = None, reprodu
         <div class="auto-card" style="margin-top: 15px; border: 1px solid {p['border']};">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid {p['border']}33; padding-bottom: 12px; margin-bottom: 14px;">
                 <div>
-                    <span style="font-family: 'Playfair Display', serif; font-weight: 700; font-size: 17px; color: {p['text_primary']};">Multimedia y Streaming de Cabina</span>
+                    <span style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 700; font-size: 17px; color: {p['text_primary']};">Multimedia y Streaming de Cabina</span>
                     <span style="margin-left: 8px; font-size: 10px; text-transform: uppercase; font-weight: 700; padding: 2px 8px; border-radius: 12px; background: rgba(34,197,94,0.12); color: {estado_color}; border: 1px solid rgba(34,197,94,0.3);">{estado_texto}</span>
                     <p style="font-size: 11.5px; color: {p['text_muted']}; margin-top: 3px;">Pista: <b style="color: {p['text_primary']};">{pista['titulo']}</b> · Artista: {pista['artista']}</p>
                 </div>

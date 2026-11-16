@@ -129,6 +129,20 @@ if "theme_mode" not in st.session_state:
 paleta = obtener_paleta(st.session_state["theme_mode"])
 aplicar_estilos_cockpit(st.session_state["theme_mode"])
 
+# Diccionario de traducción de estados del RTOS a español
+ESTADOS_PROCESO_ES = {
+    "READY": "Listo",
+    "RUNNING": "En Ejecución",
+    "WAITING": "En Espera",
+    "TERMINATED": "Finalizado",
+    "NEW": "Nuevo",
+}
+
+def traducir_estado_proc(estado: str) -> str:
+    """Traduce de forma amigable los estados internos del Kernel al español."""
+    return ESTADOS_PROCESO_ES.get(str(estado).strip().upper(), str(estado))
+
+
 # Estilos CSS específicos para la terminal monospace y cards de subsistemas
 st.markdown(f"""
 <style>
@@ -139,10 +153,14 @@ st.markdown(f"""
         padding: 16px;
         margin-bottom: 12px;
         box-shadow: {paleta['shadow']};
+        transition: transform 0.2s ease, border-color 0.2s ease;
+    }}
+    .autoos-card:hover {{
+        border-color: {paleta['border_accent']};
     }}
     .autoos-card-header {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 1.1rem;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 1.05rem;
         font-weight: 700;
         color: {paleta['text_primary']};
         margin-bottom: 8px;
@@ -151,55 +169,69 @@ st.markdown(f"""
         align-items: center;
     }}
     .terminal-box {{
-        background: #020406;
-        border: 1px solid #BF40FA;
+        background: #0B0F19;
+        border: 1px solid #1E293B;
+        border-left: 3px solid #3B82F6;
         border-radius: 8px;
-        padding: 14px;
-        font-family: 'JetBrains Mono', monospace;
-        color: #34d399;
-        font-size: 0.82rem;
+        padding: 16px;
+        font-family: 'JetBrains Mono', Consolas, monospace;
+        color: #10B981;
+        font-size: 0.84rem;
         max-height: 480px;
         overflow-y: auto;
         white-space: pre-wrap;
-        box-shadow: 0 0 15px rgba(191, 64, 250, 0.2);
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
     }}
     .badge-ok {{
-        background: rgba(52, 211, 153, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(52, 211, 153, 0.3);
-        padding: 2px 8px;
+        background: rgba(16, 185, 129, 0.15);
+        color: #10B981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 3px 9px;
         border-radius: 6px;
         font-size: 0.75rem;
-        font-weight: bold;
+        font-weight: 700;
+        text-transform: uppercase;
     }}
     .badge-warn {{
-        background: rgba(251, 191, 36, 0.15);
-        color: #fbbf24;
-        border: 1px solid rgba(251, 191, 36, 0.3);
-        padding: 2px 8px;
+        background: rgba(245, 158, 11, 0.15);
+        color: #F59E0B;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        padding: 3px 9px;
         border-radius: 6px;
         font-size: 0.75rem;
-        font-weight: bold;
+        font-weight: 700;
+        text-transform: uppercase;
     }}
     .badge-danger {{
-        background: rgba(248, 113, 113, 0.15);
-        color: #f87171;
-        border: 1px solid rgba(248, 113, 113, 0.3);
-        padding: 2px 8px;
+        background: rgba(239, 68, 68, 0.15);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 3px 9px;
         border-radius: 6px;
         font-size: 0.75rem;
-        font-weight: bold;
+        font-weight: 700;
+        text-transform: uppercase;
+    }}
+    .badge-info {{
+        background: rgba(59, 130, 246, 0.15);
+        color: #3B82F6;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        padding: 3px 9px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
     }}
     .gantt-bar {{
         display: inline-block;
-        height: 24px;
+        height: 26px;
         margin-right: 2px;
         border-radius: 4px;
         text-align: center;
         color: white;
-        font-size: 10px;
-        font-weight: bold;
-        line-height: 24px;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 26px;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -234,11 +266,11 @@ with st.sidebar:
 
     # Selector de tema
     st.markdown("---")
-    st.markdown("#### 🎨 Tema Visual")
+    st.markdown("#### 🎨 Apariencia Visual")
     tema_sel = st.radio(
         "Tema",
         options=["oscuro", "claro"],
-        format_func=lambda t: "🌙 Modo Oscuro (Purple Night)" if t == "oscuro" else "☀️ Modo Claro (Soft Dove)",
+        format_func=lambda t: "🌙 Modo Oscuro (Cockpit Noche)" if t == "oscuro" else "☀️ Modo Claro (Cockpit Día)",
         index=0 if st.session_state["theme_mode"] == "oscuro" else 1,
         label_visibility="collapsed"
     )
@@ -253,10 +285,10 @@ with st.sidebar:
     if supa_conn:
         st.success("🟢 Conectado a Supabase Cloud")
     else:
-        st.warning("🟠 Motor Local Resiliente (Credenciales no detectadas)")
+        st.warning("🟠 Motor Local Resiliente (Almacén JSON)")
 
     st.markdown("---")
-    st.caption("AutoOS — ISO 26262 ASIL-D Compliant")
+    st.caption("AutoOS — Conforme ISO 26262 ASIL-D")
 
 
 # ------------------------------------------------------------------
@@ -265,20 +297,20 @@ with st.sidebar:
 col_title, col_stat = st.columns([2, 1])
 
 with col_title:
-    st.markdown("## 🚗 AutoOS — Sistema Operativo para Vehículo Inteligente")
-    st.markdown("**Núcleo:** Kernel Multitarea Tiempo Real · **Planificador:** Multialgoritmo · **Memoria:** First-Fit & Paginación")
+    st.markdown("## 🚗 AutoOS — Sistema Operativo Vehicular Inteligente")
+    st.caption("Arquitectura RTOS: Kernel Multitarea · Despacho Tiempo Real · Particiones First-Fit & Paginación Virtual")
 
 with col_stat:
     if kernel.is_booted:
         st.markdown("""
         <div style="text-align: right; margin-top: 8px;">
-            <span class="badge-ok" style="font-size: 0.9rem; padding: 6px 14px;">● KERNEL OPERACIONAL</span>
+            <span class="badge-ok" style="font-size: 0.85rem; padding: 6px 14px;">● SISTEMA ACTIVO (EN LÍNEA)</span>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div style="text-align: right; margin-top: 8px;">
-            <span class="badge-danger" style="font-size: 0.9rem; padding: 6px 14px;">● KERNEL APAGADO / REQUIERE BOOT</span>
+            <span class="badge-danger" style="font-size: 0.85rem; padding: 6px 14px;">● KERNEL DETENIDO (REQUIERE ARRANQUE)</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -288,23 +320,27 @@ m_tick, m_cpu, m_ram, m_vmem, m_vfs, m_evts = st.columns(6)
 snap = kernel.get_system_snapshot() if kernel.is_booted else None
 
 with m_tick:
-    st.metric("Reloj Lógico", f"Tick {kernel.engine.current_tick}")
+    st.metric("Ciclo Reloj", f"Tick #{kernel.engine.current_tick}")
 with m_cpu:
-    cpu_stat = "LIBRE" if kernel.cpu.is_idle else f"PID {kernel.cpu.current_process.pid}"
+    if kernel.cpu.is_idle:
+        cpu_stat = "Libre (En Reposo)"
+    else:
+        curr_p = kernel.cpu.current_process
+        cpu_stat = f"PID {curr_p.pid} ({curr_p.name[:10]})"
     st.metric("Estado CPU", cpu_stat)
 with m_ram:
     used_ram = kernel.memory_manager.used_memory
     tot_ram = kernel.memory_manager.total_memory
     pct_ram = getattr(kernel.memory_manager, "usage_percentage", round((used_ram / tot_ram) * 100, 1) if tot_ram > 0 else 0.0)
-    st.metric("RAM Física", f"{used_ram} / {tot_ram} MB", delta=f"{pct_ram}%")
+    st.metric("Memoria RAM", f"{used_ram} / {tot_ram} MB", delta=f"{pct_ram}% ocupada")
 with m_vmem:
     vm = kernel.virtual_memory
-    st.metric("Paginación", f"{vm.page_hits} H / {vm.page_faults} F", delta=f"{vm.hit_ratio}% Hit")
+    st.metric("Paginación", f"{vm.page_hits} H / {vm.page_faults} F", delta=f"{vm.hit_ratio}% aciertos")
 with m_vfs:
     archivos_totales = sum(len(f) for f in kernel.file_system.structure.values())
-    st.metric("Archivos VFS", f"{archivos_totales} archivos")
+    st.metric("Archivos VFS", f"{archivos_totales} archivos", delta="Persistente")
 with m_evts:
-    st.metric("Auditoría", f"{kernel.logger.total_events} eventos")
+    st.metric("Eventos Kernel", f"{kernel.logger.total_events} registros", delta="Auditado")
 
 st.markdown("---")
 
@@ -313,15 +349,15 @@ st.markdown("---")
 # LAS 9 PESTAÑAS INTEGRALES DE AUTOOS
 # ------------------------------------------------------------------
 tab_boot, tab_proc, tab_sched, tab_ram, tab_vmem, tab_vfs, tab_term, tab_cockpit, tab_sec = st.tabs([
-    "⚡ Boot & Kernel",
-    "🔄 Procesos & CPU",
-    "⏱️ Planificador",
-    "💾 Memoria Física",
+    "⚡ Arranque y Kernel",
+    "🔄 Procesos y CPU",
+    "⏱️ Planificador (Scheduler)",
+    "💾 Memoria RAM",
     "📑 Memoria Virtual",
-    "📁 Archivos (VFS)",
-    "💻 Terminal",
-    "🚗 Cockpit & Hardware",
-    "🛡️ Seguridad & Supabase",
+    "📁 Archivos del Vehículo",
+    "💻 Consola de Comandos",
+    "🚗 Tablero y Sensores",
+    "🛡️ Seguridad y Nube",
 ])
 
 
@@ -334,13 +370,13 @@ with tab_boot:
 
     c_b1, c_b2, c_b3 = st.columns([1, 1, 2])
     with c_b1:
-        if st.button("🚀 Iniciar Boot del Sistema", type="primary", use_container_width=True, disabled=kernel.is_booted):
+        if st.button("🚀 Iniciar Arranque del Sistema", type="primary", use_container_width=True, disabled=kernel.is_booted):
             res = kernel_bridge.boot_system()
             st.success(f"{res['message']}")
             st.rerun()
 
     with c_b2:
-        if st.button("🛑 Apagado Ordenado (Shutdown)", type="secondary", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("🛑 Apagado Ordenado del Sistema", type="secondary", use_container_width=True, disabled=not kernel.is_booted):
             res = kernel_bridge.shutdown_system()
             st.warning(f"{res['message']} (Tick final: {res.get('final_tick', 0)})")
             st.rerun()
@@ -349,7 +385,7 @@ with tab_boot:
         if kernel.is_booted:
             st.markdown(f"**Hora de Arranque:** `{kernel.boot_log[0]['description'] if kernel.boot_log else 'N/A'}` | **Estado:** `OPERACIONAL`")
         else:
-            st.info("Presiona **Iniciar Boot del Sistema** para ejecutar el Power-On Self-Test (POST) y desplegar los demonios.")
+            st.info("Presiona **Iniciar Arranque del Sistema** para ejecutar el Power-On Self-Test (POST) y desplegar los demonios.")
 
     st.markdown("#### 📋 Fases Formales de Arranque (7 Etapas)")
     if kernel.boot_log:
@@ -360,7 +396,7 @@ with tab_boot:
                 <div class="autoos-card" style="text-align: center; padding: 10px;">
                     <span class="badge-ok">OK</span>
                     <div style="font-weight: bold; margin-top: 6px; font-size: 0.85rem;">{stage['stage']}</div>
-                    <div style="font-size: 0.7rem; color: #887D77; margin-top: 4px;">{stage['description'][:45]}...</div>
+                    <div style="font-size: 0.72rem; color: #94A3B8; margin-top: 4px;">{stage['description'][:45]}...</div>
                 </div>
                 """, unsafe_allow_html=True)
     else:
@@ -374,17 +410,18 @@ with tab_boot:
         for idx, d in enumerate(procs_demonios):
             with cols_d[idx]:
                 alloc = kernel.memory_manager.get_process_allocation(d.pid)
+                estado_txt = traducir_estado_proc(d.state.value)
                 st.markdown(f"""
                 <div class="autoos-card">
                     <div class="autoos-card-header">
                         <span>{d.name}</span>
-                        <span class="badge-ok">PID {d.pid}</span>
+                        <span class="badge-info">PID {d.pid}</span>
                     </div>
-                    <div style="font-size: 0.8rem;">
-                        <b>Prioridad:</b> {d.priority} (Crítica)<br>
-                        <b>Ráfaga:</b> {d.remaining_time}/{d.burst_time} ticks<br>
-                        <b>RAM Física:</b> {alloc.limit if alloc else 64} MB<br>
-                        <b>Estado:</b> <code>{d.state.value}</code>
+                    <div style="font-size: 0.82rem; line-height: 1.7;">
+                        <b>Prioridad:</b> Nivel {d.priority} (Crítica ASIL-D)<br>
+                        <b>Ciclos Restantes:</b> {d.remaining_time}/{d.burst_time} ticks<br>
+                        <b>RAM Asignada:</b> {alloc.limit if alloc else 64} MB<br>
+                        <b>Estado:</b> <span class="badge-ok">{estado_txt}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -399,15 +436,15 @@ with tab_proc:
     # Barra de acciones y avance de simulación
     col_act1, col_act2, col_act3, col_act4, col_act5 = st.columns([1, 1, 1, 1, 2])
     with col_act1:
-        if st.button("▶️ Avanzar 1 Tick", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("▶️ Avanzar 1 Ciclo", use_container_width=True, disabled=not kernel.is_booted):
             res = kernel_bridge.step_simulation(1)
             st.rerun()
     with col_act2:
-        if st.button("⏩ Ráfaga 5 Ticks", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("⏩ Ráfaga 5 Ciclos", use_container_width=True, disabled=not kernel.is_booted):
             res = kernel_bridge.step_simulation(5)
             st.rerun()
     with col_act3:
-        if st.button("⏭️ Ráfaga 10 Ticks", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("⏭️ Ráfaga 10 Ciclos", use_container_width=True, disabled=not kernel.is_booted):
             res = kernel_bridge.step_simulation(10)
             st.rerun()
     with col_act4:
@@ -420,25 +457,25 @@ with tab_proc:
             st.rerun()
     with col_act5:
         if not kernel.is_booted:
-            st.warning("Inicia el Boot en la Pestaña 1 para ejecutar procesos.")
+            st.warning("Inicia el arranque en la Pestaña 1 para ejecutar procesos.")
         else:
             proc_cpu = kernel.cpu.current_process
             if proc_cpu:
-                st.success(f"CPU Ejecutando: **PID {proc_cpu.pid} — {proc_cpu.name}** (Ráfaga restante: {proc_cpu.remaining_time})")
+                st.success(f"CPU Ejecutando: **PID {proc_cpu.pid} — {proc_cpu.name}** (Ciclos restantes: {proc_cpu.remaining_time})")
             else:
-                st.info("CPU Ociosa (Sin proceso despachado en este ciclo)")
+                st.info("CPU Libre (Sin proceso despachado en este ciclo)")
 
     # Formulario para crear procesos con asignación First-Fit
-    with st.expander("➕ Crear Nuevo Proceso Vehicular (Con Asignación de RAM First-Fit)", expanded=False):
+    with st.expander("➕ Registrar Nuevo Proceso Vehicular (Con Asignación de RAM First-Fit)", expanded=False):
         c_np1, c_np2, c_np3, c_np4, c_np5 = st.columns([2, 1, 1, 1, 1])
         with c_np1:
             nuevo_nombre = st.text_input("Nombre de la Tarea", value="Radar_Frente_ACC", key="np_name")
         with c_np2:
-            nueva_prio = st.selectbox("Prioridad", options=[1, 2, 3, 4, 5], index=2, format_func=lambda p: f"{p} ({'Crítica' if p<=2 else 'Normal' if p==3 else 'Baja'})", key="np_prio")
+            nueva_prio = st.selectbox("Prioridad", options=[1, 2, 3, 4, 5], index=2, format_func=lambda p: f"{p} ({'Crítica ASIL-D' if p<=2 else 'Normal' if p==3 else 'Baja Confort'})", key="np_prio")
         with c_np3:
-            nueva_rafaga = st.number_input("Ráfaga (Ticks)", min_value=1, max_value=50, value=6, key="np_burst")
+            nueva_rafaga = st.number_input("Ráfaga (Ciclos/Ticks)", min_value=1, max_value=50, value=6, key="np_burst")
         with c_np4:
-            nueva_ram = st.number_input("RAM (MB)", min_value=16, max_value=1024, step=16, value=64, key="np_ram")
+            nueva_ram = st.number_input("RAM Requerida (MB)", min_value=16, max_value=1024, step=16, value=64, key="np_ram")
         with c_np5:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             if st.button("Crear Proceso", type="primary", use_container_width=True, disabled=not kernel.is_booted):
@@ -468,11 +505,11 @@ with tab_proc:
             proc_data_display.append({
                 "PID": p.pid,
                 "Nombre": p.name,
-                "Prioridad": f"{p.priority} ({'ASIL-D' if p.priority<=2 else 'Confort'})",
-                "Estado": p.state.value,
-                "Ráfaga Restante": f"{p.remaining_time} / {p.burst_time} ticks",
+                "Prioridad": f"Nivel {p.priority} ({'Crítica ASIL-D' if p.priority<=2 else 'Confort'})",
+                "Estado": traducir_estado_proc(p.state.value),
+                "Ciclos Restantes": f"{p.remaining_time} / {p.burst_time} ticks",
                 "Avance": f"{getattr(p, 'progress_percentage', round(((p.burst_time - p.remaining_time) / p.burst_time) * 100, 1) if getattr(p, 'burst_time', 0) > 0 else 100.0)}%",
-                "RAM Física": f"{alloc.limit if alloc else getattr(p, 'memory_size', 64)} MB",
+                "RAM Asignada": f"{alloc.limit if alloc else getattr(p, 'memory_size', 64)} MB",
                 "Dirección Base": f"0x{alloc.base_address:04X}" if alloc else "N/A",
             })
         st.dataframe(proc_data_display, use_container_width=True)
@@ -490,7 +527,7 @@ with tab_proc:
         ) if todos_procesos else None
     with col_k2:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("💀 Finalizar Proceso", type="secondary", use_container_width=True, disabled=not pid_kill):
+        if st.button("🛑 Finalizar Proceso", type="secondary", use_container_width=True, disabled=not pid_kill):
             usr_act = obtener_usuario_actual()
             ok, msg = finalizar_proceso(pid_kill, usr_act)
             if ok:
@@ -510,13 +547,13 @@ with tab_proc:
             1: "#ef4444", 2: "#06b6d4", 3: "#3b82f6", 4: "#10b981", 5: "#f59e0b",
             6: "#8b5cf6", 7: "#ec4899", 0: "#334155"
         }
-        gantt_html = "<div style='display: flex; overflow-x: auto; padding: 10px 0; background: #0D0714; border-radius: 8px; border: 1px solid #331E4D;'>"
+        gantt_html = "<div style='display: flex; overflow-x: auto; padding: 12px; background: #0B0F19; border-radius: 8px; border: 1px solid #1E293B;'>"
         for g in gantt_entries[-40:]:
-            color = palette_pids.get(g['pid'], "#a855f7")
+            color = palette_pids.get(g['pid'], "#3B82F6")
             gantt_html += f"<div class='gantt-bar' style='background: {color}; min-width: 32px;' title='Tick {g['tick']}: PID {g['pid']} ({g['name']})'>P{g['pid']}</div>"
         gantt_html += "</div>"
         st.markdown(gantt_html, unsafe_allow_html=True)
-        st.caption("Muestra los últimos ciclos de reloj. P0 representa CPU ociosa (IDLE).")
+        st.caption("Traza de los últimos ciclos de reloj despachados. P0 representa CPU Libre (Reposo).")
     else:
         st.caption("Avanza ciclos de simulación para visualizar la traza en el Diagrama de Gantt.")
 
@@ -525,8 +562,8 @@ with tab_proc:
 # TAB 3: PLANIFICADOR (SCHEDULER - CRITERIO 6)
 # ==================================================================
 with tab_sched:
-    st.markdown("### ⏱️ Planificador Multialgoritmo (Scheduler)")
-    st.write("Configuración de políticas de selección y despacho de procesos automotrices.")
+    st.markdown("### ⏱️ Planificador Multialgoritmo (Scheduler RTOS)")
+    st.write("Configuración de políticas de selección, despacho determinista y tiempo real de tareas vehiculares.")
 
     c_s1, c_s2, c_s3 = st.columns([2, 1, 2])
     with c_s1:
@@ -536,53 +573,54 @@ with tab_sched:
             options=["PRIORITY", "FCFS", "ROUND_ROBIN"],
             index=["PRIORITY", "FCFS", "ROUND_ROBIN"].index(algoritmo_actual) if algoritmo_actual in ["PRIORITY", "FCFS", "ROUND_ROBIN"] else 0,
             format_func=lambda a: {
-                "PRIORITY": "Prioridad Estricta (Min-Heap con desempate FIFO)",
-                "FCFS": "FCFS (First-Come, First-Served estricto)",
-                "ROUND_ROBIN": "Round Robin (Turno rotativo con Quantum)"
+                "PRIORITY": "Prioridad Estricta (Tiempo Real / ASIL-D)",
+                "FCFS": "Primero en Llegar, Primero en Atenderse (FCFS)",
+                "ROUND_ROBIN": "Turno Rotativo Equitativo (Round Robin)",
             }.get(a, a)
         )
     with c_s2:
-        quantum_val = st.number_input("Quantum (Ticks para RR)", min_value=1, max_value=10, value=kernel.scheduler.quantum)
+        quantum_val = st.number_input("Quantum (Ciclos por turno para RR)", min_value=1, max_value=10, value=kernel.scheduler.quantum)
     with c_s3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("Aplicar Configuración de Scheduler", type="primary", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("Guardar Política de Planificación", type="primary", use_container_width=True, disabled=not kernel.is_booted):
             ok, msg = kernel_bridge.set_scheduler_bridge(nuevo_algoritmo, quantum_val)
             st.success(msg)
             st.rerun()
 
     # Visualización en vivo de la cola de listos (READY Queue)
-    st.markdown("#### ⏳ Cola de Procesos Listos (READY Queue - Orden Determinista de Despacho)")
+    st.markdown("#### ⏳ Cola de Procesos Listos (READY Queue)")
     ready_procs = [entry[2] for entry in kernel.scheduler._queue if entry[2].state.value == "READY"] if kernel.is_booted else []
     
     if ready_procs:
-        st.write(f"**Procesos esperando en cola:** {len(ready_procs)}")
+        st.write(f"**Procesos en espera de CPU:** {len(ready_procs)}")
         cols_q = st.columns(min(len(ready_procs), 6))
         for idx, proc in enumerate(ready_procs[:6]):
             with cols_q[idx]:
+                b_color = "#EF4444" if proc.priority <= 2 else "#3B82F6"
                 st.markdown(f"""
-                <div class="autoos-card" style="border-left: 4px solid {'#ef4444' if proc.priority<=2 else '#3b82f6'};">
-                    <div style="font-weight: bold; font-size: 0.85rem;">Posición {idx + 1}</div>
-                    <div style="font-size: 0.8rem; margin-top: 4px;">
+                <div class="autoos-card" style="border-left: 4px solid {b_color};">
+                    <div style="font-weight: 700; font-size: 0.85rem;">Turno #{idx + 1}</div>
+                    <div style="font-size: 0.8rem; margin-top: 4px; line-height: 1.6;">
                         <b>PID {proc.pid}:</b> {proc.name[:18]}<br>
-                        <b>Prioridad:</b> {proc.priority}<br>
-                        <b>Ráfaga:</b> {proc.remaining_time} ticks
+                        <b>Prioridad:</b> Nivel {proc.priority}<br>
+                        <b>Ráfaga:</b> {proc.remaining_time} ciclos
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
     else:
-        st.caption("La cola de listos se encuentra vacía o todos los procesos están en CPU o terminados.")
+        st.caption("La cola de listos se encuentra vacía (todos los procesos están en CPU o terminados).")
 
     # Simuladores de contingencia
-    st.markdown("#### 🚨 Simuladores de Contingencia Vehicular Integrados")
+    st.markdown("#### 🚨 Pruebas de Contingencia y Seguridad Funcional")
     c_sc1, c_sc2 = st.columns(2)
     with c_sc1:
         st.markdown("""
         <div class="autoos-card">
             <div class="autoos-card-header">
-                <span>🔋 Simulador de Batería Baja</span>
-                <span class="badge-warn">Limp-Home Mode</span>
+                <span>🔋 Batería Baja (Modo Ahorro)</span>
+                <span class="badge-warn">Limp-Home</span>
             </div>
-            <p style="font-size: 0.8rem;">Suspende dinámicamente tareas de infoentretenimiento y confort para preservar reserva de energía para la dirección y frenos.</p>
+            <p style="font-size: 0.82rem; margin: 0;">Suspende dinámicamente tareas secundarias (infoentretenimiento y confort) para garantizar energía a dirección y frenado.</p>
         </div>
         """, unsafe_allow_html=True)
         btn_bat_txt = "Desactivar Modo Ahorro" if kernel.scheduler.low_battery_mode else "Activar Modo Batería Baja (<20%)"
@@ -595,10 +633,10 @@ with tab_sched:
         st.markdown("""
         <div class="autoos-card">
             <div class="autoos-card-header">
-                <span>🛑 Inyección de Proceso Crítico (ASIL-D)</span>
-                <span class="badge-danger">Preemption Inmediata</span>
+                <span>🛑 Desalojo Inmediato (Preemption)</span>
+                <span class="badge-danger">ASIL-D Crítico</span>
             </div>
-            <p style="font-size: 0.8rem;">Inyecta una tarea de emergencia (Frenado Autónomo de Emergencia) desalojando al proceso en ejecución mediante cambio de contexto.</p>
+            <p style="font-size: 0.82rem; margin: 0;">Inyecta una tarea de Frenado Autónomo de Emergencia desalojando al proceso actual de la CPU mediante cambio de contexto.</p>
         </div>
         """, unsafe_allow_html=True)
         if st.button("💥 Inyectar Frenado de Emergencia AEB", type="primary", use_container_width=True, disabled=not kernel.is_booted):
@@ -615,7 +653,7 @@ with tab_sched:
 # ==================================================================
 with tab_ram:
     st.markdown("### 💾 Gestor de Memoria RAM Física (Particiones First-Fit)")
-    st.write("Modelo de direccionamiento base y límite con asignación continua, división de bloques y coalescencia automática.")
+    st.write("Modelo continuo con registros Base y Límite, particionado dinámico y coalescencia automática de bloques libres.")
 
     mm = kernel.memory_manager
     c_m1, c_m2, c_m3, c_m4 = st.columns(4)
@@ -623,36 +661,37 @@ with tab_ram:
         st.metric("RAM Física Total", f"{mm.total_memory} MB")
     with c_m2:
         pct_mm = getattr(mm, "usage_percentage", round((mm.used_memory / mm.total_memory) * 100, 1) if mm.total_memory > 0 else 0.0)
-        st.metric("RAM Ocupada", f"{mm.used_memory} MB", delta=f"{pct_mm}%")
+        st.metric("RAM Ocupada", f"{mm.used_memory} MB", delta=f"{pct_mm}% en uso")
     with c_m3:
         st.metric("RAM Disponible", f"{mm.free_memory} MB")
     with c_m4:
         pct_frag = getattr(mm, "fragmentation_percentage", 0.0)
         st.metric("Fragmentación Externa", f"{pct_frag}%")
 
-    st.markdown("#### 🗺️ Mapa Dinámico de Particiones Contiguas (Memory Map)")
+    st.markdown("#### 🗺️ Mapa Visual de Particiones Contiguas (Memory Map)")
     mem_map = mm.get_memory_map()
     
     # Barra visual de bloques
-    bar_html = "<div style='display: flex; width: 100%; height: 32px; border-radius: 8px; overflow: hidden; margin-bottom: 16px; border: 1px solid #331E4D;'>"
+    bar_html = "<div style='display: flex; width: 100%; height: 34px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; border: 1px solid #1E293B;'>"
     tot_mem_val = getattr(mm, 'total_memory', 2048) or 2048
     for b in mem_map:
-        pct_width = max(2.0, (b.get('limit', 64) / tot_mem_val) * 100)
-        bg = "#ef4444" if not b.get('is_free') and b.get('pid') == 1 else "#3b82f6" if not b.get('is_free') else "#10b981"
+        pct_width = max(2.5, (b.get('limit', 64) / tot_mem_val) * 100)
+        bg = "#EF4444" if not b.get('is_free') and b.get('pid') == 1 else "#3B82F6" if not b.get('is_free') else "#10B981"
         b_status = b.get('status', 'LIBRE' if b.get('is_free') else f"OCUPADO (PID {b.get('pid')})")
-        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b.get('base_address', 0):04X} ({b.get('limit', 0)} MB): {b_status}'>{b.get('limit', 0)}MB</div>"
+        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b.get('base_address', 0):04X} ({b.get('limit', 0)} MB): {b_status}'>{b.get('limit', 0)}MB</div>"
     bar_html += "</div>"
     st.markdown(bar_html, unsafe_allow_html=True)
+    st.caption("Leyenda: 🟩 **Verde:** Memoria Libre | 🟦 **Azul:** Procesos de Usuario | 🟥 **Rojo:** Kernel / Procesos Críticos")
 
     # Tabla detallada de bloques
     map_display = []
     for b in mem_map:
         map_display.append({
             "Dirección Base": f"0x{b.get('base_address', 0):08X}",
-            "Límite (Tamaño)": f"{b.get('limit', 0)} MB",
+            "Tamaño (MB)": f"{b.get('limit', 0)} MB",
             "Dirección Final": f"0x{b.get('end_address', 0):08X}",
-            "Estado": "LIBRE" if b.get("is_free", True) else "OCUPADO",
-            "Proceso Propietario": f"PID {b.get('pid')} ({b.get('process_name', '')})" if not b.get("is_free", True) else "Disponible (Sistema)",
+            "Estado": "DISPONIBLE" if b.get("is_free", True) else "OCUPADO",
+            "Proceso Propietario": f"PID {b.get('pid')} ({b.get('process_name', '')})" if not b.get("is_free", True) else "Memoria Libre del Sistema",
         })
     st.dataframe(map_display, use_container_width=True)
 
@@ -662,7 +701,7 @@ with tab_ram:
 # ==================================================================
 with tab_vmem:
     st.markdown("### 📑 Memoria Virtual y Subsistema de Paginación")
-    st.write("Traducción de direcciones virtuales a físicas, marcos de memoria, tablas de páginas y tratamiento de Page Faults.")
+    st.write("Traducción de direcciones virtuales a físicas, marcos de memoria de 4 MB, tablas de páginas y área de intercambio SWAP.")
 
     vm = kernel.virtual_memory
     c_v1, c_v2, c_v3, c_v4 = st.columns(4)
@@ -670,46 +709,46 @@ with tab_vmem:
         st.metric("Marcos Físicos", f"{vm.total_frames} marcos (4 MB c/u)")
     with c_v2:
         swap_f = getattr(vm, "swap_free", getattr(vm, "free_swap", max(0, vm.swap_size - vm.used_swap)))
-        st.metric("Área SWAP", f"{vm.used_swap} / {vm.swap_size} MB", delta=f"{swap_f} MB libres")
+        st.metric("Área SWAP (Disco)", f"{vm.used_swap} / {vm.swap_size} MB", delta=f"{swap_f} MB libres")
     with c_v3:
-        st.metric("Fallos / Aciertos", f"{vm.page_faults} Faults / {vm.page_hits} Hits")
+        st.metric("Aciertos y Fallos", f"{vm.page_hits} Hits / {vm.page_faults} Faults")
     with c_v4:
-        st.metric("Tasa de Aciertos", f"{vm.hit_ratio}%", delta=f"Algoritmo: {vm.replacement_algorithm}")
+        st.metric("Tasa de Aciertos", f"{vm.hit_ratio}%", delta=f"Reemplazo: {vm.replacement_algorithm}")
 
     # Simulador interactivo de traducción de direcciones
-    st.markdown("#### 🔍 Simulador de Traducción de Direcciones (vmem)")
+    st.markdown("#### 🔍 Simulador de Traducción de Direcciones (MMU)")
     c_tr1, c_tr2, c_tr3, c_tr4 = st.columns([2, 1, 1, 2])
     with c_tr1:
         vaddr_input = st.number_input("Dirección Virtual (MB)", min_value=0, max_value=2048, value=10, key="vaddr_in")
     with c_tr2:
         op_write = st.selectbox("Operación", options=[False, True], format_func=lambda w: "Escritura (Write)" if w else "Lectura (Read)", key="vaddr_op")
     with c_tr3:
-        pid_vmem = st.selectbox("PID Proceso", options=[p.pid for p in todos_procesos] if todos_procesos else [1], key="vmem_pid")
+        pid_vmem = st.selectbox("PID del Proceso", options=[p.pid for p in todos_procesos] if todos_procesos else [1], key="vmem_pid")
     with c_tr4:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("Traducir Dirección Virtual", type="primary", use_container_width=True, disabled=not kernel.is_booted):
+        if st.button("🔍 Traducir Dirección Virtual", type="primary", use_container_width=True, disabled=not kernel.is_booted):
             res_vmem = vm.translate_address(pid=pid_vmem, virtual_address=vaddr_input, is_write=op_write)
             st.session_state["last_vmem_res"] = res_vmem
 
     if "last_vmem_res" in st.session_state:
         rv = st.session_state["last_vmem_res"]
-        color_alert = "#f59e0b" if rv.get("page_fault") else "#10b981"
-        badge_txt = f"PAGE FAULT (Fallo de Página resuelto por SWAP - Marco {rv.get('frame_number')})" if rv.get("page_fault") else "PAGE HIT (Acierto en RAM)"
+        color_alert = "#F59E0B" if rv.get("page_fault") else "#10B981"
+        badge_txt = f"FALLO DE PÁGINA (PAGE FAULT) — Resuelto trayendo página de SWAP al Marco {rv.get('frame_number')}" if rv.get("page_fault") else "ACIERTO DE PÁGINA (PAGE HIT) — La página reside directamente en RAM física"
         st.markdown(f"""
         <div class="autoos-card" style="border-left: 4px solid {color_alert};">
-            <div style="font-weight: bold; font-size: 0.95rem;">{badge_txt}</div>
-            <div style="font-size: 0.85rem; margin-top: 6px;">
+            <div style="font-weight: 700; font-size: 0.95rem; color: {color_alert};">{badge_txt}</div>
+            <div style="font-size: 0.85rem; margin-top: 8px; line-height: 1.8;">
                 <b>Dirección Virtual:</b> <code>{rv['virtual_address']} (0x{rv['virtual_address']:08X})</code><br>
-                <b>Número de Página:</b> {rv['page_number']} | <b>Offset:</b> {rv['offset']} MB<br>
-                <b>Marco Físico Asignado:</b> {rv['frame_number']}<br>
+                <b>Número de Página:</b> {rv['page_number']} | <b>Desplazamiento (Offset):</b> {rv['offset']} MB<br>
+                <b>Marco Físico Asignado:</b> Marco #{rv['frame_number']}<br>
                 <b>Dirección Física Traducida:</b> <code>{rv['physical_address']} (0x{rv['physical_address']:08X})</code><br>
-                <b>Página Expulsada a SWAP:</b> {rv.get('evicted_page', 'Ninguna (Había marcos libres)')}
+                <b>Página Reemplazada (Evictada a SWAP):</b> {rv.get('evicted_page', 'Ninguna (Había marcos físicos libres)')}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     # Vista de marcos físicos
-    st.markdown("#### 🔲 Tabla de Marcos Físicos de Paginación (Primeros 16 de 64)")
+    st.markdown("#### 🔲 Visualización de Marcos Físicos de Paginación (Primeros 16 de 64)")
     cols_frames = st.columns(8)
     for f_idx in range(16):
         col_target = cols_frames[f_idx % 8]
@@ -730,37 +769,37 @@ with tab_vmem:
 # TAB 6: SISTEMA DE ARCHIVOS (VFS - CRITERIO 9)
 # ==================================================================
 with tab_vfs:
-    st.markdown("### 📁 Sistema de Archivos Persistente (Virtual File System - VFS)")
-    st.write("Estructura jerárquica de carpetas automotrices con metadatos y persistencia automática en disco JSON.")
+    st.markdown("### 📁 Sistema de Archivos Persistente (VFS - Virtual File System)")
+    st.write("Estructura jerárquica de almacenamiento vehicular con persistencia automática en disco JSON.")
 
     fs = kernel.file_system
     c_f1, c_f2, c_f3 = st.columns([1, 2, 1])
     with c_f1:
-        carpeta_sel = st.selectbox("Carpeta del VFS", options=list(fs.structure.keys()), index=0)
+        carpeta_sel = st.selectbox("Carpeta del Sistema", options=list(fs.structure.keys()), index=0)
     with c_f2:
         archivos_en_carpeta = list(fs.structure.get(carpeta_sel, {}).keys())
-        archivo_sel = st.selectbox("Archivo", options=archivos_en_carpeta if archivos_en_carpeta else ["(Sin archivos)"])
+        archivo_sel = st.selectbox("Archivo Seleccionado", options=archivos_en_carpeta if archivos_en_carpeta else ["(Carpeta vacía)"])
     with c_f3:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("💾 Sincronizar VFS a Disco", type="primary", use_container_width=True):
+        if st.button("💾 Sincronizar a Disco JSON", type="primary", use_container_width=True):
             fs.save_to_disk()
             st.success(f"VFS persistido exitosamente en: `{fs.storage_path}`")
 
     # Contenido del archivo seleccionado
-    if archivo_sel and archivo_sel != "(Sin archivos)":
+    if archivo_sel and archivo_sel != "(Carpeta vacía)":
         meta = fs.structure[carpeta_sel][archivo_sel]
-        st.markdown(f"**Archivo:** `/{carpeta_sel}/{archivo_sel}` | **Tamaño:** `{meta.get('size', 1)} MB` | **Permisos:** `{meta.get('permissions', '0644')}` | **Actualizado:** `{meta.get('updated_at', '')}`")
+        st.markdown(f"**Ruta:** `/{carpeta_sel}/{archivo_sel}` · **Tamaño:** `{meta.get('size', 1)} MB` · **Permisos:** `{meta.get('permissions', '0644')}` · **Última Actualización:** `{meta.get('updated_at', 'N/A')}`")
         contenido_actual = meta.get("content", "")
         nuevo_contenido = st.text_area("Contenido del Archivo", value=contenido_actual, height=140, key=f"vfs_edit_{archivo_sel}")
         
         c_ed1, c_ed2, c_ed3 = st.columns([1, 1, 3])
         with c_ed1:
-            if st.button("Guardar Cambios", use_container_width=True):
+            if st.button("💾 Guardar Cambios", use_container_width=True):
                 fs.write_file(carpeta_sel, archivo_sel, nuevo_contenido, mode="w")
                 st.success("Archivo actualizado y guardado.")
                 st.rerun()
         with c_ed2:
-            if st.button("Eliminar Archivo", type="secondary", use_container_width=True):
+            if st.button("🗑️ Eliminar Archivo", type="secondary", use_container_width=True):
                 fs.delete_file(carpeta_sel, archivo_sel)
                 st.warning("Archivo eliminado.")
                 st.rerun()
@@ -787,27 +826,52 @@ with tab_vfs:
 # TAB 7: TERMINAL INTERACTIVA REAL (CRITERIO 10)
 # ==================================================================
 with tab_term:
-    st.markdown("### 💻 Terminal Interactiva del Sistema Operativo (AutoOS Shell)")
-    st.write("Línea de comandos conectada directamente al estado real del Kernel y sus subsistemas.")
+    st.markdown("### 💻 Consola de Comandos Interactiva (AutoOS Shell)")
+    st.write("Línea de comandos conectada en tiempo real al estado del Kernel y sus subsistemas.")
 
-    # Botón rápido para ejecutar la demostración académica completa
-    c_t1, c_t2 = st.columns([2, 1])
+    # Botones de acceso rápido para probar inmediatamente sin teclear
+    st.markdown("##### ⚡ Comandos Rápidos:")
+    c_q1, c_q2, c_q3, c_q4, c_q5, c_q6 = st.columns(6)
+    with c_q1:
+        if st.button("📋 Procesos (ps)", use_container_width=True):
+            kernel_bridge.execute_terminal_command("ps")
+            st.rerun()
+    with c_q2:
+        if st.button("▶️ Ciclo (step)", use_container_width=True):
+            kernel_bridge.execute_terminal_command("step 1")
+            st.rerun()
+    with c_q3:
+        if st.button("💾 RAM (mem map)", use_container_width=True):
+            kernel_bridge.execute_terminal_command("mem map")
+            st.rerun()
+    with c_q4:
+        if st.button("📑 MMU (vmem 10)", use_container_width=True):
+            kernel_bridge.execute_terminal_command("vmem 10 read 1")
+            st.rerun()
+    with c_q5:
+        if st.button("❓ Ayuda (help)", use_container_width=True):
+            kernel_bridge.execute_terminal_command("help")
+            st.rerun()
+    with c_q6:
+        if st.button("🧹 Limpiar (clear)", use_container_width=True):
+            st.session_state["terminal_history"] = []
+            st.rerun()
+
+    c_t1, c_t2 = st.columns([3, 2])
     with c_t1:
         st.caption("Comandos disponibles: `boot`, `status`, `ps`, `create <nom> <prio> <raf> [mem]`, `kill <pid>`, `step [n]`, `sched <alg> [q]`, `mem`, `vmem <addr> [write]`, `ls`, `cat`, `write`, `rm`, `mkdir`, `clear`, `help`")
     with c_t2:
-        if st.button("🎓 Ejecutar Sustentación Demo en Vivo", type="primary", use_container_width=True):
-            from cli import run_live_demonstration
-            # Ejecutar comandos de demo en la terminal activa
+        if st.button("🎓 Ejecutar Sustentación Demo Universitaria", type="primary", use_container_width=True):
             demo_cmds = ["boot", "status", "ps", "mem map", "create Freno_Emergencia_AEB 1 3 64", "step 4", "cat config vehicle_params.json", "vmem 10 write 1", "vmem 10 read 1", "sched ROUND_ROBIN 2"]
             for cmd in demo_cmds:
                 kernel_bridge.execute_terminal_command(cmd)
-            st.success("Demostración universitaria ejecutada con éxito en la terminal.")
+            st.success("Demostración universitaria ejecutada con éxito en la consola.")
             st.rerun()
 
     # Cuadro visual de terminal monospace
     historial = kernel_bridge.get_terminal_history()
     terminal_output = "======================================================================\n"
-    terminal_output += "   AutoOS Interactive Shell v2.4 (RTOS Vehicular - Terminal Conectada)\n"
+    terminal_output += "   AutoOS Shell v2.4 (RTOS Vehicular - Consola Interactiva Conectada)\n"
     terminal_output += "======================================================================\n\n"
     
     for h in historial:
@@ -835,7 +899,8 @@ with tab_term:
 # TAB 8: COCKPIT VEHICULAR Y HARDWARE
 # ==================================================================
 with tab_cockpit:
-    st.markdown("### 🚗 Cockpit Vehicular y Matriz de Salud de Hardware")
+    st.markdown("### 🚗 Tablero de Cabina y Salud de Periféricos (Hardware)")
+    st.write("Telemetría en tiempo real del sistema de baterías BMS y matriz de comunicación de hardware.")
     
     bateria = obtener_estado_bateria()
     c_cp1, c_cp2, c_cp3, c_cp4 = st.columns(4)
@@ -846,29 +911,38 @@ with tab_cockpit:
     with c_cp3:
         st.metric("Potencia Instantánea", f"{bateria['potencia_kw']} kW")
     with c_cp4:
-        st.metric("Salud Paquete (SoH)", f"{bateria['salud_soh']}%")
+        st.metric("Salud del Paquete (SoH)", f"{bateria['salud_soh']}%")
 
     st.markdown("#### 🛰️ Matriz de Periféricos de Hardware (11 Dispositivos CAN/Ethernet/LIN)")
     dispositivos = obtener_dispositivos()
     cols_dev = st.columns(3)
+    
+    ESTADOS_DEV_ES = {
+        "operativo": "OPERATIVO",
+        "degradado": "DEGRADADO",
+        "falla": "FALLA",
+        "desconectado": "DESCONECTADO"
+    }
+    
     for idx, dev in enumerate(dispositivos):
         with cols_dev[idx % 3]:
             badge_color = "badge-ok" if dev['estado'] == "operativo" else "badge-warn" if dev['estado'] == "degradado" else "badge-danger"
+            dev_estado_txt = ESTADOS_DEV_ES.get(dev['estado'].lower(), dev['estado'].upper())
             st.markdown(f"""
             <div class="autoos-card" style="margin-bottom: 12px;">
                 <div class="autoos-card-header">
                     <span>{dev['nombre']}</span>
-                    <span class="{badge_color}">{dev['estado'].upper()}</span>
+                    <span class="{badge_color}">{dev_estado_txt}</span>
                 </div>
-                <div style="font-size: 0.8rem;">
-                    <b>Código:</b> <code>{dev['codigo']}</code> | <b>Bus:</b> {dev['puerto_bus']}<br>
-                    <b>Salud:</b> {dev['salud_porcentaje']}% | <b>Crítico:</b> {dev['nivel_critico'].upper()}
+                <div style="font-size: 0.82rem; line-height: 1.6;">
+                    <b>Código:</b> <code>{dev['codigo']}</code> · <b>Bus:</b> {dev['puerto_bus']}<br>
+                    <b>Salud:</b> {dev['salud_porcentaje']}% · <b>Nivel:</b> {dev['nivel_critico'].capitalize()}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-    # Panel de Diagnóstico e Inyección de Fallas (Requerimiento Integrante 3)
-    st.markdown("#### 🛠️ Control y Pruebas de Resiliencia de Periféricos (Integrante 3)")
+    # Panel de Diagnóstico e Inyección de Fallas
+    st.markdown("#### 🛠️ Control de Diagnóstico e Inyección de Fallas de Periféricos")
     c_hw1, c_hw2, c_hw3 = st.columns([2, 1, 1])
     dev_codigos = [d["codigo"] for d in dispositivos]
     with c_hw1:
@@ -879,14 +953,14 @@ with tab_cockpit:
             key="hw_dev_select"
         )
         tipo_fallo = st.selectbox(
-            "Tipo de Estado / Fallo a Inducir:",
+            "Tipo de Estado / Falla a Inducir:",
             options=["falla", "degradado", "desconectado"],
             format_func=lambda x: f"⚠️ {x.capitalize()}",
             key="hw_fallo_tipo"
         )
     with c_hw2:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("⚡ Inyectar Fallo", type="secondary", use_container_width=True):
+        if st.button("⚡ Inyectar Falla", type="secondary", use_container_width=True):
             usr_act = obtener_usuario_actual()
             ok, msg = inyectar_fallo_dispositivo(dev_seleccionado, tipo_fallo, usr_act)
             if ok:
@@ -914,7 +988,7 @@ with tab_cockpit:
                 st.error(msg)
 
     # Opción para renderizar el Cockpit HTML interactivo original
-    with st.expander("🎛️ Ver Cockpit Visual Interactivo (Instrumentos y Tacómetros)", expanded=False):
+    with st.expander("🎛️ Abrir Tablero Gráfico Interactivo (Tacómetros e Instrumentos)", expanded=False):
         bundle_path = CURRENT_DIR / "autoos_unified.html"
         if bundle_path.exists():
             with open(bundle_path, "r", encoding="utf-8") as f:
@@ -929,28 +1003,28 @@ with tab_cockpit:
 # ==================================================================
 with tab_sec:
     st.markdown("### 🛡️ Control de Acceso RBAC y Conexión Supabase Cloud")
-    st.write("Demostración fehaciente de Autenticación != Autorización y persistencia en la nube.")
+    st.write("Demostración fehaciente de Autenticación != Autorización (RBAC) y persistencia telemática en la nube.")
 
     # Diagnóstico detallado de Supabase
-    st.markdown("#### ☁️ Diagnóstico de Base de Datos Supabase")
+    st.markdown("#### ☁️ Diagnóstico de Conectividad Supabase")
     diag_supa = diagnosticar_supabase_completo()
     
     c_sg1, c_sg2, c_sg3 = st.columns(3)
     with c_sg1:
         st.markdown(f"**Librería Oficial Python:** `{'INSTALADA' if diag_supa['has_library'] else 'NO DETECTADA'}`")
     with c_sg2:
-        st.markdown(f"**Credenciales (.env/secrets):** `{'CONFIGURADAS' if diag_supa['has_credentials'] else 'PLACEHOLDERS O VACÍAS'}`")
+        st.markdown(f"**Credenciales Configuradas:** `{'ACTIVAS' if diag_supa['has_credentials'] else 'VACÍAS'}`")
     with c_sg3:
-        st.markdown(f"**Estado de Conexión:** `{'CONECTADO (ONLINE)' if diag_supa['connected'] else 'MODO LOCAL RESILIENTE'}`")
+        st.markdown(f"**Estado de Enlace:** `{'CONECTADO (ONLINE)' if diag_supa['connected'] else 'MODO LOCAL RESILIENTE'}`")
 
     if diag_supa["error"]:
-        st.info(f"ℹ️ **Estado:** {diag_supa['error']}\n\n_AutoOS opera de forma 100% funcional y persistente mediante el almacén local en disco JSON mientras configuras tus credenciales de Supabase._")
+        st.info(f"ℹ️ **Estado:** {diag_supa['error']}\n\n_AutoOS opera con alta resiliencia persistiendo en almacén local JSON y sincronizando con la nube cuando está disponible._")
 
     # Persistencia de informe de simulación
     st.markdown("#### 💾 Generar y Persistir Reporte de Simulación")
     c_rp1, c_rp2 = st.columns([3, 1])
     with c_rp1:
-        st.caption("Guarda una instantánea completa del estado de la simulación, procesos, algoritmo y métricas de CPU/RAM.")
+        st.caption("Guarda una instantánea completa del estado de la simulación, procesos, algoritmo y métricas de CPU/RAM en Supabase.")
     with c_rp2:
         if st.button("Guardar Reporte Ahora", type="primary", use_container_width=True):
             nuevo_rep = {
@@ -987,12 +1061,12 @@ with tab_sec:
                 "Título": r.get("titulo", "N/A"),
                 "Usuario": r.get("usuario_email", "N/A"),
                 "Evaluación": r.get("evaluacion", "N/A"),
-                "CPU %": r.get("cpu_load_final", 0),
+                "Carga CPU %": r.get("cpu_load_final", 0),
             })
         st.dataframe(rep_display, use_container_width=True)
 
     # Bitácora de Auditoría RBAC
-    st.markdown("#### 🔒 Registro Inmutable de Auditoría de Accesos (403 Forbidden vs 200 OK)")
+    st.markdown("#### 🔒 Registro Inmutable de Auditoría de Accesos (403 Prohibido vs 200 OK)")
     auditoria_items = db.get("auditoria", [])
     if auditoria_items:
         aud_disp = []
@@ -1004,6 +1078,6 @@ with tab_sec:
                 "Acción": a.get("accion", ""),
                 "Recurso": a.get("recurso", ""),
                 "Resultado": "✅ AUTORIZADO" if a.get("autorizado") else "❌ DENEGADO (403)",
-                "Motivo": a.get("motivo_rechazo") or "Permiso conforme en matriz RBAC"
+                "Motivo / Regla": a.get("motivo_rechazo") or "Permiso conforme en matriz RBAC"
             })
         st.dataframe(aud_disp, use_container_width=True)
