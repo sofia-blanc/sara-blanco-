@@ -295,7 +295,8 @@ with m_cpu:
 with m_ram:
     used_ram = kernel.memory_manager.used_memory
     tot_ram = kernel.memory_manager.total_memory
-    st.metric("RAM Física", f"{used_ram} / {tot_ram} MB", delta=f"{kernel.memory_manager.usage_percentage}%")
+    pct_ram = getattr(kernel.memory_manager, "usage_percentage", round((used_ram / tot_ram) * 100, 1) if tot_ram > 0 else 0.0)
+    st.metric("RAM Física", f"{used_ram} / {tot_ram} MB", delta=f"{pct_ram}%")
 with m_vmem:
     vm = kernel.virtual_memory
     st.metric("Paginación", f"{vm.page_hits} H / {vm.page_faults} F", delta=f"{vm.hit_ratio}% Hit")
@@ -621,11 +622,13 @@ with tab_ram:
     with c_m1:
         st.metric("RAM Física Total", f"{mm.total_memory} MB")
     with c_m2:
-        st.metric("RAM Ocupada", f"{mm.used_memory} MB", delta=f"{mm.usage_percentage}%")
+        pct_mm = getattr(mm, "usage_percentage", round((mm.used_memory / mm.total_memory) * 100, 1) if mm.total_memory > 0 else 0.0)
+        st.metric("RAM Ocupada", f"{mm.used_memory} MB", delta=f"{pct_mm}%")
     with c_m3:
         st.metric("RAM Disponible", f"{mm.free_memory} MB")
     with c_m4:
-        st.metric("Fragmentación Externa", f"{mm.fragmentation_percentage}%")
+        pct_frag = getattr(mm, "fragmentation_percentage", 0.0)
+        st.metric("Fragmentación Externa", f"{pct_frag}%")
 
     st.markdown("#### 🗺️ Mapa Dinámico de Particiones Contiguas (Memory Map)")
     mem_map = mm.get_memory_map()
@@ -959,7 +962,7 @@ with tab_sec:
                 "bateria_inicial": 82.0,
                 "bateria_final": 82.0,
                 "velocidad_final": 45.0,
-                "cpu_load_final": kernel.cpu.usage_percentage,
+                "cpu_load_final": getattr(kernel.cpu, "usage_percentage", 0.0),
                 "datos_completos": {
                     "total_procesos": len(kernel.engine.get_all_processes()),
                     "algoritmo": kernel.scheduler.algorithm,

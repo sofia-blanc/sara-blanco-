@@ -102,6 +102,30 @@ class MemoryManager:
         """Calcula la memoria física disponible en MB."""
         return sum(b.limit for b in self._blocks if b.is_free)
 
+    @property
+    def usage_percentage(self) -> float:
+        """Retorna el porcentaje de memoria RAM actualmente utilizada (0.0 a 100.0)."""
+        if self._total_memory <= 0:
+            return 0.0
+        return round((self.used_memory / self._total_memory) * 100, 1)
+
+    @property
+    def utilization_percentage(self) -> float:
+        """Alias para usage_percentage."""
+        return self.usage_percentage
+
+    @property
+    def fragmentation_percentage(self) -> float:
+        """
+        Calcula el porcentaje de fragmentación externa de la memoria RAM.
+        Fórmula: (Memoria libre total - Bloque libre contiguo más grande) / Memoria libre total * 100
+        """
+        free_blocks = [b.limit for b in self._blocks if b.is_free]
+        if not free_blocks or self.free_memory <= 0:
+            return 0.0
+        max_free_block = max(free_blocks)
+        return round(((self.free_memory - max_free_block) / self.free_memory) * 100, 1)
+
     def allocate_for_process(
         self,
         pid: int,

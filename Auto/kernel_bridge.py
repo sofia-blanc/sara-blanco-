@@ -56,7 +56,15 @@ def get_kernel(memory_mb: int = 2048, swap_mb: int = 4096) -> Kernel:
     """
     global _FALLBACK_KERNEL, _FALLBACK_TERMINAL
 
-    if HAS_STREAMLIT and st is not None:
+    # Detectar si estamos verdaderamente dentro del servidor web activo de Streamlit
+    in_streamlit_app = False
+    try:
+        from streamlit.runtime import exists as runtime_exists
+        in_streamlit_app = runtime_exists()
+    except Exception:
+        in_streamlit_app = False
+
+    if HAS_STREAMLIT and st is not None and in_streamlit_app:
         if "autoos_kernel" not in st.session_state:
             # Archivo de persistencia de VFS en la raíz de Auto
             vfs_file = str(CURRENT_DIR / "autoos_vfs_storage.json")
@@ -96,7 +104,14 @@ def get_kernel(memory_mb: int = 2048, swap_mb: int = 4096) -> Kernel:
 def get_terminal() -> Terminal:
     """Retorna la terminal conectada a la instancia activa del Kernel."""
     global _FALLBACK_TERMINAL
-    if HAS_STREAMLIT and st is not None:
+    in_streamlit_app = False
+    try:
+        from streamlit.runtime import exists as runtime_exists
+        in_streamlit_app = runtime_exists()
+    except Exception:
+        in_streamlit_app = False
+
+    if HAS_STREAMLIT and st is not None and in_streamlit_app:
         get_kernel()  # Garantizar inicialización
         return st.session_state["autoos_terminal"]
     else:

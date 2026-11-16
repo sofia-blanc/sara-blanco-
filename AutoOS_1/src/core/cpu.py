@@ -60,6 +60,18 @@ class CPU:
         """Ciclos de reloj en los que la CPU estuvo ociosa (sin proceso asignado)."""
         return self._idle_ticks
 
+    @property
+    def utilization_percentage(self) -> float:
+        """Retorna el porcentaje de utilización de la CPU (0.0 a 100.0)."""
+        if self._total_ticks <= 0:
+            return 0.0
+        return round((self._busy_ticks / self._total_ticks) * 100, 2)
+
+    @property
+    def usage_percentage(self) -> float:
+        """Alias de compatibilidad para utilization_percentage."""
+        return self.utilization_percentage
+
     # --- Gestión de Procesos en CPU ---
 
     def load_process(self, process: Process) -> None:
