@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Streamlit secrets (credenciales sensibles)
+.streamlit/secrets.toml
+Auto/.streamlit/secrets.toml
+
+# Environment variables
+.env
+Auto/.env
+# Environment variables
+.env
+.env.*
+!.env.example
+Auto/.env
+
+# Frontend environment variables
+web/.env
+web/.env.*
+!web/.env.example
+
+# Node & Frontend
+node_modules/
+dist/
+web/dist/
+*.tsbuildinfo
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.bak
+*.tmp
+.vscode/
+
+# Build artifacts / Tools temporaries
+tools/orig_bundle.js
+
+# AutoOS runtime data
+Auto/autoos_simulation_reports.json
+Auto/autoos_vfs_storage.json

@@ -1,0 +1,55 @@
+# =========================
+# Entornos virtuales
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# Variables de entorno
+# =========================
+.env
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Compilados y extensiones
+# =========================
+*.so
+
+# =========================
+# Distribución
+# =========================
+build/
+dist/
+*.egg-info/
+*.egg
+
+# =========================
+# VS Code e IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# =========================
+# Sistema Operativo
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Logs y bases de datos locales
+# =========================
+*.log
+*.sqlite
+*.sqlite3

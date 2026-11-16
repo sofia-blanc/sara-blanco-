@@ -1,0 +1,42 @@
+--- HEALTH MATRIX ---
+)('div', {
+        className: 'flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]',
+        children: [
+          (0, E.jsxDEV)('div', {
+            className: 'flex items-center gap-2.5',
+            children: [
+              (0, E.jsxDEV)('div', {
+                className: `p-2 rounded-xl border ${faultCount > 0 ? 'bg-red-500/15 text-red-500 border-red-500/30 animate-pulse' : degradedCount > 0 ? 'bg-amber-500/15 text-amber-500 border-amber-500/30' : 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'}`,
+                children: (0, E.jsxDEV)(qe, { className: 'w-5 h-5' }, void 0, false)
+              }, void 0, false),
+              (0, E.jsxDEV)('div', {
+                children: [
+                  (0, E.jsxDEV)('div', {
+                    className: 'flex items-center gap-2',
+                    children: [
+                      (0, E.jsxDEV)('h3', { className: 'text-sm font-serif font-bold text-[var(--text-primary)]', children: 'Matriz de Salud de Hardware y Subsistemas Vehiculares' }, void 0, false),
+                      (0, E.jsxDEV)('span', {
+                        className: `text-[10px] font-mono px-2 py-0.5 rounded-fu
+
+--- FAULT SIMULATOR ---
+odos los escenarios restablecidos. Parámetros nominales ISO 26262 ASIL-D.');
+    if (onResetAllScenarios) onResetAllScenarios();
+  };
+
+  return (0, E.jsxDEV)('div', {
+    className: 'autoos-card rounded-2xl p-5 shadow-xl space-y-4',
+    children: [
+      (0, E.jsxDEV)('div', {
+        className: 'flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-[var(--border-color)]',
+        children: [
+          (0, E.jsxDEV)('div', {
+            className: 'flex items-center gap-2.5',
+            children: [
+              (0, E.jsxDEV)('div', {
+                className: 'p-2 rounded-xl bg-red-500/15 text-red-500 border border-red-500/30 animate-pulse',
+                children: (0, E.jsxDEV)(Fe, { className: 'w-5 h-5' }, void 0, false)
+              }, void 0, false),
+              (0, E.jsxDEV)('div', {
+                children: [
+                  (0, E.jsxDEV)('h3', { className: 'text-sm font-serif font-bold text-[var(--text-primary)] flex items-center gap-2', children: 'Simulador & Configurador Total de Fallas Vehiculares' }, void 0, false),
+                  (0, E.jsxDEV)('p', { className: 'text-[11px] text-[var(--text-muted)]', children: 'Personalización total de m
