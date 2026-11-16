@@ -87,7 +87,17 @@ from modules.devices import (
     inyectar_fallo_dispositivo,
     restablecer_dispositivos,
 )
-from modules.telemetry_battery import obtener_estado_bateria
+from modules.telemetry_battery import (
+    obtener_estado_bateria,
+    calcular_semaforo_general,
+    obtener_eventos_criticos_activos,
+    actualizar_bateria,
+)
+from modules.incidents import (
+    ejecutar_escenario_falla,
+    ESCENARIOS_DISPONIBLES,
+    restablecer_sistema_a_normal,
+)
 from modules.processes import (
     obtener_procesos,
     crear_proceso,
@@ -103,6 +113,9 @@ from modules.memory_storage import (
 from modules.ui_components import (
     aplicar_estilos_cockpit,
     obtener_paleta,
+    render_banner_semaforo,
+    render_card_telemetria,
+    render_reproductor_spotify,
 )
 
 # ------------------------------------------------------------------
@@ -899,103 +912,245 @@ with tab_term:
 # TAB 8: COCKPIT VEHICULAR Y HARDWARE
 # ==================================================================
 with tab_cockpit:
-    st.markdown("### 🚗 Tablero de Cabina y Salud de Periféricos (Hardware)")
-    st.write("Telemetría en tiempo real del sistema de baterías BMS y matriz de comunicación de hardware.")
+    st.markdown("### 🚗 Tablero de Cabina, Cockpit y Salud de Periféricos")
+    st.write("Instrumentación digital en tiempo real, supervisión del BMS, matriz de hardware y ciclo de 5 fases para fallas críticas (ASIL-D).")
     
     bateria = obtener_estado_bateria()
-    c_cp1, c_cp2, c_cp3, c_cp4 = st.columns(4)
-    with c_cp1:
-        st.metric("Batería LiFePO4", f"{bateria['soc_pct']}%", delta=f"{bateria['voltaje_v']} V")
-    with c_cp2:
-        st.metric("Temperatura BMS", f"{bateria['temp_c']} °C", delta="Nominal")
-    with c_cp3:
-        st.metric("Potencia Instantánea", f"{bateria['potencia_kw']} kW")
-    with c_cp4:
-        st.metric("Salud del Paquete (SoH)", f"{bateria['salud_soh']}%")
-
-    st.markdown("#### 🛰️ Matriz de Periféricos de Hardware (11 Dispositivos CAN/Ethernet/LIN)")
-    dispositivos = obtener_dispositivos()
-    cols_dev = st.columns(3)
+    semaforo = calcular_semaforo_general()
     
-    ESTADOS_DEV_ES = {
-        "operativo": "OPERATIVO",
-        "degradado": "DEGRADADO",
-        "falla": "FALLA",
-        "desconectado": "DESCONECTADO"
-    }
+    # 1. Semáforo Vehicular de Estado General (Aporte Integrante 3 & 4)
+    render_banner_semaforo(semaforo, st.session_state.get("theme_mode", "oscuro"))
     
-    for idx, dev in enumerate(dispositivos):
-        with cols_dev[idx % 3]:
-            badge_color = "badge-ok" if dev['estado'] == "operativo" else "badge-warn" if dev['estado'] == "degradado" else "badge-danger"
-            dev_estado_txt = ESTADOS_DEV_ES.get(dev['estado'].lower(), dev['estado'].upper())
-            st.markdown(f"""
-            <div class="autoos-card" style="margin-bottom: 12px;">
-                <div class="autoos-card-header">
-                    <span>{dev['nombre']}</span>
-                    <span class="{badge_color}">{dev_estado_txt}</span>
-                </div>
-                <div style="font-size: 0.82rem; line-height: 1.6;">
-                    <b>Código:</b> <code>{dev['codigo']}</code> · <b>Bus:</b> {dev['puerto_bus']}<br>
-                    <b>Salud:</b> {dev['salud_porcentaje']}% · <b>Nivel:</b> {dev['nivel_critico'].capitalize()}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # Panel de Diagnóstico e Inyección de Fallas
-    st.markdown("#### 🛠️ Control de Diagnóstico e Inyección de Fallas de Periféricos")
-    c_hw1, c_hw2, c_hw3 = st.columns([2, 1, 1])
-    dev_codigos = [d["codigo"] for d in dispositivos]
-    with c_hw1:
-        dev_seleccionado = st.selectbox(
-            "Seleccionar Dispositivo Vehicular:",
-            options=dev_codigos,
-            format_func=lambda c: f"{c} — {next((d['nombre'] for d in dispositivos if d['codigo'] == c), '')}",
-            key="hw_dev_select"
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+    
+    # 2. Indicadores Circulares de Telemetría SVG
+    c_cg1, c_cg2, c_cg3, c_cg4 = st.columns(4)
+    with c_cg1:
+        render_card_telemetria(
+            titulo="Batería LiFePO4",
+            valor=float(bateria["soc_pct"]),
+            unidad="%",
+            subtexto=f"{bateria['voltaje_v']} V · {bateria.get('modo_conduccion', 'Normal')}",
+            color_acento="#10B981" if bateria["soc_pct"] > 20 else "#EF4444",
+            max_val=100.0,
+            modo=st.session_state.get("theme_mode", "oscuro")
         )
-        tipo_fallo = st.selectbox(
-            "Tipo de Estado / Falla a Inducir:",
-            options=["falla", "degradado", "desconectado"],
-            format_func=lambda x: f"⚠️ {x.capitalize()}",
-            key="hw_fallo_tipo"
+    with c_cg2:
+        render_card_telemetria(
+            titulo="Temperatura BMS",
+            valor=float(bateria["temp_c"]),
+            unidad="°C",
+            subtexto="Umbral Seguro: < 45°C",
+            color_acento="#EF4444" if bateria["temp_c"] >= 50 else ("#F59E0B" if bateria["temp_c"] >= 40 else "#3B82F6"),
+            max_val=80.0,
+            modo=st.session_state.get("theme_mode", "oscuro")
         )
-    with c_hw2:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("⚡ Inyectar Falla", type="secondary", use_container_width=True):
-            usr_act = obtener_usuario_actual()
-            ok, msg = inyectar_fallo_dispositivo(dev_seleccionado, tipo_fallo, usr_act)
-            if ok:
-                st.warning(msg)
-                st.rerun()
-            else:
-                st.error(msg)
-        if st.button("🔧 Calibrar (OBD-II)", type="primary", use_container_width=True):
-            usr_act = obtener_usuario_actual()
-            ok, msg = calibrar_dispositivo(dev_seleccionado, usr_act)
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
-    with c_hw3:
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("🔄 Restablecer Todo", type="secondary", use_container_width=True):
-            usr_act = obtener_usuario_actual()
-            ok, msg = restablecer_dispositivos(usr_act)
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
+    with c_cg3:
+        render_card_telemetria(
+            titulo="Autonomía Estimada",
+            valor=float(bateria.get("autonomia_km", 370.0)),
+            unidad="km",
+            subtexto=f"Consumo: {bateria.get('consumo_kwh_100km', 16.5)} kWh/100km",
+            color_acento="#3B82F6",
+            max_val=500.0,
+            modo=st.session_state.get("theme_mode", "oscuro")
+        )
+    with c_cg4:
+        render_card_telemetria(
+            titulo="Salud de Celdas (SoH)",
+            valor=float(bateria.get("salud_soh", 98)),
+            unidad="%",
+            subtexto=f"Potencia: {bateria['potencia_kw']} kW",
+            color_acento="#10B981" if bateria.get("salud_soh", 98) >= 80 else "#F59E0B",
+            max_val=100.0,
+            modo=st.session_state.get("theme_mode", "oscuro")
+        )
 
-    # Opción para renderizar el Cockpit HTML interactivo original
-    with st.expander("🎛️ Abrir Tablero Gráfico Interactivo (Tacómetros e Instrumentos)", expanded=False):
-        bundle_path = CURRENT_DIR / "autoos_unified.html"
-        if bundle_path.exists():
-            with open(bundle_path, "r", encoding="utf-8") as f:
+    st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+
+    # 3. Sub-pestañas del Cockpit para navegación limpia
+    subtab_cockpit_html, subtab_devices, subtab_incidents, subtab_media = st.tabs([
+        "🎛️ Cockpit Digital Interactivo",
+        "🛰️ Matriz de Hardware (11 Periféricos)",
+        "🚨 Escenarios Críticos de Falla (5 Fases - Int. 3)",
+        "📻 Multimedia y Climatización de Cabina"
+    ])
+
+    # --------------------------------------------------------------
+    # SUBTAB A: COCKPIT DIGITAL INTERACTIVO (VISIBLE DIRECTAMENTE)
+    # --------------------------------------------------------------
+    with subtab_cockpit_html:
+        c_ck1, c_ck2 = st.columns([3, 1])
+        with c_ck1:
+            vista_cockpit = st.radio(
+                "Modalidad del Tablero Interactivo:",
+                options=["interactive", "unified"],
+                format_func=lambda v: "🚘 Clúster de Instrumentos & Cockpit Digital (Tacómetros, Cabina, Clima & ADAS)" if v == "interactive" else "📈 Centro de Simulación Integral RTOS (Gantt, Planificador & Hardware)",
+                horizontal=True,
+                key="cockpit_view_mode_selector"
+            )
+        with c_ck2:
+            st.caption("Componente interactivo React + SVG renderizado en tiempo real.")
+
+        target_file = CURRENT_DIR / ("autoos_interactive.html" if vista_cockpit == "interactive" else "autoos_unified.html")
+        if not target_file.exists():
+            target_file = CURRENT_DIR / "autoos_interactive.html" if (CURRENT_DIR / "autoos_interactive.html").exists() else CURRENT_DIR / "autoos_unified.html"
+
+        if target_file.exists():
+            with open(target_file, "r", encoding="utf-8") as f:
                 app_html = f.read()
-            components.html(app_html, height=1200, scrolling=True)
+            components.html(app_html, height=1150 if vista_cockpit == "interactive" else 1500, scrolling=True)
         else:
-            st.info("Paquete unificado autoos_unified.html no encontrado.")
+            st.warning("No se encontró el archivo HTML del tablero en el directorio del sistema.")
+
+    # --------------------------------------------------------------
+    # SUBTAB B: MATRIZ DE HARDWARE Y DISPOSITIVOS
+    # --------------------------------------------------------------
+    with subtab_devices:
+        st.markdown("#### 🛰️ Matriz de Periféricos de Hardware (11 Dispositivos CAN/Ethernet/LIN)")
+        dispositivos = obtener_dispositivos()
+        cols_dev = st.columns(3)
+        
+        ESTADOS_DEV_ES = {
+            "operativo": "OPERATIVO",
+            "degradado": "DEGRADADO",
+            "falla": "FALLA",
+            "desconectado": "DESCONECTADO"
+        }
+        
+        for idx, dev in enumerate(dispositivos):
+            with cols_dev[idx % 3]:
+                badge_color = "badge-ok" if dev['estado'] == "operativo" else "badge-warn" if dev['estado'] == "degradado" else "badge-danger"
+                dev_estado_txt = ESTADOS_DEV_ES.get(dev['estado'].lower(), dev['estado'].upper())
+                st.markdown(f"""
+                <div class="autoos-card" style="margin-bottom: 12px;">
+                    <div class="autoos-card-header">
+                        <span>{dev['nombre']}</span>
+                        <span class="{badge_color}">{dev_estado_txt}</span>
+                    </div>
+                    <div style="font-size: 0.82rem; line-height: 1.6;">
+                        <b>Código:</b> <code>{dev['codigo']}</code> · <b>Bus:</b> {dev['puerto_bus']}<br>
+                        <b>Salud:</b> {dev['salud_porcentaje']}% · <b>Nivel:</b> {dev['nivel_critico'].capitalize()}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Panel de Diagnóstico e Inyección de Fallas
+        st.markdown("#### 🛠️ Control de Diagnóstico e Inyección de Fallas de Periféricos")
+        c_hw1, c_hw2, c_hw3 = st.columns([2, 1, 1])
+        dev_codigos = [d["codigo"] for d in dispositivos]
+        with c_hw1:
+            dev_seleccionado = st.selectbox(
+                "Seleccionar Dispositivo Vehicular:",
+                options=dev_codigos,
+                format_func=lambda c: f"{c} — {next((d['nombre'] for d in dispositivos if d['codigo'] == c), '')}",
+                key="hw_dev_select"
+            )
+            tipo_fallo = st.selectbox(
+                "Tipo de Estado / Falla a Inducir:",
+                options=["falla", "degradado", "desconectado"],
+                format_func=lambda x: f"⚠️ {x.capitalize()}",
+                key="hw_fallo_tipo"
+            )
+        with c_hw2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("⚡ Inyectar Falla", type="secondary", use_container_width=True):
+                usr_act = obtener_usuario_actual()
+                ok, msg = inyectar_fallo_dispositivo(dev_seleccionado, tipo_fallo, usr_act)
+                if ok:
+                    st.warning(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+            if st.button("🔧 Calibrar (OBD-II)", type="primary", use_container_width=True):
+                usr_act = obtener_usuario_actual()
+                ok, msg = calibrar_dispositivo(dev_seleccionado, usr_act)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+        with c_hw3:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("🔄 Restablecer Todo", type="secondary", use_container_width=True):
+                usr_act = obtener_usuario_actual()
+                ok, msg = restablecer_dispositivos(usr_act)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+    # --------------------------------------------------------------
+    # SUBTAB C: LOS 3 ESCENARIOS CRÍTICOS DE FALLA (CICLO DE 5 FASES)
+    # --------------------------------------------------------------
+    with subtab_incidents:
+        st.markdown("#### 🚨 Simulador de Contingencias y Fallas Críticas (Ciclo de 5 Fases)")
+        st.caption("Implementa rigurosamente el protocolo de seguridad funcional ISO 26262 (ASIL-D) exigido en la Fase 10 (Integrante 3).")
+        
+        c_sc1, c_sc2 = st.columns([3, 1])
+        with c_sc1:
+            escenario_sel = st.selectbox(
+                "Seleccionar Escenario de Contingencia:",
+                options=list(ESCENARIOS_DISPONIBLES.keys()),
+                format_func=lambda k: f"{ESCENARIOS_DISPONIBLES[k]['titulo']}",
+                key="scenario_select_box"
+            )
+            st.info(f"ℹ️ **Descripción:** {ESCENARIOS_DISPONIBLES[escenario_sel]['descripcion']}\n\n**Dispositivo Afectado:** `{ESCENARIOS_DISPONIBLES[escenario_sel]['dispositivo_afectado']}`")
+        with c_sc2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("🚀 Ejecutar Escenario (5 Fases)", type="primary", use_container_width=True):
+                usr_act = obtener_usuario_actual()
+                res_esc = ejecutar_escenario_falla(escenario_sel, usr_act)
+                st.session_state["ultimo_escenario_falla"] = res_esc
+                st.rerun()
+            if st.button("🔄 Restablecer Sistema a Normal", type="secondary", use_container_width=True):
+                usr_act = obtener_usuario_actual()
+                ok_rst, msg_rst = restablecer_sistema_a_normal(usr_act)
+                if ok_rst:
+                    st.session_state["ultimo_escenario_falla"] = None
+                    st.success(msg_rst)
+                    st.rerun()
+                else:
+                    st.error(msg_rst)
+
+        # Desglose en vivo de las 5 fases de contingencia
+        if st.session_state.get("ultimo_escenario_falla"):
+            esc_data = st.session_state["ultimo_escenario_falla"]
+            st.markdown(f"### 📋 Traza del Incidente: **{esc_data['titulo']}**")
+            st.caption(f"Marca temporal: `{esc_data['hora_ejecucion']}` · Conforme ISO 26262 / ASIL-D")
+            
+            for paso in esc_data["pasos"]:
+                with st.expander(f"🔹 {paso['fase']}", expanded=True):
+                    st.markdown(f"**Acción:** {paso['accion']}")
+                    for pk, pv in paso.items():
+                        if pk not in ["fase", "accion"]:
+                            label_pk = pk.replace("_", " ").title()
+                            st.markdown(f"- **{label_pk}:** `{pv}`")
+
+        # Eventos Críticos Activos en el Sistema
+        evts_crit = obtener_eventos_criticos_activos()
+        if evts_crit:
+            st.markdown("##### ⚠️ Eventos Críticos Activos en Memoria:")
+            for ev in evts_crit:
+                st.warning(f"**[{ev.get('severidad', '').upper()}]** {ev.get('mensaje')} — _Dispositivo: `{ev.get('dispositivo_codigo')}`_")
+
+    # --------------------------------------------------------------
+    # SUBTAB D: MULTIMEDIA Y CLIMATIZACIÓN DE CABINA
+    # --------------------------------------------------------------
+    with subtab_media:
+        st.markdown("#### 📻 Sistema Multimedia y Climatización de Cabina")
+        st.caption("Prueba de confort vehicular y demostración fehaciente del modelo de control de acceso RBAC (Autenticación ≠ Autorización).")
+        
+        render_reproductor_spotify(modo=st.session_state.get("theme_mode", "oscuro"))
+        
+        st.markdown("---")
+        st.markdown("##### 💡 Reglas de Permisos RBAC en Cabina:")
+        st.markdown("""
+        - **Pasajero (Guest):** Puede reproducir música y controlar climatización en cabina, pero tiene **bloqueo estricto (403 Forbidden)** si intenta crear, pausar o terminar procesos del vehículo o inyectar fallas de hardware.
+        - **Conductor (User):** Controla infoentretenimiento, navegación y procesos de usuario.
+        - **Mecánico (Admin):** Acceso total a calibración OBD-II, inyección de fallas, inspección de registros de auditoría y terminación de cualquier proceso.
+        """)
 
 
 # ==================================================================
