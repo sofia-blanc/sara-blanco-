@@ -124,6 +124,11 @@ class VirtualMemory:
         return max(0, self._swap_size - self._used_swap)
 
     @property
+    def swap_free(self) -> int:
+        """Alias para free_swap."""
+        return self.free_swap
+
+    @property
     def replacement_algorithm(self) -> str:
         """Algoritmo de reemplazo activo ('FIFO' o 'LRU')."""
         return self._replacement_algorithm

@@ -669,7 +669,8 @@ with tab_vmem:
     with c_v1:
         st.metric("Marcos Físicos", f"{vm.total_frames} marcos (4 MB c/u)")
     with c_v2:
-        st.metric("Área SWAP", f"{vm.used_swap} / {vm.swap_size} MB", delta=f"{vm.swap_free} MB libres")
+        swap_f = getattr(vm, "swap_free", getattr(vm, "free_swap", max(0, vm.swap_size - vm.used_swap)))
+        st.metric("Área SWAP", f"{vm.used_swap} / {vm.swap_size} MB", delta=f"{swap_f} MB libres")
     with c_v3:
         st.metric("Fallos / Aciertos", f"{vm.page_faults} Faults / {vm.page_hits} Hits")
     with c_v4:
