@@ -52,11 +52,13 @@ class MemoryBlock:
 
     def to_dict(self) -> Dict[str, Any]:
         """Representación serializable del bloque."""
+        status = "LIBRE" if self.is_free else f"OCUPADO (PID {self.pid})"
         return {
             "base_address": self.base_address,
             "limit": self.limit,
             "end_address": self.end_address,
             "is_free": self.is_free,
+            "status": status,
             "pid": self.pid,
             "process_name": self.process_name,
         }

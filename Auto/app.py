@@ -636,9 +636,8 @@ with tab_ram:
     # Barra visual de bloques
     bar_html = "<div style='display: flex; width: 100%; height: 32px; border-radius: 8px; overflow: hidden; margin-bottom: 16px; border: 1px solid #331E4D;'>"
     for b in mem_map:
-        pct_width = max(2.0, (b['limit'] / mm.total_memory) * 100)
-        bg = "#ef4444" if not b['is_free'] and b['pid'] == 1 else "#3b82f6" if not b['is_free'] else "#10b981"
-        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b['base_address']:04X} ({b['limit']} MB): {b['status']}'>{b['limit']}MB</div>"
+        b_status = b.get('status', 'LIBRE' if b.get('is_free') else f"OCUPADO (PID {b.get('pid')})")
+        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b['base_address']:04X} ({b['limit']} MB): {b_status}'>{b['limit']}MB</div>"
     bar_html += "</div>"
     st.markdown(bar_html, unsafe_allow_html=True)
 
