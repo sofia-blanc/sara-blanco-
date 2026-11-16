@@ -635,9 +635,12 @@ with tab_ram:
     
     # Barra visual de bloques
     bar_html = "<div style='display: flex; width: 100%; height: 32px; border-radius: 8px; overflow: hidden; margin-bottom: 16px; border: 1px solid #331E4D;'>"
+    tot_mem_val = getattr(mm, 'total_memory', 2048) or 2048
     for b in mem_map:
+        pct_width = max(2.0, (b.get('limit', 64) / tot_mem_val) * 100)
+        bg = "#ef4444" if not b.get('is_free') and b.get('pid') == 1 else "#3b82f6" if not b.get('is_free') else "#10b981"
         b_status = b.get('status', 'LIBRE' if b.get('is_free') else f"OCUPADO (PID {b.get('pid')})")
-        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b['base_address']:04X} ({b['limit']} MB): {b_status}'>{b['limit']}MB</div>"
+        bar_html += f"<div style='background: {bg}; width: {pct_width}%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; font-weight: bold; border-right: 1px solid rgba(0,0,0,0.3);' title='0x{b.get('base_address', 0):04X} ({b.get('limit', 0)} MB): {b_status}'>{b.get('limit', 0)}MB</div>"
     bar_html += "</div>"
     st.markdown(bar_html, unsafe_allow_html=True)
 
@@ -645,11 +648,11 @@ with tab_ram:
     map_display = []
     for b in mem_map:
         map_display.append({
-            "Dirección Base": f"0x{b['base_address']:08X}",
-            "Límite (Tamaño)": f"{b['limit']} MB",
-            "Dirección Final": f"0x{b['end_address']:08X}",
-            "Estado": "LIBRE" if b["is_free"] else "OCUPADO",
-            "Proceso Propietario": f"PID {b['pid']} ({b['process_name']})" if not b["is_free"] else "Disponible (Sistema)",
+            "Dirección Base": f"0x{b.get('base_address', 0):08X}",
+            "Límite (Tamaño)": f"{b.get('limit', 0)} MB",
+            "Dirección Final": f"0x{b.get('end_address', 0):08X}",
+            "Estado": "LIBRE" if b.get("is_free", True) else "OCUPADO",
+            "Proceso Propietario": f"PID {b.get('pid')} ({b.get('process_name', '')})" if not b.get("is_free", True) else "Disponible (Sistema)",
         })
     st.dataframe(map_display, use_container_width=True)
 
