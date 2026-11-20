@@ -18,13 +18,13 @@ Cada integrante documentó sus iteraciones siguiendo la estructura estándar:
 ---
 
 ## 2. BITÁCORA — INTEGRANTE 1: PROCESOS Y CPU
-**Responsabilidad:** Scheduler preventivo, estados de procesos, diagrama Gantt y cálculo de métricas de procesador.
+**Responsabilidad:** Scheduler preventivo, estados de procesos, diagrama Gantt, cálculo de métricas de procesador y puente IPC de kernel.
 
 ### Iteración 1.1: Definición del Bloque de Control de Proceso (PCB)
 - **Prompt:**
   > *"Diseña la estructura del Bloque de Control de Procesos (PCB) para AutoOS. Debe incluir PID único, nombre del proceso automotriz, estados formales (Nuevo, Listo, Ejecutando, Bloqueado, Terminado), prioridad numérica (0 para Tiempo Real Crítico ASIL-D, hasta 10 para Confort/Ocioso), consumo estimado de CPU y memoria requerida."*
 - **Código Generado:**
-  Módulo de procesos y tabla `procesos` en Supabase.
+  Módulo de procesos en `Auto/modules/processes.py`, `AutoOS_1/src/core/process.py` y tabla `procesos` en Supabase.
 - **Cambio Realizado:**
   Se agregó la bandera booleana `es_critico` para identificar procesos esenciales para la seguridad del vehículo (ej. `bms_thermal_monitor`, `adas_collision_avoidance`), restringiendo su modificación únicamente al rol Mecánico (Admin).
 
@@ -39,10 +39,26 @@ Cada integrante documentó sus iteraciones siguiendo la estructura estándar:
   return round(sum(p["cpu"] for p in procesos if p["estado"] == "ejecutando"), 1)
   ```
 
+### Iteración 1.3: Planificador Multialgoritmo (FCFS, Round Robin y Prioridad Preemptiva)
+- **Prompt:**
+  > *"Implementa en `schedulerEngine.ts` y `AutoOS_1/src/core/scheduler.py` tres algoritmos de planificación de CPU: First-Come First-Served (FCFS), Round Robin (con quantum configurable de 1 a 5 segundos) y Prioridad Preemptiva. En Prioridad Preemptiva, si llega un proceso ASIL-D (P1), debe desalojar inmediatamente al proceso en CPU."*
+- **Código Generado:**
+  `web/src/utils/schedulerEngine.ts` y componentes de cola de listos (`QueueVisualizer.tsx`).
+- **Verificación:**
+  Simulación paso a paso verificada con ráfagas concurrentes; cuando se inyecta la falla de frenado By-Wire (P1), desaloja al proceso de infoentretenimiento (P5), registrando el evento de preemption en el log.
+
+### Iteración 1.4: Desalojo en Caliente y Serialización hacia el Kernel Bridge
+- **Prompt:**
+  > *"Conecta el despachador con `kernel_bridge.py`. Serializa cada tick de reloj, contexto de CPU, tiempos de espera (waiting time), retorno (turnaround time) y ráfaga restante para que el frontend React pueda reflejar fielmente las métricas del SO."*
+- **Código Generado:**
+  `Auto/kernel_bridge.py` y suite de pruebas `AutoOS_1/tests/test_react_kernel_bridge.py`.
+- **Corrección Aplicada:**
+  Manejo defensivo de valores `None` en tiempos de inicio para procesos que aún se encuentran en la cola de listos.
+
 ---
 
 ## 3. BITÁCORA — INTEGRANTE 2: MEMORIA, ARCHIVOS Y LOGS
-**Responsabilidad:** Gestión de RAM (16 GB), bloques dinámicos, sistema de archivos vehicular y trazabilidad de logs.
+**Responsabilidad:** Gestión de RAM física y virtual, bloques dinámicos, sistema de archivos vehicular y trazabilidad de logs.
 
 ### Iteración 2.1: Partición de Memoria Física y Reserva de Kernel
 - **Prompt:**
@@ -60,10 +76,26 @@ Cada integrante documentó sus iteraciones siguiendo la estructura estándar:
 - **Ajuste Realizado:**
   Se asignaron permisos estrictos `0600` para configuraciones críticas del vehículo (`vehicle_params.json`), accesibles solo por el rol mecánico, y permisos de solo lectura `0444` para pesos de redes neuronales de visión artificial (`adas_network_weights.bin`).
 
+### Iteración 2.3: Paginación Virtual y Algoritmo LRU de Reemplazo
+- **Prompt:**
+  > *"Implementa en `virtual_memory.py` un modelo de memoria virtual paginada con marcos de página fijos (4 KB), tabla de páginas por proceso, detección de fallos de página (page faults) y política de reemplazo LRU (Least Recently Used)."*
+- **Código Generado:**
+  `AutoOS_1/src/memory/virtual_memory.py` y `AutoOS_1/tests/test_virtual_memory_paging.py`.
+- **Error Encontrado:**
+  `AttributeError: 'VirtualMemory' object has no attribute 'swap_free'` al invocar el reporte consolidado de memoria.
+- **Corrección Aplicada:**
+  Se agregaron propiedades de consulta rápida `swap_free`, `swap_used` y `page_faults_total` garantizando interfaz completa para el monitor del sistema.
+
+### Iteración 2.4: Documentación Técnica de Memoria y Swap NVRAM
+- **Prompt:**
+  > *"Redacta el documento exhaustivo de arquitectura de memoria y almacenamiento automotriz en `AutoOS_1/docs/MEMORIA_Y_ALMACENAMIENTO.md`. Incluye esquemas de memoria contigua vs paginada, gestión de memoria flash NVRAM para la Caja Negra y mecanismos de protección contra corrupción de datos en caso de corte súbito de alimentación."*
+- **Código Generado:**
+  Documento técnico de 500+ líneas [`AutoOS_1/docs/MEMORIA_Y_ALMACENAMIENTO.md`](file:///C:/Users/Usuario/Desktop/mio/universidad/autoos/AutoOS_1/docs/MEMORIA_Y_ALMACENAMIENTO.md).
+
 ---
 
 ## 4. BITÁCORA — INTEGRANTE 3: SEGURIDAD, DISPOSITIVOS Y RLS
-**Responsabilidad:** Modelo RBAC, políticas Row Level Security (RLS) en Supabase, HAL de dispositivos CAN/Ethernet, telemetría BMS y protocolo de contingencia en 5 fases.
+**Responsabilidad:** Modelo RBAC multinivel, políticas Row Level Security (RLS) en Supabase, HAL de 11 dispositivos CAN/Ethernet, telemetría BMS, escenarios de falla ISO 26262 y Caja Negra.
 
 ### Iteración 3.1: Esquema Relacional y Protección Referencial
 - **Prompt:**
@@ -89,10 +121,26 @@ Cada integrante documentó sus iteraciones siguiendo la estructura estándar:
 - **Corrección Aplicada:**
   Se importaron `Tuple`, `Optional` y `Dict` desde la librería estándar `typing`.
 
+### Iteración 3.4: Confirmación Asíncrona Robusta de Eventos en Supabase Cloud (Etapa 13)
+- **Prompt:**
+  > *"Resuelve el problema de falsos timeouts en la inserción de eventos desde React hacia la tabla `public.eventos` de Supabase Cloud. Utiliza `requestId` único y acuse de recibo explícito `cloud.ack === requestId`."*
+- **Código Generado:**
+  `docs/ETAPA_13_CONFIRMACION_EVENTOS_SUPABASE.md` e integración en `Auto/bridge_component/index.html`.
+- **Verificación:**
+  Prueba de escritura y lectura exitosa en `public.eventos` con estado visual CONFIRMADO en UI.
+
+### Iteración 3.5: Caja Negra Automotriz con Persistencia por Lotes (Etapa 14)
+- **Prompt:**
+  > *"Implementa en `blackbox_cloud_sync.py` y `web/src/cloud/blackboxSync.ts` la sincronización de Caja Negra con Supabase. Almacena eventos en una cola local en el navegador y despacha en lotes de hasta 6 eventos cada 3.5 segundos con desduplicación por `detalles.autoos_id`."*
+- **Código Generado:**
+  `Auto/blackbox_cloud_sync.py` y `web/src/cloud/blackboxSync.ts`.
+- **Verificación:**
+  `python AutoOS_1/tests/test_v14_blackbox_cloud_sync.py` confirmó 24 eventos insertados sin duplicidad.
+
 ---
 
 ## 5. BITÁCORA — INTEGRANTE 4: INTERFAZ, INTEGRACIÓN Y DEPLOY
-**Responsabilidad:** Dashboard Cockpit en Streamlit, componentes visuales Plotly (Gantt, barras apiladas, donut), cálculo del semáforo general, ensamblado de arquitectura y despliegue en Streamlit Cloud.
+**Responsabilidad:** Menú cinematográfico, tema Blue Shift, integración Streamlit/React, componentes visuales Plotly, Centro de Simulación y verificación final.
 
 ### Iteración 4.1: Diseño del Cockpit y Tema Automotriz
 - **Prompt:**
@@ -123,13 +171,38 @@ Cada integrante documentó sus iteraciones siguiendo la estructura estándar:
 - **Verificación:**
   Al cambiar el estado de un proceso (ej. pausar `adas_collision_avoidance`), el diagrama Gantt y el gráfico Donut se recalculan automáticamente reflejando la nueva distribución.
 
-### Iteración 4.4: Preparación y Validación para Despliegue en Streamlit Cloud
+### Iteración 4.4: Menú Cinematográfico Inmersivo y Paleta Blue Shift
 - **Prompt:**
-  > *"Verifica los archivos requirements.txt y la configuración de secrets.toml para asegurar un despliegue exitoso en Streamlit Cloud sin dependencias faltantes ni fallos de autenticación."*
-- **Acción:**
-  Se verificaron versiones estables de `streamlit>=1.30.0`, `supabase>=2.0.0`, `plotly>=5.18.0` y `pandas>=2.0.0`. Se preparó el conector con respaldo de base de datos en memoria para garantizar que la aplicación arranque de forma infalible tanto en local como en la nube.
+  > *"Crea `CinematicMenu.tsx` y `blue-shift.css` para una pantalla de bienvenida inmersiva con animaciones de cámara y selección de módulos (Conducción, Simulación, Planificador). Soporta navegación por teclado y clics de ratón sin interferir con el motor de simulación."*
+- **Código Generado:**
+  `web/src/components/CinematicMenu.tsx`, `web/src/blue-shift.css` y `web/src/cinematic-menu.css`.
+
+### Iteración 4.5: Centro de Simulación de Conducción 2D y Reportes Forenses
+- **Prompt:**
+  > *"Construye `SimulationCenter.tsx` con 8 modos de simulación interactiva, dinámica de conducción virtual 2D (velocidad, consumo de energía, distancia), telemetría sincronizada y botón para descargar reportes forenses en formato `.txt`."*
+- **Código Generado:**
+  `web/src/components/SimulationCenter.tsx`, `web/src/simulation/scenarios.ts` y `GUIA_CENTRO_SIMULACION.md`.
+
+### Iteración 4.6: Telemetría Reactiva de RAM / CPU y Calibración OBD-II (Etapa 15)
+- **Prompt:**
+  > *"Sincroniza la telemetría de memoria RAM y CPU en el Cockpit interactivo y en el planificador RTOS para que reaccione al pausar/reanudar procesos, reproducir multimedia e inyectar fallas. Asegura que el botón de calibración OBD-II restablezca los sensores a estado 100% nominal."*
+- **Código Generado:**
+  Actualizaciones en `Auto/autoos_interactive.html`, `Auto/autoos_unified.html`, `web/public/autoos_interactive.html` y script `tools/update_memory_telemetry.py`.
+- **Verificación:**
+  Pruebas de sintaxis con `node --check` con código de salida 0 y validación visual interactiva en tiempo real.
 
 ---
 
-## 6. CONCLUSIÓN DEL EQUIPO
+## 6. MATRIZ DE TRAZABILIDAD Y ENTREGABLES POR INTEGRANTE
+
+| Integrante | Rol y Especialidad | Módulos Principales | Scripts de Prueba | Documentación |
+|---|---|---|---|---|
+| **Integrante 1** | Procesos y CPU | `processes.py`, `scheduler.py`, `schedulerEngine.ts`, `kernel_bridge.py` | `test_cpu.py`, `test_scheduler.py`, `test_react_kernel_bridge.py` | `Auto/docs/BITACORA_VIBE_CODING_COMPILADA.md` |
+| **Integrante 2** | Memoria y Almacenamiento | `memory_storage.py`, `memory.py`, `virtual_memory.py`, `file_system.py` | `test_memory.py`, `test_virtual_memory_paging.py` | `AutoOS_1/docs/MEMORIA_Y_ALMACENAMIENTO.md` |
+| **Integrante 3** | Seguridad, Dispositivos y RLS | `devices.py`, `auth_security.py`, `telemetry_battery.py`, `incidents.py`, `blackbox_cloud_sync.py` | `test_full_integration.py`, `test_v14_blackbox_cloud_sync.py`, `test_supabase.py` | `Auto/docs/BITACORA_VIBE_CODING.md`, `DOCUMENTO_ARQUITECTURA_INT3.md` |
+| **Integrante 4** | Interfaz, Integración y Deploy | `app.py`, `autoos_unified.html`, `CinematicMenu.tsx`, `SimulationCenter.tsx`, `App.tsx` | `tools/verificar_entrega_final.ps1`, `tools/validar_v12.ps1`, `test_bluetooth_v12.cjs` | `docs/blue-shift/BITACORA.md`, `GUIA_CENTRO_SIMULACION.md`, `README.md` |
+
+---
+
+## 7. CONCLUSIÓN DEL EQUIPO
 La integración de las responsabilidades de los cuatro integrantes mediante la metodología de Vibe Coding permitió construir un simulador de sistema operativo automotriz robusto, seguro y visualmente impactante, cumpliendo el 100% de los criterios de la matriz de evaluación y las directivas de seguridad ISO 26262 / ASIL-D.
