@@ -1,0 +1,24 @@
+/* AutoOS V6 — presentación del Cockpit real cuando está incrustado.
+ * Se oculta únicamente la navegación que duplica el menú V6; los controles
+ * funcionales permanecen montados en React y accesibles desde el puente V4.
+ */
+html[data-autoos-v6-embedded="true"] [data-autoos-v6-duplicate-nav="true"] {
+  display:none!important;
+}
+html[data-autoos-v6-embedded="true"],
+html[data-autoos-v6-embedded="true"] body,
+html[data-autoos-v6-embedded="true"] #root {
+  max-width:100%!important;min-width:0!important;overflow-x:hidden!important;
+}
+html[data-autoos-v6-embedded="true"] #root button {
+  min-height:33px;
+}
+/* Mayor legibilidad: los tamaños menores de 11px del HTML original se usan
+ * para etiquetas y telemetría; 12px evita que desaparezcan en pantallas grandes. */
+html[data-autoos-v6-embedded="true"] #root [class*="text-[10px]"],
+html[data-autoos-v6-embedded="true"] #root [class*="text-[11px]"] {
+  font-size:12px!important;line-height:1.4!important;
+}
+html[data-autoos-v6-embedded="true"] #root button:focus-visible {
+  outline:3px solid #fb56a4!important;outline-offset:3px!important;
+}

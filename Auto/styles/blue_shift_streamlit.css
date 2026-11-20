@@ -1,0 +1,56 @@
+/* AutoOS Blue Shift — Streamlit. Solo estilo: no modifica permisos ni controles. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root, .stApp {
+  --bg-base: #071427 !important;
+  --bg-surface: #0d2140 !important;
+  --bg-card: #102a50 !important;
+  --bg-card-hover: #174077 !important;
+  --border: #2b5383 !important;
+  --border-accent: #5ad7ff !important;
+  --accent-primary: #3687ff !important;
+  --accent-second: #39d7ff !important;
+  --text-primary: #f6fbff !important;
+  --text-secondary: #c4e0ff !important;
+  --text-muted: #98bce5 !important;
+  --tab-active-bg: linear-gradient(105deg,#1660e0,#38bdf8) !important;
+  --tab-active-text: #fff !important;
+}
+.stApp {
+  background: radial-gradient(circle at 85% 4%,rgba(36,117,249,.16),transparent 35%),#071427 !important;
+}
+.stApp :is(h1,h2,h3,h4) {
+  font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: .025em;
+}
+.stApp :is(p,button,input,label,select,textarea),
+.stApp [data-testid='stTabs'] [role='tab'] {
+  font-family: 'Space Grotesk', Arial, sans-serif !important;
+}
+.stApp [data-testid='stSidebar'] {
+  background: linear-gradient(175deg,#0d2140,#07162c) !important;
+  border-right: 1px solid #2b5383 !important;
+}
+.stApp [data-testid='stTabs'] [role='tablist'] {
+  background: #0c2140 !important;
+  border: 1px solid #2b5383 !important;
+}
+.stApp [data-testid='stTabs'] [role='tab'][aria-selected='true'] {
+  background: linear-gradient(105deg,#1660e0,#38bdf8) !important;
+  box-shadow: 0 4px 18px rgba(44,129,255,.28) !important;
+  color: white !important;
+}
+.stApp [data-testid='stTabs'] [role='tab']:hover:not([aria-selected='true']) {
+  background: rgba(56,141,255,.13) !important;
+}
+.stApp :is(button,input,textarea,select,[role='tab']):focus-visible {
+  outline: 2px solid #6ce1ff !important;
+  outline-offset: 2px !important;
+}
+/* Preserve original Material icon fonts. */
+.stApp [data-testid='stIconMaterial'] {
+  font-family: 'Material Symbols Rounded','Material Symbols Outlined',sans-serif !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .stApp *, .stApp *::before, .stApp *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

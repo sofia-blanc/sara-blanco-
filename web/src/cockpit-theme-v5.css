@@ -1,0 +1,42 @@
+/*
+ * AutoOS V5 / Cockpit heredado.
+ * Este documento vive en OTRO iframe. Por eso el tema se aplica también aquí.
+ * No crea botones ni reemplaza estados: sólo corrige superficies, contraste,
+ * tipografía, scroll horizontal y legibilidad de la vista técnica original.
+ */
+html,body,#root {width:100%!important;min-width:0!important;overflow-x:hidden!important;}
+#root {box-sizing:border-box;}
+#root > div {max-width:100%!important;min-width:0!important;}
+/* Contenedores primarios del cockpit: no conservar el tamaño estrecho.
+ * Nota: no forzamos width sobre cada botón/tarjeta; la grilla respeta Tailwind. */
+#root [class*="max-w-7xl"], #root [class*="max-w-6xl"] {
+  width:calc(100% - clamp(20px,3vw,70px))!important;
+  max-width:1650px!important;
+  margin-left:auto!important;margin-right:auto!important;
+}
+#root [class*="text-[10px]"],#root [class*="text-[11px]"] {
+  font-size:12px!important;line-height:1.4!important;
+}
+/* Tema claro legible: fondos cercanos al blanco, paneles blanco-azulados y
+ * letras azul profundo. NO cambiar estados semáforo ni alertas críticas. */
+html:not(.dark),html:not(.dark) body,html:not(.dark) #root {background:#e5effb!important;color:#123660!important;}
+html:not(.dark) #root [class*="bg-white"]:not(button) {border-color:#a7c6e4;}
+html:not(.dark) #root [class*="bg-[#E3DDD7]"] {background:#f7fbff!important;}
+html:not(.dark) #root [class*="bg-[#D5CFC9]"] {background:#e7f1fb!important;}
+html:not(.dark) #root [class*="bg-[#C0BAB3]"] {background:#e5effb!important;}
+html:not(.dark) #root [class*="border-[#887D77]"] {border-color:#a0c1e1!important;}
+html:not(.dark) #root [class*="text-[#8D7AA8]"] {color:#4a6790!important;}
+html:not(.dark) #root [class*="text-[#B8A8DC]"] {color:#315c87!important;}
+html:not(.dark) #root input,html:not(.dark) #root select,html:not(.dark) #root textarea {
+  background:#fff!important;color:#0c2d57!important;border:1px solid #7ea9d1!important;
+}
+/* Evitar títulos grandes invisibles en modo claro por herencia. */
+html:not(.dark) #root h1,html:not(.dark) #root h2,html:not(.dark) #root h3 {text-shadow:none;}
+/* Tema oscuro: paneles azul noche, con texto claro y botones legibles. */
+html.dark #root {background:#06152d!important;color:#e6f8ff!important;}
+html.dark #root input,html.dark #root select,html.dark #root textarea {border-color:#3e75ad;}
+/* Los cuadros de auditoría son datos, no enlaces; diferenciarlos visualmente. */
+#root :is(input,select,textarea,button):focus-visible {outline:3px solid #fc5bac!important;outline-offset:3px!important;}
+@media(max-width:720px) {
+ #root [class*="max-w-7xl"],#root [class*="max-w-6xl"] {width:calc(100% - 20px)!important;}
+}

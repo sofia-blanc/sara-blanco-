@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   AlgorithmType,
   BatteryState,
@@ -21,8 +21,23 @@ import { ProcessTable } from './components/ProcessTable';
 import { BatterySimulatorPanel } from './components/BatterySimulatorPanel';
 import { CriticalProcessSimulator } from './components/CriticalProcessSimulator';
 import { SimulationCenter } from './components/SimulationCenter';
+import { OSResourceMonitor } from './components/OSResourceMonitor';
+import { PythonKernelPanel } from './components/PythonKernelPanel';
+import { useBlackboxCloudSync } from './cloud/blackboxSync'; // AUTOOS_V14_BLACKBOX_CLOUD
+import { getPythonKernelStatus, onPythonKernelStatus, sendKernelSyncRequest, type PythonKernelStatus } from './kernelBridge';
+import { buildOSResourceSnapshot, batteryAfterEnergyTick, estimatePowerW, toResourceSample, advanceOperatingSystemTick, type OSResourceSample } from './simulation/resources';
+import { CinematicMenu } from './components/CinematicMenu';
+import { AutoOSModulesV11 } from './components/AutoOSModulesV11';
+import { advanceMission, createMission, startMission, type MissionState, type MissionEvent, type RouteId } from './simulation/navigation';
+import { ModuleScene } from './components/ModuleScene';
+import { ModuleOrientationV3 } from './components/ModuleOrientationV3';
+import { CockpitExplorerV4 } from './components/CockpitExplorerV4';
+import type { CockpitFeatureId } from './components/CockpitExplorerV4';
+import { CockpitOverviewV5, CockpitSecurityV5 } from './components/CockpitWorkspaceV5';
+import { CockpitToolSceneV6 } from './components/CockpitToolSceneV6'; // AUTOOS_EXPERIENCE_V6
+import type { AutoOSModule } from './components/CinematicMenu';
 import { initialScenarioState, applyScenarioAction, makeBattery, markFault, insertWorkload, applyWeather, simEvent, recoverFault } from './simulation/engine';
-import type { ScenarioId, SimulationAction, Weather } from './simulation/scenarios';
+import { scenarioById, type ScenarioId, type SimulationAction, type Weather } from './simulation/scenarios';
 
 import { HardwareStatusGrid } from './components/HardwareStatusGrid';
 import { AlgorithmComparisonModal } from './components/AlgorithmComparisonModal';
@@ -50,6 +65,7 @@ import {
   Zap,
   Navigation,
   FlaskConical,
+  Menu,
 } from 'lucide-react';
 
 const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
@@ -189,7 +205,21 @@ const INITIAL_VEHICLE_DEVICES: VehicleDevice[] = [
 
 export default function App() {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'SCHEDULER' | 'COCKPIT' | 'SIMULATOR'>('SCHEDULER');
+  const [activeTab, setActiveTab] = useState<AutoOSModule>('HOME');
+  // AUTOOS_CINEMATIC_V1: menú de bienvenida; los estados de simulación se conservan.
+  const [showCinematicMenu, setShowCinematicMenu] = useState(true);
+  // AUTOOS_EXPERIENCE_V4: entrada a Conducción por explorador, no por una
+  // grilla de diagnóstico. Solo controla PRESENTACIÓN; no estados del vehículo.
+  const [cockpitWorkspace, setCockpitWorkspace] = useState(false);
+  const [cockpitFeature, setCockpitFeature] = useState<CockpitFeatureId>('overview');
+  const [cockpitHeight, setCockpitHeight] = useState(1200);
+  // AUTOOS_EXPERIENCE_V3: un único estado para los efectos del menú y el audio
+  // del cockpit. Se guarda localmente y se comunica al iframe independiente.
+  const [audioMuted, setAudioMuted] = useState(() => localStorage.getItem('autoos_audio_muted') === '1');
+  useEffect(() => {
+    localStorage.setItem('autoos_audio_muted', audioMuted ? '1' : '0');
+    iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_SET_AUDIO_MUTED', muted: audioMuted }, '*');
+  }, [audioMuted]);
 
   // Navigation tabs: only 2 tabs as requested
   // Wrap the whole UI with SimulationProvider (added later)
@@ -229,6 +259,19 @@ export default function App() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // AUTOOS_V6_NAV_SYNC: cambiar de herramienta no desmonta el Cockpit.
+  // El puente V4 pulsa los botones reales del iframe tras cada selección.
+  useEffect(() => {
+    if (!cockpitWorkspace || cockpitFeature === 'overview' || cockpitFeature === 'security') return;
+    const feature = cockpitFeature === 'overview-original' ? 'overview' :
+      cockpitFeature === 'security-original' ? 'security' : cockpitFeature;
+    const request = () => iframeRef.current?.contentWindow?.postMessage(
+      { type: 'AUTOOS_V4_OPEN_FEATURE', feature }, '*');
+    const first = window.setTimeout(request, 130);
+    const second = window.setTimeout(request, 420);
+    return () => { window.clearTimeout(first); window.clearTimeout(second); };
+  }, [cockpitWorkspace, cockpitFeature]);
+
   const syncIframeState = useCallback(() => {
     const iframe = iframeRef.current;
     if (typeof window !== 'undefined') {
@@ -248,6 +291,7 @@ export default function App() {
     try {
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_THEME', theme }, '*');
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_ROLE', role: userRole }, '*');
+      iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_AUDIO_MUTED', muted: audioMuted }, '*');
       const win = iframe.contentWindow as unknown as {
         __AUTOOS_SET_THEME__?: (t: string) => void;
         __AUTOOS_SET_ROLE__?: (r: string) => void;
@@ -259,7 +303,7 @@ export default function App() {
         win.__AUTOOS_SET_ROLE__(userRole);
       }
     } catch (_) {}
-  }, [theme, userRole]);
+  }, [theme, userRole, audioMuted]);
 
   // Apply theme class to document
   useEffect(() => {
@@ -284,17 +328,24 @@ export default function App() {
     };
   }, [userRole, activeTab, theme, syncIframeState]);
 
-  // If role changes to 'conductor', force COCKPIT tab
+  // V11: conductor y pasajero pueden navegar por GPS, Inicio y Caja Negra.
+  // Únicamente se abandona el planificador si deja de estar autorizado.
   useEffect(() => {
-    if (userRole === 'conductor' || userRole === 'pasajero') {
-      setActiveTab('COCKPIT');
+    if (userRole !== 'mecanico' && activeTab === 'SCHEDULER') {
+      setActiveTab('HOME');
     }
-  }, [userRole]);
+  }, [userRole, activeTab]);
 
   // Bidirectional listener from Cockpit iframe
   useEffect(() => {
     const handleIframeMessage = (e: MessageEvent) => {
       if (!e.data) return;
+      // Altura del cockpit independiente. Validamos origen y límites antes de
+      // aplicarla, para evitar scroll doble y valores arbitrarios.
+      if (e.data.type === 'AUTOOS_V4_COCKPIT_HEIGHT' && e.source === iframeRef.current?.contentWindow) {
+        const next = Number(e.data.height);
+        if (Number.isFinite(next) && next >= 480 && next <= 15000) setCockpitHeight(Math.ceil(next));
+      }
       if (e.data.type === 'AUTOOS_THEME_CHANGED') {
         const next = e.data.theme === 'dark' ? 'dark' : 'light';
         setTheme(next);
@@ -323,9 +374,9 @@ export default function App() {
 
   // RBAC rejection trigger
   const handleRoleRestricted = (action: string) => {
-    const roleName = userRole === 'pasajero' ? 'Pasajero' : userRole === 'conductor' ? 'Conductor' : 'MecÃ¡nico';
+    const roleName = userRole === 'pasajero' ? 'Pasajero' : userRole === 'conductor' ? 'Conductor' : 'Mecánico';
     setRbacAlertMessage(
-      `â›” Acceso Denegado por PolÃ­tica RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. Cambia de rol en la barra superior para continuar.`
+      `⛔ Acceso Denegado por Política RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. Cambia de rol en la barra superior para continuar.`
     );
   };
 
@@ -360,9 +411,81 @@ export default function App() {
   });
 
   // Simulation execution state
+  const [simCloudRun, setSimCloudRun] = useState(0);
   const [simState, setSimState] = useState<SimulationState>(() =>
     createInitialSimulationState(baseProcesses, 'RR', 2)
   );
+
+  // AUTOOS V9: un solo modelo de recursos para Simulación, CPU y Conducción.
+  // Separamos estado del escenario (velocidad/clima) del scheduler: ambos
+  // se combinan en una instantánea derivada, nunca en porcentajes inventados.
+  const [driveSpeedKmh, setDriveSpeedKmh] = useState(0);
+  const [driveWeather, setDriveWeather] = useState<Weather>('soleado');
+  const [tripEnergyWh, setTripEnergyWh] = useState(0);
+  const [resourceHistory, setResourceHistory] = useState<OSResourceSample[]>([]);
+  // AUTOOS V11: GPS y Caja Negra viven en el mismo propietario de estados.
+  // Cada avance usa handleSimulatorDriveTick, que comparte CPU/RAM/batería.
+  const [mission, setMission] = useState<MissionState>(() => createMission());
+  const [missionEvents, setMissionEvents] = useState<MissionEvent[]>(() => {
+    try {return JSON.parse(localStorage.getItem('autoos_v11_blackbox') || '[]').slice(0,150);}
+    catch {return [];}
+  });
+  useEffect(() => {
+    try {localStorage.setItem('autoos_v11_blackbox', JSON.stringify(missionEvents.slice(0,150)));}
+    catch { /* storage bloqueado: la sesión continúa en memoria */ }
+  }, [missionEvents]);
+  const simRef = useRef(simState);
+  const deviceRef = useRef(devices);
+  const batteryRef = useRef(battery);
+  useEffect(() => { simRef.current = simState; deviceRef.current = devices; batteryRef.current = battery; }, [simState, devices, battery]);
+
+  const osResources = useMemo(() => buildOSResourceSnapshot(
+    simState, battery, devices, driveSpeedKmh, driveWeather, tripEnergyWh,
+  ), [simState, battery, devices, driveSpeedKmh, driveWeather, tripEnergyWh]);
+  // AUTOOS_V14_BLACKBOX_CLOUD: mismos eventos que la Caja Negra, sin otro motor.
+  const eventsForCloud = useMemo(() => [
+    ...simState.events.map(e => ({id: `sim${simCloudRun}_${e.id}`, kind: e.type, severity: e.severity,
+      message: e.message, tick: e.time})),
+    ...missionEvents.map(e => ({id: `gps_${e.id}`, kind: e.kind, severity: e.severity,
+      message: e.message, tick: e.tick})),
+  ], [simState.events, missionEvents, simCloudRun]);
+  const {status: blackboxCloud, retry: retryBlackboxCloud} = useBlackboxCloudSync(
+    eventsForCloud, {batteryPct:battery.level, cpuPct:osResources.cpuDemandPct,
+      ramMb:osResources.ramPhysicalMb}
+  );
+  useEffect(() => {
+    // Hasta 60 puntos; el mismo tick sustituye la muestra anterior para
+    // evitar duplicaciones cuando batería, CPU y RAM cambian en un render.
+    const sample = toResourceSample(osResources);
+    setResourceHistory((old) => {
+      const last = old[old.length - 1];
+      if (last && last.tick === sample.tick) return [...old.slice(0, -1), sample];
+      return [...old, sample].slice(-60);
+    });
+  }, [osResources]);
+
+  // AUTOOS V10: puente explícito al kernel Python, sin modificar automáticamente
+  // la simulación cuando Streamlit hace un rerun. El botón es deliberado.
+  const [pythonKernel, setPythonKernel] = useState<PythonKernelStatus | null>(() => getPythonKernelStatus());
+  const [syncingPythonKernel, setSyncingPythonKernel] = useState(false);
+  useEffect(() => onPythonKernelStatus(status => {
+    setPythonKernel(status);
+    setSyncingPythonKernel(false);
+  }), []);
+  const syncPythonKernel = useCallback(() => {
+    const requestId = `v10_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
+    // Solo procesos admitidos: el kernel Python asigna RAM First-Fit real.
+    // No se envían valores de uso CPU/RAM para forzar artificialmente el backend.
+    const processes = simState.processes
+      .filter(p => p.state !== 'NUEVO' && p.state !== 'TERMINADO' && p.state !== 'SUSPENDIDO')
+      .map(p => ({ pid: p.pid, name: p.name, priority: p.priority,
+        burstTime: Math.max(1, p.remainingTime || p.burstTime), memoryMb: p.memoryMb }));
+    const submitted = sendKernelSyncRequest({
+      type: 'autoos:kernel-sync', requestId, tick: simState.currentTime,
+      batteryPct: battery.level, processes,
+    });
+    if (submitted) setSyncingPythonKernel(true);
+  }, [simState.processes, simState.currentTime, battery.level]);
 
   // Metrics
   const metrics = calculateMetrics(simState);
@@ -376,11 +499,12 @@ export default function App() {
           metrics: calculateMetrics(simState),
           battery,
           devices,
+          resources: osResources, // Un mismo cálculo en todas las vistas React.
         },
         '*'
       );
     } catch (_) {}
-  }, [simState.currentTime, battery, devices]);
+  }, [simState.currentTime, battery, devices, osResources]);
 
 
 
@@ -392,6 +516,7 @@ export default function App() {
       const targetQ = q !== undefined ? q : quantum;
       const targetProcs = procs || baseProcesses;
       const freshState = createInitialSimulationState(targetProcs, targetAlg, targetQ);
+      setSimCloudRun(n => n + 1);
       setSimState(freshState);
     },
     [algorithm, quantum, baseProcesses]
@@ -399,7 +524,7 @@ export default function App() {
 
   const handleAlgorithmChange = (newAlg: AlgorithmType) => {
     if (userRole === 'pasajero') {
-      handleRoleRestricted('Modificar Algoritmo de PlanificaciÃ³n de CPU');
+      handleRoleRestricted('Modificar Algoritmo de Planificación de CPU');
       return;
     }
     setAlgorithm(newAlg);
@@ -427,7 +552,7 @@ export default function App() {
 
   const handleTogglePlay = () => {
     if (userRole === 'pasajero') {
-      handleRoleRestricted('Iniciar / Pausar la EjecuciÃ³n de CPU');
+      handleRoleRestricted('Iniciar / Pausar la Ejecución de CPU');
       return;
     }
     setIsPlaying(!isPlaying);
@@ -517,8 +642,8 @@ export default function App() {
             timestamp: new Date().toLocaleTimeString(),
             type: 'BATTERY_ALERT',
             message: isLowMode
-              ? `âš¡ [BATERÃA BAJA ${newLevel}%] Activado Limp-Mode: Procesos de confort y multimedia suspendidos para proteger la tracciÃ³n y direcciÃ³n.`
-              : `âœ“ [BATERÃA NOMINAL ${newLevel}%] Carga restablecida al ${newLevel}%. Procesos reactivados.`,
+              ? `⚡ [BATERÍA BAJA ${newLevel}%] Activado Limp-Mode: Procesos de confort y multimedia suspendidos para proteger la tracción y dirección.`
+              : `✓ [BATERÍA NOMINAL ${newLevel}%] Carga restablecida al ${newLevel}%. Procesos reactivados.`,
             severity: isCritical ? 'critical' : isLow ? 'warning' : 'success',
           },
           ...prev.events,
@@ -579,7 +704,7 @@ export default function App() {
         time: currentT,
         timestamp: new Date().toLocaleTimeString(),
         type: 'CRITICAL_INJECT',
-        message: `ðŸš¨ PROCESO CRÃTICO ASIL-D INYECTADO! '${newProc.name}' [DTC: ${dtc || 'U0100'}] (PID ${newProc.pid}, P${newProc.priority}) ingresa a la CPU.`,
+        message: `🚨 PROCESO CRÍTICO ASIL-D INYECTADO! '${newProc.name}' [DTC: ${dtc || 'U0100'}] (PID ${newProc.pid}, P${newProc.priority}) ingresa a la CPU.`,
         pid: newProc.pid,
         severity: 'critical',
       });
@@ -598,7 +723,7 @@ export default function App() {
           time: currentT,
           timestamp: new Date().toLocaleTimeString(),
           type: 'PREEMPTION',
-          message: `âš¡ DESALOJO PREEMPTIVO! PID ${newProc.pid} (${newProc.name}) desaloja a PID ${preempted.pid} (${preempted.name}) en el nÃºcleo.`,
+          message: `⚡ DESALOJO PREEMPTIVO! PID ${newProc.pid} (${newProc.name}) desaloja a PID ${preempted.pid} (${preempted.name}) en el núcleo.`,
           pid: newProc.pid,
           severity: 'critical',
         });
@@ -660,7 +785,7 @@ export default function App() {
           time: prev.currentTime,
           timestamp: new Date().toLocaleTimeString(),
           type: 'STATE_CHANGE',
-          message: `âœ“ CalibraciÃ³n OBD-II completada: Dispositivo [${deviceCode}] restablecido a OPERATIVO (100% Nominal).`,
+          message: `✓ Calibración OBD-II completada: Dispositivo [${deviceCode}] restablecido a OPERATIVO (100% Nominal).`,
           severity: 'success',
         },
         ...prev.events,
@@ -694,7 +819,7 @@ export default function App() {
           time: prev.currentTime,
           timestamp: new Date().toLocaleTimeString(),
           type: 'STATE_CHANGE',
-          message: `âœ“ RESTABLECIMIENTO GLOBAL: Todos los subsistemas y buses CAN/Ethernet restablecidos a 100% NOMINAL ASIL-D.`,
+          message: `✓ RESTABLECIMIENTO GLOBAL: Todos los subsistemas y buses CAN/Ethernet restablecidos a 100% NOMINAL ASIL-D.`,
           severity: 'success',
         },
         ...prev.events,
@@ -730,7 +855,7 @@ export default function App() {
       cpuUsagePct: 35,
       memoryMb: 128,
     };
-    handleInjectCriticalProcess(procData, deviceCode, dtc, 'Prueba de DiagnÃ³stico Forzado OBD-II');
+    handleInjectCriticalProcess(procData, deviceCode, dtc, 'Prueba de Diagnóstico Forzado OBD-II');
   };
 
   // Add custom process
@@ -765,7 +890,7 @@ export default function App() {
             time: prev.currentTime,
             timestamp: new Date().toLocaleTimeString(),
             type: 'ARRIVAL',
-            message: `Proceso '${newProc.name}' (PID ${newProc.pid}, RÃ¡faga: ${newProc.burstTime}s, Prio: ${newProc.priority}) aÃ±adido.`,
+            message: `Proceso '${newProc.name}' (PID ${newProc.pid}, Ráfaga: ${newProc.burstTime}s, Prio: ${newProc.priority}) añadido.`,
             pid: newProc.pid,
             severity: 'info',
           },
@@ -869,7 +994,13 @@ export default function App() {
     setBaseProcesses(INITIAL_VEHICLE_PROCESSES.map((p) => ({ ...p, waitingTime: 0, turnaroundTime: 0 })));
     setBattery(fresh.battery);
     setDevices(fresh.devices);
+    setSimCloudRun(n => n + 1);
     setSimState(fresh.state);
+    const definition = scenarioById(id);
+    setDriveSpeedKmh(definition.speed);
+    setDriveWeather(definition.weather);
+    setTripEnergyWh(0);
+    setResourceHistory([]);
     try {
       iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_RESET_ALL_FAULTS' }, '*');
       const affected = fresh.devices.filter((d) => d.status !== 'operativo');
@@ -880,6 +1011,7 @@ export default function App() {
   const handleSimulatorAction = useCallback((action: SimulationAction) => {
     setSimState((prev) => applyScenarioAction(prev, action));
     if (action === 'power_save') setBattery((prev) => makeBattery(prev.level, true));
+    if (action === 'reduce_speed') setDriveSpeedKmh((prev) => Math.min(prev, 35));
     if (action === 'restart_gps') setDevices((prev) => recoverFault(prev, 'DEV_GPS_01'));
     if (action === 'restart_network') setDevices((prev) => recoverFault(prev, 'DEV_COM_V2X'));
     if (action === 'isolate_camera') setDevices((prev) => prev.map((d) =>
@@ -894,15 +1026,27 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Un tick visual equivale a un minuto virtual de conducción acelerada.
+   * Consumo = potencia de tracción + procesos admitidos + dispositivos + auxiliares.
+   * La misma batería cambia en todas las pestañas; no hay números de maqueta.
+   */
   const handleSimulatorDriveTick = useCallback((velocity: number, weather: Weather) => {
-    setSimState((prev) => prev.isFinished ? prev : stepSimulationTick(prev, battery.isLowBatteryMode));
-    setBattery((prev) => {
-      const climate = weather === 'soleado' ? 1 : weather === 'lluvia' ? 1.25 : 1.18;
-      const drain = (0.004 + velocity * velocity / 180000) * climate * (prev.isLowBatteryMode ? 0.7 : 1);
-      const next = makeBattery(Math.max(0, prev.level - drain), prev.isLowBatteryMode);
-      return { ...next, temperature: prev.temperature };
+    const watts = estimatePowerW(simRef.current, deviceRef.current, velocity, weather, batteryRef.current.isLowBatteryMode).total;
+    const energyWhThisTick = watts / 60;
+    setDriveSpeedKmh(velocity);
+    setDriveWeather(weather);
+    setSimState((prev) => advanceOperatingSystemTick(prev, batteryRef.current.isLowBatteryMode));
+    setBattery((prev) => batteryAfterEnergyTick(prev, energyWhThisTick));
+    setTripEnergyWh((prev) => prev + energyWhThisTick);
+    // AUTOOS V11: cualquier tick del SO (ruta o escenario) mueve el GPS activo.
+    // Una falla GNSS inmoviliza la última coordenada válida, no el odómetro.
+    setMission((prev) => {
+      if (!prev.active) return prev;
+      const gpsWorking = deviceRef.current.find(d => d.code === 'DEV_GPS_01')?.status === 'operativo';
+      return advanceMission(prev, gpsWorking, velocity);
     });
-  }, [battery.isLowBatteryMode]);
+  }, []);
 
   const handleSimulatorBattery = useCallback((level: number) => {
     setBattery(makeBattery(level, level <= 10));
@@ -920,9 +1064,56 @@ export default function App() {
   }, []);
 
   const handleSimulatorWeather = useCallback((weather: Weather) => {
+    setDriveWeather(weather);
     setDevices((prev) => applyWeather(prev, weather));
     setSimState((prev) => simEvent(prev, `Clima de simulación actualizado: ${weather}. Se recalcula el estado de percepción de sensores.`, weather === 'soleado' ? 'success' : 'warning'));
   }, []);
+
+  /**
+   * AUTOOS V11 — Bitácora por evento. No representa medición de vehículo real.
+   * La persistencia local no requiere claves; Supabase tiene su diagnóstico aparte.
+   */
+  const recordMissionEvent = useCallback((message: string, severity: 'info'|'warning'|'critical' = 'info', kind: MissionEvent['kind'] = 'RUTA') => {
+    const event:MissionEvent={id:`${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+      tick:simRef.current.currentTime,timestamp:new Date().toISOString(),kind,severity,message};
+    setMissionEvents(old=>[event,...old].slice(0,150));
+  }, []);
+
+  const routeSelect = useCallback((id:RouteId) => {
+    setMission(createMission(id));recordMissionEvent(`Seleccionada ruta didáctica: ${id}.`);
+  },[recordMissionEvent]);
+  const missionStart = useCallback(() => {
+    setMission(prev=>startMission(prev.routeId,prev.speedKmh));
+    recordMissionEvent('Navegación iniciada: el SO supervisará recursos y señales.');
+  },[recordMissionEvent]);
+  const missionStop = useCallback(() => {
+    setMission(prev=>({...prev,active:false}));setDriveSpeedKmh(0);
+    recordMissionEvent('Ruta detenida por el operador.');
+  },[recordMissionEvent]);
+  const missionSpeed = useCallback((speed:number)=>{
+    setMission(prev=>({...prev,speedKmh:speed}));
+  },[]);
+  const missionTick = useCallback(()=>{
+    if(!mission.active)return;
+    const working=deviceRef.current.find(d=>d.code==='DEV_GPS_01')?.status==='operativo';
+    handleSimulatorDriveTick(mission.speedKmh,driveWeather);
+    recordMissionEvent(working
+      ?`Ruta virtual: +${(mission.speedKmh/60).toFixed(2)} km; se actualizan CPU, RAM y batería.`
+      :'GNSS sin señal: posición congelada y odómetro virtual en marcha.',
+      working?'info':'warning', 'GPS');
+  },[mission.active,mission.speedKmh,driveWeather,handleSimulatorDriveTick,recordMissionEvent]);
+  // ÚNICO reloj de GPS fuera del laboratorio. En Simulación, su propio
+  // onDriveTick dispara handleSimulatorDriveTick para no consumir dos veces.
+  useEffect(() => {
+    if (!mission.active || activeTab === 'SIMULATOR') return;
+    const interval = window.setInterval(missionTick, 1800);
+    return () => window.clearInterval(interval);
+  }, [mission.active, activeTab, missionTick]);
+
+  const injectMissionFault=useCallback(()=>{
+    if(userRole!=='mecanico'){handleRoleRestricted('Inyectar fallo GPS del laboratorio');return;}
+    handleSimulatorFault('DEV_GPS_01');recordMissionEvent('Falla GNSS inyectada por mecánico.','critical','GPS');
+  },[userRole,handleSimulatorFault,recordMissionEvent]);
 
   const suspendedProcesses = simState.processes.filter((p) => p.state === 'SUSPENDIDO');
 
@@ -937,133 +1128,34 @@ export default function App() {
   const gpsActiveDtc = gpsDevice?.activeDtc;
 
   return (
-    <div className="min-h-screen flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)]">
-      {/* Top Header with Universal Theme Switcher & RBAC Role Selector */}
-      <header className="sticky top-0 z-40 autoos-surface border-b px-4 lg:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          {/* Brand & Status */}
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-2xl bg-[var(--accent-primary)]/15 text-[var(--accent-primary)] border border-[var(--accent-primary)]/30 shadow-sm">
-              <Car className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-serif font-bold text-[var(--text-primary)] tracking-wide">
-                  AutoOS <span className="text-[var(--accent-primary)] font-mono text-xs font-semibold">v2.5.0</span>
-                </h1>
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold flex items-center gap-1 ${
-                  failingDevices.length > 0
-                    ? 'bg-red-500/15 text-red-500 border border-red-500/30 animate-pulse'
-                    : degradedDevices.length > 0
-                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
-                    : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    failingDevices.length > 0 ? 'bg-red-500 animate-ping' : degradedDevices.length > 0 ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'
-                  }`}></span>
-                  {failingDevices.length > 0 ? 'FALLA ACTIVA' : degradedDevices.length > 0 ? 'DEGRADADO' : 'OPERATIVO 100%'}
-                </span>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono border ${
-                  isSupabaseConfigured()
-                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
-                    : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                  {isSupabaseConfigured() ? 'Supabase: Conectado' : 'Supabase: Modo Local'}
-                </span>
-              </div>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                Sistema Operativo para Vehículo Inteligente — RTOS ISO 26262 ASIL-D
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation Tabs */}
-          <div className="flex items-center autoos-card p-1 rounded-2xl border text-xs font-mono">
-            {userRole !== 'conductor' && userRole !== 'pasajero' && (
-              <button
-                onClick={() => setActiveTab('SCHEDULER')}
-                className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
-                  activeTab === 'SCHEDULER'
-                    ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                <Cpu className="w-4 h-4" />
-                <span>Planificador &amp; Simuladores</span>
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab('SIMULATOR')}
-              className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
-                activeTab === 'SIMULATOR'
-                  ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <FlaskConical className="w-4 h-4" />
-              <span>Centro de Simulación</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('COCKPIT')}
-              className={`px-3.5 py-2 rounded-xl font-bold flex items-center gap-2 transition-all ${
-                activeTab === 'COCKPIT'
-                  ? 'bg-[var(--accent-primary)] text-white shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-              }`}
-            >
-              <Car className="w-4 h-4" />
-              <span>Cockpit AutoOS Completo</span>
-            </button>
-          </div>
-
-          {/* User Role Selector & Universal Theme Switcher */}
-          <div className="flex items-center gap-2.5 text-xs font-mono">
-            {/* Role RBAC Selector */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl autoos-card border text-[var(--text-primary)]">
-              <Shield className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-              <span className="text-[11px] text-[var(--text-muted)] font-semibold">Usuario:</span>
-              <select
-                value={userRole}
-                onChange={(e) => {
-                const newR = e.target.value as UserRole;
-                setUserRole(newR);
-                if (newR === 'conductor' || newR === 'pasajero') {
-                  setActiveTab('COCKPIT');
-                }
-              }}
-                className="bg-transparent text-[var(--text-primary)] font-bold text-xs focus:outline-none cursor-pointer"
-              >
-                <option value="mecanico" className="text-black dark:text-white dark:bg-[#180E24]">ðŸ”§ Carlos VÃ©lez (MecÃ¡nico / Admin)</option>
-                <option value="conductor" className="text-black dark:text-white dark:bg-[#180E24]">ðŸš— Laura GÃ³mez (Conductora)</option>
-                <option value="pasajero" className="text-black dark:text-white dark:bg-[#180E24]">ðŸ‘¤ AndrÃ©s Rivera (Pasajero)</option>
-              </select>
-            </div>
-
-            {/* Battery gauge pill */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl autoos-card border text-[var(--text-primary)]">
-              <BatteryCharging className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-              <span>{battery.level}% ({battery.voltage}V)</span>
-            </div>
-
-            {/* Universal Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl autoos-card border hover:bg-[var(--bg-card-hover)] text-[var(--text-primary)] transition flex items-center gap-1.5"
-              title={theme === 'dark' ? 'Cambiar a Modo Claro (Soft Dove)' : 'Cambiar a Modo Oscuro (Purple Night)'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-[#391214]" />
-              )}
-              <span className="hidden md:inline text-[11px]">
-                {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
+    <>
+    <div data-autoos-theme={theme} className={`min-h-screen autoos-module-app flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-base)] text-[var(--text-primary)] ${showCinematicMenu ? 'hidden' : ''}`}>
+      {/* AUTOOS_MODULE_SCENE_V2
+          Cabecera editorial animada. La lógica de roles, nube y simulación
+          sigue definida en App.tsx; este componente SOLO recibe callbacks. */}
+      <ModuleScene
+        active={activeTab}
+        role={userRole}
+        batteryLevel={battery.level}
+        theme={theme}
+        status={failingDevices.length > 0 ? 'failure' : degradedDevices.length > 0 ? 'warning' : 'normal'}
+        supabaseConfigured={isSupabaseConfigured()}
+        audioMuted={audioMuted}
+        onToggleAudio={() => setAudioMuted((prev) => !prev)}
+        onHome={() => { setIsPlaying(false); setCockpitWorkspace(false); setShowCinematicMenu(true); }}
+        onSelect={(destination) => {
+          setActiveTab(destination);
+          if (destination === 'COCKPIT') setCockpitWorkspace(false);
+        }}
+        onRoleChange={(nextRole: UserRole) => {
+          setUserRole(nextRole);
+          if (nextRole !== 'mecanico' && activeTab === 'SCHEDULER') setActiveTab('HOME');
+        }}
+        onThemeChange={toggleTheme}
+        onRestricted={handleRoleRestricted}
+      />
+      {/* Orientación accesible: qué hace el módulo y cómo usarlo. */}
+      <ModuleOrientationV3 active={activeTab} />
 
       {/* RBAC Rejection Modal Alert */}
       {rbacAlertMessage && (
@@ -1096,8 +1188,31 @@ export default function App() {
         </div>
       )}
 
+      {/* AUTOOS V11: páginas de operación REAL sobre estado compartido.
+          El Planificador original y las herramientas heredadas se conservan. */}
+      {(activeTab === 'HOME' || activeTab === 'GPS' || activeTab === 'BLACKBOX' || activeTab === 'CLOUD') && (
+        <main className="v11-operations" aria-label="Centro de operaciones vehiculares">
+          <AutoOSModulesV11
+            page={activeTab} resources={osResources} resourceHistory={resourceHistory}
+            simState={simState} battery={battery} devices={devices}
+            mission={mission} missionEvents={missionEvents} role={userRole}
+            blackboxCloud={blackboxCloud} onRetryBlackbox={retryBlackboxCloud}
+            onNavigate={(next)=>{
+              if(next==='SCHEDULER'&&userRole!=='mecanico'){handleRoleRestricted('Abrir planificador técnico');return;}
+              setActiveTab(next);if(next==='COCKPIT')setCockpitWorkspace(false);
+            }}
+            onRoute={routeSelect} onMissionStart={missionStart} onMissionStop={missionStop}
+            onMissionTick={missionTick} onMissionSpeed={missionSpeed}
+            onInjectGpsFault={injectMissionFault}
+          />
+        </main>
+      )}
+
       {/* TAB 1: SCHEDULER & SIMULATORS */}
-      <main className={`flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' && userRole !== 'conductor' && userRole !== 'pasajero' ? '' : 'hidden'}`}>
+      <main className={`autoos-module-scheduler flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 space-y-6 ${activeTab === 'SCHEDULER' && userRole !== 'conductor' && userRole !== 'pasajero' ? '' : 'hidden'}`}>
+        {/* La misma instantánea de Simulación, sin duplicar estado. */}
+        <PythonKernelPanel snapshot={osResources} status={pythonKernel} onSync={syncPythonKernel} syncing={syncingPythonKernel} />
+        <OSResourceMonitor snapshot={osResources} history={resourceHistory} compact />
         {/* Dynamic Global Vehicle Health HUD Banner */}
         <div className={`p-4 rounded-2xl border transition-all duration-300 shadow-md flex flex-wrap items-center justify-between gap-3 font-mono text-xs ${
           failingDevices.length > 0
@@ -1126,10 +1241,10 @@ export default function App() {
               <div className="font-bold text-sm flex items-center gap-2">
                 <span>
                   {failingDevices.length > 0
-                    ? `ðŸš¨ ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE`
+                    ? `🚨 ALERTA ASIL-D: ${failingDevices.length} FALLA(S) ACTIVA(S) EN HARDWARE`
                     : degradedDevices.length > 0
-                    ? `âš ï¸ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO`
-                    : 'âœ“ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)'}
+                    ? `⚠️ ADVERTENCIA: ${degradedDevices.length} SUBSISTEMA(S) EN MODO DEGRADADO`
+                    : '✓ SISTEMA VEHICULAR NOMINAL (100% OPERATIVO)'}
                 </span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900/10 dark:bg-white/10 font-bold">
                   Salud: {avgHealth}%
@@ -1140,7 +1255,7 @@ export default function App() {
                   ? `Fallas detectadas en: ${failingDevices.map((d) => `${d.name.split('/')[0]} [${d.activeDtc || 'DTC'}]`).join(', ')}. Conmutado a algoritmos de contingencia pre-emptivos.`
                   : degradedDevices.length > 0
                   ? `Subsistemas con rendimiento reducido: ${degradedDevices.map((d) => d.name.split('/')[0]).join(', ')}.`
-                  : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. PlanificaciÃ³n de tiempo real en rango de latencia < 2ms.'}
+                  : 'Buses CAN-FD, Automotive Ethernet y LIN sincronizados. Planificación de tiempo real en rango de latencia < 2ms.'}
               </p>
             </div>
           </div>
@@ -1168,7 +1283,7 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                Algoritmo de PlanificaciÃ³n:
+                Algoritmo de Planificación:
               </label>
               <div className="flex flex-wrap gap-1.5 autoos-surface p-1.5 rounded-2xl">
                 <button
@@ -1240,7 +1355,7 @@ export default function App() {
             {/* Playback & Action Controls */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-mono text-[var(--text-muted)] uppercase tracking-wider block font-bold">
-                Controles de SimulaciÃ³n:
+                Controles de Simulación:
               </label>
               <div className="flex items-center gap-2">
                 <button
@@ -1288,7 +1403,7 @@ export default function App() {
                   className="px-3.5 py-2 rounded-xl bg-[var(--accent-primary)] text-white font-bold text-xs flex items-center gap-1.5 transition shadow-sm hover:opacity-90"
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>AÃ±adir</span>
+                  <span>Añadir</span>
                 </button>
               </div>
             </div>
@@ -1325,22 +1440,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Real-time Hardware & Subsystems Matrix */}
-        <section>
-          <HardwareStatusGrid
-            devices={devices}
-            onResetDevice={handleResetDevice}
-            onResetAllDevices={handleResetAllDevices}
-            onTriggerQuickFault={handleTriggerQuickFault}
-            userRole={userRole}
-            onRoleRestricted={handleRoleRestricted}
-            onInjectCriticalProcess={handleInjectCriticalProcess}
-            onResetAllScenarios={handleResetAllDevices}
-            currentTime={simState.currentTime}
-          />
-        </section>
-
-
         {/* Gantt Chart */}
         <section>
           <GanttChart
@@ -1374,12 +1473,34 @@ export default function App() {
           </div>
         </section>
 
+        {/* Diagnóstico avanzado: conserva la matriz original sin distraer
+            del ejercicio principal de planificación CPU. */}
+        <details className="autoos-advanced-v3">
+          <summary>DIAGNÓSTICO AVANZADO · Hardware y sensores
+            <small>11 dispositivos: calibración, inyección de fallas y estado de buses</small>
+          </summary>
+          <section>
+          <HardwareStatusGrid
+            devices={devices}
+            onResetDevice={handleResetDevice}
+            onResetAllDevices={handleResetAllDevices}
+            onTriggerQuickFault={handleTriggerQuickFault}
+            userRole={userRole}
+            onRoleRestricted={handleRoleRestricted}
+            onInjectCriticalProcess={handleInjectCriticalProcess}
+            onResetAllScenarios={handleResetAllDevices}
+            currentTime={simState.currentTime}
+          />
+          </section>
+        </details>
+
+
         {/* The Two Dedicated Simulators: Battery and Configurable Fault Simulator */}
         <section className="space-y-3">
           <div className="flex items-center gap-2 px-1">
             <Activity className="w-4 h-4 text-[var(--accent-primary)]" />
             <h3 className="text-sm font-serif font-bold text-[var(--text-primary)] uppercase tracking-wider">
-              Simuladores de Contingencia y GestiÃ³n EnergÃ©tica
+              Simuladores de Contingencia y Gestión Energética
             </h3>
           </div>
           <div className="grid grid-cols-1 gap-6">
@@ -1413,47 +1534,97 @@ export default function App() {
         </section>
       </main>
 
-      {/* TAB 2: ORIGINAL FULL VEHICLE COCKPIT */}
-      <main className={`flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' || userRole === 'conductor' || userRole === 'pasajero' ? '' : 'hidden'}`}>
-        <div className="autoos-surface border-b px-6 py-2.5 flex items-center justify-between text-xs font-mono text-[var(--text-muted)]">
-          <span className="flex items-center gap-2">
-            <Car className="w-4 h-4 text-[var(--accent-primary)]" />
-            <span className="text-[var(--text-primary)] font-semibold">Cockpit AutoOS Completo (VelocÃ­metro, Medidores, Audio Player, Chat y CÃ¡maras)</span>
-          </span>
-          <span className={`font-bold flex items-center gap-1.5 ${
-            failingDevices.length > 0
-              ? 'text-red-500 animate-pulse'
-              : degradedDevices.length > 0
-              ? 'text-amber-500'
-              : 'text-emerald-600 dark:text-emerald-400'
-          }`}>
-            <span className={`w-2 h-2 rounded-full ${
-              failingDevices.length > 0 ? 'bg-red-500 animate-ping' : degradedDevices.length > 0 ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'
-            }`}></span>
-            {failingDevices.length > 0
-              ? `Falla en ${failingDevices.length} Subsistema(s)`
-              : degradedDevices.length > 0
-              ? 'Rendimiento Degradado'
-              : 'Sistemas Activos 100%'}
-          </span>
-        </div>
-        <iframe
-          ref={iframeRef}
-          onLoad={syncIframeState}
-          src={cockpitHtml ? undefined : "/autoos_interactive.html"}
-          srcDoc={cockpitHtml || undefined}
-          title="AutoOS Cockpit Completo"
-          className="w-full flex-1 border-none"
-          style={{ height: 'calc(100vh - 110px)', minHeight: '750px' }}
-        />
+      {/* AUTOOS_EXPERIENCE_V5
+          «overview» y «security» son pantallas NATIVAS de React, con datos
+          existentes de App.tsx. Las herramientas técnicas originales se
+          abren en el iframe solamente cuando hacen falta. */}
+      <main className={`autoos-module-cockpit flex-1 w-full flex flex-col ${activeTab === 'COCKPIT' ? '' : 'hidden'}`}>
+        {/* Monitor del motor didáctico compartido. Los instrumentos heredados son independientes. */}
+        <OSResourceMonitor snapshot={osResources} history={resourceHistory} compact />
+        {!cockpitWorkspace ? (
+          <CockpitExplorerV4 role={userRole} onOpen={(feature: CockpitFeatureId) => {
+            setCockpitFeature(feature);
+            setCockpitHeight(1200);
+            setCockpitWorkspace(true);
+          }} />
+        ) : (
+          <section className="autoos-v4-workspace" aria-label="Herramienta de Conducción">
+            {(cockpitFeature === 'overview' || cockpitFeature === 'security') && (
+            <div className="autoos-v4-workspace__bar">
+              <button type="button" onClick={() => setCockpitWorkspace(false)}>
+                ← VOLVER AL EXPLORADOR
+              </button>
+              <span>{cockpitFeature === 'overview' ? 'Resumen del vehículo' :
+                     cockpitFeature === 'security' ? 'Seguridad y perfiles' :
+                     'Herramienta interactiva · Control original'}</span>
+            </div>
+            )}
+            {cockpitFeature === 'overview' ? (
+              <CockpitOverviewV5
+                role={userRole}
+                batteryLevel={battery.level}
+                devices={devices}
+                onOpen={(feature) => { setCockpitFeature(feature); setCockpitHeight(1200); }}
+              />
+            ) : cockpitFeature === 'security' ? (
+              <CockpitSecurityV5
+                role={userRole}
+                events={simState.events}
+                onChangeRole={(nextRole) => {
+                  setUserRole(nextRole);
+                  // La vista de Seguridad permanece visible para permitir
+                  // comparar permisos; RBAC se sigue evaluando en cada módulo.
+                }}
+                onOpenOriginalAudit={() => { setCockpitFeature('security-original'); setCockpitHeight(1200); }}
+              />
+            ) : (
+              <CockpitToolSceneV6 feature={cockpitFeature} role={userRole}
+                onBack={() => setCockpitWorkspace(false)}
+                onFeature={(next) => {
+                  setCockpitFeature(next);
+                  setCockpitHeight(1200);
+                }}>
+              {/* AUTOOS_V12_APLICADO: BLE requiere permiso en todos los iframes. */}
+              <iframe
+                ref={iframeRef}
+                onLoad={() => {
+                  syncIframeState();
+                  // El Cockpit heredado puede tardar en montar su React interno.
+                  // Usamos el mismo puente V4 que navega por botones REALES.
+                  window.setTimeout(() => {
+                    const legacyFeature = cockpitFeature === 'overview-original' ? 'overview'
+                      : cockpitFeature === 'security-original' ? 'security' : cockpitFeature;
+                    iframeRef.current?.contentWindow?.postMessage(
+                      { type: 'AUTOOS_V4_OPEN_FEATURE', feature: legacyFeature }, '*');
+                    iframeRef.current?.contentWindow?.postMessage({ type: 'AUTOOS_V4_MEASURE' }, '*');
+                  }, 180);
+                }}
+                src={cockpitHtml ? undefined : '/autoos_interactive.html'}
+                srcDoc={cockpitHtml || undefined}
+                title="AutoOS · Cockpit técnico original"
+                allow="bluetooth; clipboard-read; clipboard-write"
+                className="autoos-v4-cockpit-frame"
+                style={{ '--cockpit-content-height': `${cockpitHeight}px` } as React.CSSProperties}
+              />
+              </CockpitToolSceneV6>
+            )}
+          </section>
+        )}
       </main>
 
       {/* TAB 3: INTERACTIVE SCENARIO SIMULATION CENTER */}
-      <main className={`flex-1 w-full ${activeTab === 'SIMULATOR' ? '' : 'hidden'}`}>
+      <main className={`autoos-module-simulator flex-1 w-full ${activeTab === 'SIMULATOR' ? '' : 'hidden'}`}>
+        <PythonKernelPanel snapshot={osResources} status={pythonKernel} onSync={syncPythonKernel} syncing={syncingPythonKernel} />
         <SimulationCenter
           battery={battery}
           devices={devices}
           state={simState}
+          resources={osResources}
+          resourceHistory={resourceHistory}
+          onOpenScheduler={() => {
+            if (userRole === 'mecanico') setActiveTab('SCHEDULER');
+            else handleRoleRestricted('Ver planificador técnico del sistema operativo');
+          }}
           userRole={userRole}
           onStart={handleSimulatorStart}
           onAction={handleSimulatorAction}
@@ -1466,15 +1637,15 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      {activeTab !== 'COCKPIT' && userRole !== 'conductor' && userRole !== 'pasajero' && (
+      {(activeTab === 'SCHEDULER' || activeTab === 'SIMULATOR') && userRole === 'mecanico' && (
       <footer className="autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <span>AutoOS â€” Sistema Operativo Vehicular</span>
+          <span>AutoOS — Sistema Operativo Vehicular</span>
           <span className="text-[var(--accent-primary)] font-bold">
-            {theme === 'dark' ? 'Tema: Purple Night (Oscuro)' : 'Tema: Soft Dove (Claro)'}
+            {theme === 'dark' ? 'Blue Shift · Modo oscuro' : 'Blue Shift · Modo claro'}
           </span>
           <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-bold">
-            <CheckCircle className="w-3.5 h-3.5" /> FCFS â€¢ Round Robin â€¢ Prioridad â€¢ BaterÃ­a Baja â€¢ Falla Configurable â€¢ GPS DinÃ¡mico
+            <CheckCircle className="w-3.5 h-3.5" /> FCFS • Round Robin • Prioridad • Batería Baja • Falla Configurable • GPS Dinámico
           </span>
         </div>
       </footer>
@@ -1494,5 +1665,29 @@ export default function App() {
         currentTime={simState.currentTime}
       />
     </div>
+    {/* AUTOOS_CINEMATIC_V1: escena inicial. No desmonta ni reinicia simuladores.
+        onNavigate es la única vía para seleccionar una pantalla existente. */}
+    {showCinematicMenu && (
+      <CinematicMenu
+        role={userRole}
+        health={avgHealth}
+        batteryLevel={battery.level}
+        onRoleChange={setUserRole}
+        audioMuted={audioMuted}
+        onToggleAudio={() => setAudioMuted((prev) => !prev)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onNavigate={(destination: AutoOSModule) => {
+          if (destination === 'SCHEDULER' && userRole !== 'mecanico') {
+            handleRoleRestricted('Abrir el planificador RTOS');
+            return;
+          }
+          setActiveTab(destination);
+          setCockpitWorkspace(false);
+          setShowCinematicMenu(false);
+        }}
+      />
+    )}
+    </>
   );
 }

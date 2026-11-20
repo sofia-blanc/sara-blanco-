@@ -1,0 +1,158 @@
+/*
+ * AUTOOS / BLUE SHIFT V2 — Escenas interiores.
+ *
+ * A diferencia de Blue Shift V1, el objetivo NO es solamente recolorear.
+ * Cada módulo tiene una portada editorial animada, navegación inclinada,
+ * escala tipográfica legible y aprovecha casi todo el ancho disponible.
+ * React conserva los datos/handlers que ya existían en App.tsx.
+ */
+
+.autoos-module-app {
+  min-height: 0 !important; /* Evita que el iframe de Streamlit crezca sin poder encogerse. */
+  background: linear-gradient(110deg,#04102c,#081e45 42%,#06142e) !important;
+}
+.autoos-stage {
+  --stage-cyan:#69e8ff;
+  --stage-ink:#001c68;
+  position:relative;
+  width:100%; isolation:isolate; overflow:hidden;
+  color:#f7fdff;
+  background:
+    radial-gradient(ellipse at 83% 5%,rgba(118,227,255,.44) 0%,transparent 43%),
+    linear-gradient(115deg,#0055c8 0%,#034aaf 43%,#072f84 67%,#041647 100%);
+  border-bottom:3px solid #7ceaff;
+  box-shadow:0 14px 55px #000a2670;
+}
+.autoos-stage::before {
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:.26;
+  background:repeating-linear-gradient(116deg,transparent 0 56px,#a8f9ff24 57px 59px,transparent 60px 95px);
+  animation:autoos-stage-drift 18s linear infinite;
+}
+.autoos-stage::after {
+  content:'';position:absolute;right:-6%;top:-130px;width:58%;height:660px;
+  border:2px solid #bdfdff36;border-radius:48%;transform:rotate(-23deg);
+  pointer-events:none;box-shadow:0 0 0 38px #bdfdff09,0 0 0 105px #45b5ff0a;
+}
+.autoos-stage__ocean {
+  position:absolute;right:-8%;bottom:-250px;width:83%;height:380px;
+  transform:rotate(-15deg);border-radius:50%;border-top:55px solid rgba(87,205,255,.18);
+  filter:blur(3px);pointer-events:none;
+  animation:autoos-stage-tide 9s ease-in-out infinite alternate;
+}
+.autoos-stage__slashes {
+  position:absolute;left:50%;top:-35%;width:50%;height:180%;transform:skewX(-21deg);
+  background:linear-gradient(90deg,transparent 0 35%,#ffffff0a 36% 39%,transparent 40% 57%,#ffffff09 58% 59%,transparent 60%);
+  pointer-events:none;
+}
+.autoos-stage__inner { max-width:1720px;margin:auto; padding:12px clamp(20px,3.5vw,66px) 16px;position:relative;z-index:1; }
+.autoos-stage__topline { display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:36px; }
+.autoos-stage__brand {display:flex;gap:9px;align-items:center;letter-spacing:.17em;font-weight:900;font-size:13px;}
+.autoos-stage__brand svg {color:#a3efff;}
+.autoos-stage__brand b {font-size:10px;color:#0751bb;background:#e6fbff;padding:4px 9px;transform:skewX(-12deg);}
+.autoos-stage__back {display:flex;align-items:center;gap:8px;padding:9px 14px;background:#f7fcff;color:#0041a1;border:1px solid #fff;
+  box-shadow:5px 5px 0 #ff5ca8;font-size:12px;font-weight:900;cursor:pointer;transform:skewX(-11deg);
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease;}
+.autoos-stage__back:hover {background:#c7f8ff;transform:translateX(-3px) skewX(-11deg);box-shadow:8px 8px 0 #ff5ca8;}
+.autoos-stage__body {display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,420px);align-items:center;column-gap:20px;
+  padding:15px 0 11px;position:relative;animation:autoos-stage-enter .45s cubic-bezier(.15,.7,.1,1) both;}
+.autoos-stage__editorial {position:relative;min-width:0;z-index:2;}
+.autoos-stage__kicker {font-size:11px;font-weight:900;letter-spacing:.24em;color:#bef5ff;white-space:normal;}
+.autoos-stage__kicker span {color:#ff5ca8;font-size:17px;padding:0 8px;}
+.autoos-stage__title {display:flex!important;align-items:baseline!important;gap:12px;margin:4px 0 0!important;
+  font-family:'Barlow Condensed','Arial Narrow',sans-serif!important;font-size:clamp(66px,8vw,144px)!important;
+  font-style:italic!important;font-weight:900!important;letter-spacing:-.025em!important;line-height:.82!important;
+  color:white!important;transform:skewX(-10deg);text-shadow:11px 11px 0 #00237063;white-space:nowrap;}
+.autoos-stage__title i {font-style:normal;color:#6fddff;font-size:.35em;line-height:1;transform:translateY(-5px);opacity:.8;}
+.autoos-stage__summary {font-size:clamp(14px,1.4vw,18px);font-weight:700;color:#d9f7ff;max-width:710px;
+  line-height:1.35;margin:15px 0 0!important;}
+.autoos-stage__mark {position:absolute;left:40%;top:0;width:250px;height:250px;opacity:.12;transform:rotate(-18deg);pointer-events:none;}
+.autoos-stage__mark svg {width:100%;height:100%;}
+.autoos-stage__nav {display:grid;gap:3px;position:relative;z-index:3;padding:5px 0 5px 18px;}
+.autoos-stage__navitem {display:flex;align-items:center;gap:12px;min-height:47px;border:0;
+  border-left:3px solid transparent;text-align:left;padding:9px 13px 9px 15px;
+  color:#d7f9ff;font-family:'Barlow Condensed','Arial Narrow',sans-serif!important;font-weight:800;font-style:italic;
+  font-size:clamp(17px,1.45vw,22px);letter-spacing:.04em;transform:skewX(-12deg);
+  background:rgba(0,23,95,.22);cursor:pointer;transition:background .17s ease,transform .22s ease,color .17s ease;
+}
+.autoos-stage__navitem > * {transform:skewX(12deg);}
+.autoos-stage__navitem >span:nth-child(2) {flex:1;}
+.autoos-stage__navitem:hover,.autoos-stage__navitem:focus-visible {background:#b2f1ff;color:#002d78;transform:translateX(-7px) skewX(-12deg);}
+.autoos-stage__navitem.is-current {background:#f7fdff;color:#00348e;border-left-color:#ff4b99;
+  box-shadow:6px 5px 0 #ff4b99;transform:translateX(-10px) skewX(-12deg);}
+.autoos-stage__navnumber {font-family:'Space Grotesk',sans-serif;font-size:12px;color:#6eeaff;font-weight:800;}
+.autoos-stage__navitem.is-current .autoos-stage__navnumber,.autoos-stage__navitem:hover .autoos-stage__navnumber {color:#d51b81;}
+.autoos-stage__navitem.is-locked:not(.is-current) {opacity:.7;}
+.autoos-stage__status {border-top:1px solid #a2ecff57;padding-top:10px;display:flex;justify-content:space-between;
+  align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;font-weight:800;letter-spacing:.055em;color:#caeeff;}
+.autoos-stage__statusgroup,.autoos-stage__controls {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.autoos-stage__statusgroup strong {color:#fff;}
+.autoos-stage__statusdot {width:9px;height:9px;background:#46ffc9;box-shadow:0 0 11px #46ffc9;border-radius:50%;}
+.autoos-stage__statusdot--warning {background:#ffc651;box-shadow:0 0 11px #ffc651;}
+.autoos-stage__statusdot--failure {background:#ff5572;box-shadow:0 0 11px #ff5572;}
+.autoos-stage__separator {opacity:.4;}
+.autoos-stage__select {display:flex;align-items:center;gap:8px;}
+.autoos-stage__select select {background:#031c57;color:#f7ffff;border:1px solid #75caff;padding:7px 10px;max-width:192px;
+  border-radius:2px;cursor:pointer;font-size:11px;font-weight:800;}
+.autoos-stage__theme {padding:7px 11px;display:flex;align-items:center;justify-content:center;color:#d7fbff;
+  background:#002867;border:1px solid #6dcfff;cursor:pointer;}
+.autoos-stage :is(button,select):focus-visible {outline:3px solid #f7e475!important;outline-offset:3px!important;}
+/* Escenas internas: se elimina el max-width antiguo de 1280 px. */
+.autoos-module-app > main.autoos-module-scheduler {width:100%!important;max-width:1680px!important;
+  margin:0 auto!important;padding:clamp(18px,2vw,36px) clamp(20px,3vw,52px)!important;}
+.autoos-module-app > main.autoos-module-simulator {width:100%!important;max-width:1780px!important;
+  margin:0 auto!important;padding:0 clamp(16px,2.2vw,35px) 30px!important;}
+.autoos-module-app > main.autoos-module-simulator >div {width:100%!important;max-width:1680px!important;
+  padding:clamp(18px,2vw,36px) clamp(8px,1vw,18px)!important;}
+.autoos-module-app > main.autoos-module-cockpit {width:100%;max-width:1720px;margin:0 auto;padding:14px clamp(12px,2vw,32px) 30px;}
+.autoos-module-app > main.autoos-module-cockpit >div:first-child {border-radius:10px 10px 0 0;padding:12px 16px;font-size:13px!important;}
+.autoos-module-app > main.autoos-module-cockpit iframe {height:1120px!important;min-height:1120px!important;
+  background:#050d23;border:1px solid #397bc4!important;border-radius:0 0 10px 10px;}
+/* Fuente de datos: texto por debajo de 12 px es ilegible a 1080p en los módulos. */
+.autoos-module-app :is(.autoos-module-scheduler,.autoos-module-simulator) [class*='text-[10px]'] {font-size:12px!important;line-height:1.35!important;}
+.autoos-module-app :is(.autoos-module-scheduler,.autoos-module-simulator) [class*='text-[11px]'] {font-size:12px!important;line-height:1.38!important;}
+.autoos-module-app :is(.autoos-module-scheduler,.autoos-module-simulator) button {min-height:34px;}
+.autoos-module-app .autoos-card {border-color:#3975b9;}
+/* Cambia las tarjetas de cockpit/scheduler a una composición menos monótona. */
+.autoos-module-app main.autoos-module-scheduler > section:first-of-type,.autoos-module-app main.autoos-module-simulator > div:first-child {
+  animation:autoos-stage-content-in .52s ease-out both;}
+/* El título cinematográfico no reemplaza los subtítulos técnicos, los contextualiza. */
+@keyframes autoos-stage-enter {from{opacity:0;transform:translateY(24px) skewX(-2deg)}to{opacity:1;transform:translateY(0) skewX(0)}}
+@keyframes autoos-stage-content-in {from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+@keyframes autoos-stage-drift {to{transform:translateX(8%);}}
+@keyframes autoos-stage-tide {to{transform:rotate(-10deg) translateY(-44px);}}
+/* El menú de entrada ahora da protagonismo al texto, no a tarjetas de dashboard. */
+.autoos-cine {min-height:min(920px,100svh)!important;}
+.autoos-cine__choice {background:transparent!important;border:0!important;border-bottom:2px solid #c0faff29!important;
+  min-height:90px!important;padding-left:20px!important;box-shadow:none;}
+.autoos-cine__choice-title {font-size:clamp(31px,3.7vw,65px)!important;text-shadow:4px 4px 0 #002a79;}
+.autoos-cine__choice.is-active,.autoos-cine__choice:hover,.autoos-cine__choice:focus-visible {
+  background:#fff!important;color:#00328a!important;box-shadow:10px 9px 0 #ff4f9a,20px 18px 0 #032e81!important;
+  border-bottom-color:#fff!important;}
+.autoos-cine__choice.is-active .autoos-cine__choice-title {text-shadow:none;}
+.autoos-cine__nav {gap:3px!important;}
+@media(max-width:1100px) {
+  .autoos-stage__body {grid-template-columns:1fr;gap:18px;}
+  .autoos-stage__nav {grid-template-columns:repeat(3,minmax(0,1fr));padding:0;gap:10px;}
+  .autoos-stage__navitem {font-size:17px;min-height:51px;}
+  .autoos-stage__navitem.is-current {transform:skewX(-12deg);}
+  .autoos-stage__mark {left:auto;right:4%;}
+  .autoos-stage__title {font-size:clamp(64px,10vw,105px)!important;}
+}
+@media(max-width:700px) {
+  .autoos-stage__inner {padding:13px 15px 19px;}
+  .autoos-stage__body {padding:23px 0 18px;}
+  .autoos-stage__title {font-size:clamp(49px,12vw,78px)!important;white-space:normal;}
+  .autoos-stage__kicker {font-size:9px;letter-spacing:.14em;}
+  .autoos-stage__summary {font-size:14px;}
+  .autoos-stage__nav {grid-template-columns:1fr;}
+  .autoos-stage__navitem {min-height:40px;}
+  .autoos-stage__status {font-size:10px;}
+  .autoos-stage__statusgroup {gap:7px;}
+  .autoos-stage__separator {display:none;}
+  .autoos-stage__mark {display:none;}
+  .autoos-module-app > main.autoos-module-cockpit iframe {height:1050px!important;min-height:1050px!important;}
+}
+@media(prefers-reduced-motion:reduce) {
+  .autoos-stage,.autoos-stage *,.autoos-stage::before,.autoos-stage::after,.autoos-cine__choice {
+    animation:none!important;transition:none!important;}
+}

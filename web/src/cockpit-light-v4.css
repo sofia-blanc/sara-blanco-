@@ -1,0 +1,39 @@
+/*
+ * AUTOOS V4 — Cockpit legacy: tema claro/oscuro coherente.
+ * La app antigua usa colores Tailwind escritos literalmente en el JSX.
+ * Estas reglas respetan las señales de fallo y los acentos funcionales,
+ * modificando solo las superficies neutras y textos predeterminados.
+ */
+html, body {overflow-x:hidden!important;}
+#root {width:100%;min-height:0!important;}
+#root footer {display:none!important;}
+html.dark #root {background:#06152d!important;}
+html.dark #root [class*='max-w-7xl'],html.dark #root [class*='max-w-6xl'] {
+  max-width:1680px!important;width:calc(100% - clamp(20px,3vw,60px))!important;}
+html.dark #root [class*='bg-[#E3DDD7]'] {background:#0e315b!important;}
+html.dark #root [class*='bg-[#391214]']:not(button) {background:#0a347b!important;}
+html:not(.dark),html:not(.dark) body,html:not(.dark) #root {background:#eaf5ff!important;color:#15365a!important;}
+html:not(.dark) #root [class*='max-w-7xl'],html:not(.dark) #root [class*='max-w-6xl'] {
+  max-width:1680px!important;width:calc(100% - clamp(20px,3vw,60px))!important;}
+html:not(.dark) #root [class*='bg-[#C0BAB3]'] {background:#eaf5ff!important;}
+html:not(.dark) #root [class*='bg-[#D5CFC9]'] {background:#dceeff!important;}
+html:not(.dark) #root [class*='bg-[#E3DDD7]'] {background:#ffffff!important;}
+html:not(.dark) #root [class*='bg-[#391214]'] {background:#175bd3!important;}
+html:not(.dark) #root [class*='bg-[#BF40FA]'] {background:#126add!important;}
+html:not(.dark) #root [class*='text-[#391214]'] {color:#114d9c!important;}
+html:not(.dark) #root [class*='text-[#52423D]'] {color:#405f83!important;}
+html:not(.dark) #root [class*='text-[#160F0C]'] {color:#183653!important;}
+html:not(.dark) #root [class*='border-[#887D77]'] {border-color:#a8cbe9!important;}
+/* Contraste sobre botones primarios claros: conservar texto blanco. */
+html:not(.dark) #root button[class*='bg-[#391214]'],
+html:not(.dark) #root button[class*='bg-[#BF40FA]'] {color:#fff!important;}
+html:not(.dark) #root button[class*='bg-[#391214]'] * {color:#fff!important;}
+html:not(.dark) #root input,html:not(.dark) #root textarea,html:not(.dark) #root select {
+  color:#15365a;}
+#root :is(button,a,input,select,textarea):focus-visible {outline:3px solid #66d6ff!important;outline-offset:3px!important;}
+@media(max-width:720px) {
+  #root [class*='max-w-7xl'],#root [class*='max-w-6xl'] {width:calc(100% - 16px)!important;}
+}
+@media(prefers-reduced-motion:reduce) {
+  #root * {animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}

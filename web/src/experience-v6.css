@@ -1,0 +1,117 @@
+/**
+ * AutoOS V6 — CONTRASTE Y HERRAMIENTAS.
+ *
+ * Este CSS NO diseña los estados de negocio (éxito/falla). La clase
+ * data-autoos-theme procede del estado React, de modo que no depende de
+ * supuestos sobre la clase .dark que también modifica el iframe de Streamlit.
+ */
+
+/* MODO CLARO: la cabecera se mantiene azul oscuro por diseño. La superficie
+   del resto de la escena sí es clara. Evita texto blanco sobre blanco. */
+.autoos-module-app[data-autoos-theme="light"] {
+  color:#102f58 !important;
+  background:#e8f3ff !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage[data-autoos-theme="light"] {
+  color:#fff !important;
+  background-color:#062958 !important;
+  background-image:
+    radial-gradient(ellipse at 81% 16%,rgba(86,217,255,.34),transparent 48%),
+    linear-gradient(112deg,#031c43,#0955a1 53%,#062957) !important;
+  border-bottom:3px solid #4bdcff !important;
+  box-shadow:0 14px 38px rgba(6,49,108,.22) !important;
+}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__title,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__title span,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__brand,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__kicker,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__summary,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__status,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__statusgroup,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__statusgroup strong {
+  color:#f8fcff !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__kicker,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__brand svg {color:#b8f3ff !important;}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__navitem:not(.is-current) {
+  background:rgba(0,22,60,.58) !important;
+  color:#fff !important;
+  border-color:transparent !important;
+}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__navitem.is-current {
+  background:#fff !important;color:#06428e !important;
+  border-color:#f451a5 !important;
+}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__back {
+  color:#06377a !important;background:#fff !important;
+}
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__controls button,
+.autoos-stage[data-autoos-theme="light"] .autoos-stage__controls select {
+  border:1px solid #8ce8ff !important;
+  background:#052858 !important;color:#fff !important;
+}
+/* El encabezado técnico sigue legible cuando se usa modo oscuro. */
+.autoos-module-app[data-autoos-theme="dark"] .autoos-stage[data-autoos-theme="dark"] {
+  background-image:
+    radial-gradient(ellipse at 82% 12%,rgba(98,218,255,.27),transparent 45%),
+    linear-gradient(112deg,#061b44,#0752a9 56%,#031739) !important;
+}
+
+/* TOOL SCENE V6: vista instrumental guiada, no un collage de tarjetas. */
+.autoos-v6-tool {
+  --v6-ink:#f3fbff;--v6-soft:#bddfff;--v6-panel:#09254c;--v6-line:#3775a7;
+  --v6-outer:#061733;--v6-accent:#58dbff;
+  color:var(--v6-ink);font-family:'Space Grotesk',system-ui,sans-serif;
+  max-width:1710px;margin:0 auto;width:100%;padding:22px clamp(12px,2.6vw,36px) 45px;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-v6-tool {
+  --v6-ink:#113460;--v6-soft:#345d86;--v6-panel:#fff;--v6-line:#a2c6e7;
+  --v6-outer:#eaf5ff;--v6-accent:#0056c7;
+}
+.autoos-v6-tool__top {display:flex;justify-content:space-between;gap:24px;align-items:center;
+  padding:26px 28px;background:linear-gradient(115deg,#063879,#0a62af);border-left:6px solid #ff519e;
+  border-bottom:2px solid #68e7ff;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%);color:white;}
+.autoos-v6-tool__eyebrow {font-weight:900;letter-spacing:.19em;color:#9aeaff;font-size:11px;}
+.autoos-v6-tool__top h2 {display:flex;gap:10px;align-items:center;font:italic 900 clamp(42px,4.7vw,74px)/.94 'Barlow Condensed',sans-serif!important;
+  margin:9px 0 10px!important; color:#fff!important;text-shadow:4px 4px 0 #032555!important;}
+.autoos-v6-tool__top h2 span {color:#ff5fa9;}
+.autoos-v6-tool__subtitle {color:#e5f5ff;line-height:1.5;font-size:14px;max-width:730px;}
+.autoos-v6-tool__back {display:flex;align-items:center;gap:9px;flex:none;cursor:pointer;border:0;
+  padding:12px 17px;background:#fff;color:#07427a;font-weight:900;font-size:12px;
+  box-shadow:5px 5px 0 #ff4fa5;transform:skewX(-8deg);transition:transform .18s ease;}
+.autoos-v6-tool__back:hover {transform:translateX(-4px) skewX(-8deg);}
+.autoos-v6-tool__body {display:grid;grid-template-columns:minmax(200px,270px) minmax(0,1fr);gap:22px;margin-top:20px;align-items:start;}
+.autoos-v6-tool__nav {display:grid;gap:9px;position:sticky;top:12px;background:var(--v6-outer);
+  border-left:2px solid var(--v6-line);padding:15px;min-width:0;}
+.autoos-v6-tool__nav>p {font-size:11px;font-weight:900;letter-spacing:.15em;color:var(--v6-soft);margin:0 0 8px;}
+.autoos-v6-tool__nav>button {display:flex;align-items:center;gap:8px;min-height:49px;text-align:left;padding:11px 12px;
+  width:100%;border:1px solid var(--v6-line);background:var(--v6-panel);color:var(--v6-ink);
+  font-size:12px;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s;}
+.autoos-v6-tool__nav>button>strong {flex:1;font-size:11px;letter-spacing:.025em;}
+.autoos-v6-tool__nav>button>span {color:var(--v6-accent);font-size:11px;font-weight:900;}
+.autoos-v6-tool__nav>button.is-active {background:#fff;color:#074182;border-left:5px solid #f74e9d;
+  box-shadow:5px 5px 0 #f74e9d;transform:translateX(3px);}
+.autoos-v6-tool__nav>button.is-active>span {color:#d62673;}
+.autoos-v6-tool__nav>button:hover:not(.is-active) {border-color:var(--v6-accent);transform:translateX(3px);}
+.autoos-v6-tool__nav>button.autoos-v6-tool__to-overview {margin-top:10px;border:1px dashed var(--v6-line);
+  justify-content:center;gap:10px;font-weight:900;}
+.autoos-v6-tool__main {min-width:0;}
+.autoos-v6-tool__instruction {display:flex;gap:17px;align-items:center;padding:19px 22px;
+  color:var(--v6-ink);background:var(--v6-panel);border:1px solid var(--v6-line);margin-bottom:17px;}
+.autoos-v6-tool__instruction b {font-size:12px;letter-spacing:.06em;}
+.autoos-v6-tool__instruction p {font-size:15px;line-height:1.5;margin:5px 0!important;}
+.autoos-v6-tool__instruction small {font-size:12px;color:var(--v6-soft);}
+.autoos-v6-tool__illustration {background:#0b62b0;padding:13px;color:#eafaff;clip-path:polygon(12% 0,100% 0,88% 100%,0 100%);}
+.autoos-v6-tool__instrument {background:var(--v6-panel);border:1px solid var(--v6-line);min-width:0;overflow:hidden;}
+.autoos-v6-tool__instrument-title {display:flex;align-items:center;gap:9px;min-height:45px;
+  padding:12px 18px;font-size:11px;letter-spacing:.07em;font-weight:900;color:#f5fcff;background:#073f80;}
+.autoos-v6-tool__engine {margin-left:auto;color:#b6ebff;font-size:10px;}
+.autoos-v6-tool__pulse {width:9px;height:9px;border-radius:50%;background:#51f0bf;box-shadow:0 0 0 4px #4ef2c221;}
+.autoos-v6-tool__instrument iframe {display:block;width:100%!important;min-width:0!important;border:0!important;
+  background:var(--v6-outer)!important;}
+.autoos-v6-tool :is(button,input,select):focus-visible {outline:3px solid #ff5bad!important;outline-offset:3px!important;}
+@media(max-width:950px) {.autoos-v6-tool__body {grid-template-columns:1fr;}.autoos-v6-tool__nav {position:static;grid-template-columns:repeat(2,minmax(0,1fr));}.autoos-v6-tool__nav>p,.autoos-v6-tool__nav>button.autoos-v6-tool__to-overview {grid-column:1/-1;}}
+@media(max-width:620px) {.autoos-v6-tool__top {flex-direction:column;align-items:flex-start;}.autoos-v6-tool__back {align-self:flex-start;}.autoos-v6-tool__nav {grid-template-columns:1fr;}.autoos-v6-tool__instruction {align-items:flex-start;}}
+@media(prefers-reduced-motion:reduce) {.autoos-v6-tool * {transition:none!important;animation:none!important;}}

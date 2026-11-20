@@ -1,0 +1,187 @@
+/*
+ * AUTOOS V4 — diseño de Conducción y coherencia claro/oscuro.
+ *
+ * PROPÓSITO: pasar de una cuadrícula de ocho tarjetas idénticas a una interfaz
+ * de exploración guiada. Los botones envían eventos a App.tsx, que conserva
+ * el cockpit funcional dentro de un iframe separado.
+ *
+ * TEMA: variables locales por esquema; el modo claro no debe quedarse con
+ * fondos oscuros ni perder contraste. Las animaciones decorativas se desactivan
+ * si el usuario prefiere movimiento reducido.
+ */
+.autoos-explorer-v4, .autoos-explorer-v4 * { box-sizing:border-box; }
+.autoos-explorer-v4 {
+  --v4-ink:#f6fdff; --v4-muted:#bedefa; --v4-detail:rgba(4,22,65,.73);
+  --v4-line:rgba(151,227,255,.35); --v4-accent:#71edff; --v4-panel:#0a327a;
+  position:relative;width:min(1620px,calc(100% - 68px));margin:22px auto 40px;
+  color:var(--v4-ink);isolation:isolate;overflow:hidden;
+  background:linear-gradient(115deg,#041738 1%,#0342a5 55%,#0963c7 100%);
+  border-top:3px solid #83eaff;border-bottom:1px solid #90deff6b;
+  box-shadow:0 28px 65px #00143551;
+  padding:clamp(24px,3.3vw,50px);
+}
+.autoos-explorer-v4::before {content:'';position:absolute;z-index:-1;inset:-15%;pointer-events:none;
+  background:repeating-linear-gradient(114deg,transparent 0 86px,#a7f4ff0d 87px 89px,transparent 90px 156px);
+  animation:v4-drift 20s linear infinite;}
+.autoos-explorer-v4::after {content:'';position:absolute;z-index:-1;width:63vw;height:63vw;max-width:970px;max-height:970px;right:-38%;bottom:-100%;pointer-events:none;
+  border:3px solid rgba(194,250,255,.23);border-radius:50%;box-shadow:0 0 0 49px rgba(100,214,255,.06),0 0 0 118px rgba(100,214,255,.04);}
+.autoos-explorer-v4__heading {display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:28px;}
+.autoos-explorer-v4__heading>div:first-child {max-width:910px;}
+.autoos-explorer-v4__eyebrow {font-size:12px;font-weight:800;letter-spacing:.28em;color:#88ebff;margin:0 0 8px;}
+.autoos-explorer-v4__heading h2 {font:italic 900 clamp(54px,6.1vw,102px)/.95 'Barlow Condensed','Arial Narrow',sans-serif!important;
+  letter-spacing:-.02em;margin:0!important;text-shadow:8px 8px 0 #06183f7a;transform:skewX(-6deg);}
+.autoos-explorer-v4__heading h2 em {font-style:inherit;color:#9cf4ff;}
+.autoos-explorer-v4__heading p:not(.autoos-explorer-v4__eyebrow) {font-size:clamp(14px,1.05vw,17px);line-height:1.5;color:#e3f6ff;max-width:750px;margin:13px 0 0;}
+.autoos-explorer-v4__progress {flex:none;display:flex;align-items:center;gap:11px;padding:12px 15px;border:1px solid #99eaff75;color:#aff5ff;
+  font-size:12px;font-weight:900;letter-spacing:.12em;transform:skewX(-9deg);}
+.autoos-explorer-v4__progress>* {transform:skewX(9deg);}
+.autoos-explorer-v4__layout {display:grid;grid-template-columns:minmax(290px,39%) minmax(0,1fr);gap:clamp(18px,2vw,34px);align-items:stretch;}
+.autoos-explorer-v4__navigation {display:flex;flex-direction:column;gap:6px;align-self:start;padding:7px 9px 11px 0;}
+.autoos-explorer-v4__choice {
+  display:flex;align-items:center;gap:14px;min-height:59px;width:calc(100% - 13px);padding:9px 18px 9px 14px;
+  text-align:left;color:#f0faff;background:rgba(0,16,65,.27);border:0;border-bottom:1px solid #bafaff2c;
+  transform:skewX(-11deg);cursor:pointer;transition:background .25s,color .2s,box-shadow .24s,transform .3s;
+  font-size:15px;font-weight:800;letter-spacing:.03em;
+}
+.autoos-explorer-v4__choice > * {transform:skewX(11deg);flex-shrink:0;}
+.autoos-explorer-v4__choice .autoos-explorer-v4__choice-text {flex:1;font:italic 900 clamp(21px,2vw,33px)/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;}
+.autoos-explorer-v4__number {color:#8cecff;font-size:12px;font-weight:800;letter-spacing:.07em;}
+.autoos-explorer-v4__choice:hover,.autoos-explorer-v4__choice.is-active,.autoos-explorer-v4__choice:focus-visible {
+  color:#00368e;background:#f8fdff;transform:translateX(12px) skewX(-11deg);box-shadow:7px 6px 0 #ff4caa;}
+.autoos-explorer-v4__choice.is-active .autoos-explorer-v4__number,.autoos-explorer-v4__choice:hover .autoos-explorer-v4__number {color:#ca0872;}
+.autoos-explorer-v4__featured {position:relative;overflow:hidden;background:var(--v4-detail);border:1px solid #a1efff50;
+  padding:clamp(22px,3vw,48px);min-height:545px;display:flex;flex-direction:column;justify-content:center;
+  animation:v4-feature .35s cubic-bezier(.2,.8,.2,1) both;}
+.autoos-explorer-v4__orbit {position:absolute;width:500px;height:500px;right:-250px;top:-250px;border-radius:50%;border:1px solid #72d9ff44;
+  box-shadow:0 0 0 48px #72d9ff0c,0 0 0 98px #72d9ff06;pointer-events:none;}
+.autoos-explorer-v4__heroicon {position:absolute;right:0;top:50px;width:230px;height:230px;opacity:.08;transform:rotate(-9deg);pointer-events:none;}
+.autoos-explorer-v4__heroicon svg {width:100%;height:100%;}
+.autoos-explorer-v4__numberline {font-size:12px;font-weight:800;letter-spacing:.18em;color:#9feaff;margin:0 0 11px;position:relative;}
+.autoos-explorer-v4__numberline span {color:#ff77b2;padding:0 8px;}
+.autoos-explorer-v4__featured h3 {font:italic 900 clamp(52px,6vw,102px)/.91 'Barlow Condensed','Arial Narrow',sans-serif!important;
+  letter-spacing:-.012em;margin:0 0 27px!important;max-width:650px;position:relative;}
+.autoos-explorer-v4__description {display:grid;grid-template-columns:140px minmax(0,1fr);gap:14px;padding:15px 0;
+  max-width:700px;border-top:1px solid var(--v4-line);position:relative;}
+.autoos-explorer-v4__description strong {font-size:11px;letter-spacing:.1em;color:#93eaff;padding-top:3px;}
+.autoos-explorer-v4__description p {font-size:clamp(13px,1vw,16px);line-height:1.55;color:#e8f8ff;margin:0;}
+.autoos-explorer-v4__primary {align-self:flex-start;display:flex;align-items:center;gap:22px;margin-top:28px;padding:15px 22px;
+  color:#003882;background:#f8fdff;border:0;border-left:7px solid #ff4c9a;transform:skewX(-10deg);
+  cursor:pointer;font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.14em;box-shadow:8px 8px 0 #ff4b9f;
+  transition:transform .2s,box-shadow .2s;}
+.autoos-explorer-v4__primary > * {transform:skewX(10deg);}
+.autoos-explorer-v4__primary:hover {transform:translateX(6px) skewX(-10deg);box-shadow:11px 8px 0 #ff4b9f;}
+.autoos-explorer-v4__role {display:flex;align-items:center;gap:7px;margin:32px 0 0;color:#b6ddff;font-size:12px;line-height:1.5;}
+.autoos-explorer-v4__bottom {display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-top:29px;padding-top:17px;
+  border-top:1px solid #b8edff50;color:#b9efff;font-size:11px;font-weight:800;letter-spacing:.08em;}
+.autoos-explorer-v4__bottom>div,.autoos-explorer-v4__bottom>button {display:flex;align-items:center;gap:9px;}
+.autoos-explorer-v4__bottom button {padding:10px 0;color:white;background:transparent;border:0;border-bottom:2px solid #ff5dac;
+  cursor:pointer;font-size:12px;font-weight:900;letter-spacing:.05em;}
+.autoos-explorer-v4 :is(button):focus-visible {outline:3px solid #ffec8c!important;outline-offset:4px!important;}
+/* Pantalla de herramientas: sustituye la altura fija del iframe de V2. */
+.autoos-module-app > main.autoos-module-cockpit {max-width:100%!important;padding:0 clamp(12px,2vw,34px) 36px!important;}
+.autoos-module-app > main.autoos-module-cockpit >.autoos-v4-workspace {max-width:1720px;margin:0 auto;}
+.autoos-v4-workspace__bar {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:14px 17px;background:#063273;color:#fff;border-left:6px solid #ff4e9d;}
+.autoos-v4-workspace__bar button {padding:11px 15px;font-weight:900;color:#003e9c;background:white;border:0;cursor:pointer;transform:skewX(-10deg);}
+.autoos-v4-workspace__bar span {font-size:13px;font-weight:700;}
+.autoos-module-app > main.autoos-module-cockpit iframe.autoos-v4-cockpit-frame {
+  display:block;width:100%;height:var(--cockpit-content-height,1250px)!important;min-height:0!important;
+  border:1px solid #328ed1!important;border-radius:0!important;background:#061224;}
+.autoos-module-app > main.autoos-module-cockpit {min-height:0!important;}
+/* MODO CLARO REAL: superficies y tipografía de módulos que antes siempre
+   conservaban la paleta oscura de Blue Shift V2. El héroe sigue siendo azul. */
+html:not(.dark) .autoos-module-app {background:linear-gradient(140deg,#e8f4ff,#d6eaff 65%,#edf7ff)!important;color:#0b2858!important;}
+html:not(.dark) .autoos-guide-v3 {background:linear-gradient(105deg,#138bdc 0 4px,#e5f5ff 4px 100%);color:#122d53;border-bottom-color:#59a7d9;}
+html:not(.dark) .autoos-guide-v3__identity {background:#0b5bc7;color:white;}
+html:not(.dark) .autoos-guide-v3__eyebrow,html:not(.dark) .autoos-guide-v3__tip {color:#0756a4!important;}
+html:not(.dark) .autoos-guide-v3 summary {color:#074e96!important;}
+html:not(.dark) .autoos-guide-v3 li {background:#ffffffc7;color:#12355e;border-left-color:#1d6dce;}
+html:not(.dark) .autoos-guide-v3 li b {color:#1262b6;}
+html:not(.dark) .autoos-advanced-v3 {background:#f7fbff;border-color:#91b9e5;}
+html:not(.dark) .autoos-advanced-v3>summary {background:linear-gradient(110deg,#e9f4ff,#d7edff);color:#173962;}
+html:not(.dark) .autoos-advanced-v3>summary small {color:#365e82;}
+html:not(.dark) .autoos-explorer-v4 {background:linear-gradient(125deg,#e2f5ff,#b5deff 62%,#e4f6ff);color:#0b2859;
+  --v4-detail:#ffffffdc;--v4-line:#7dabdd;box-shadow:0 24px 50px #16437b23;border-top-color:#076bc5;}
+html:not(.dark) .autoos-explorer-v4__eyebrow,html:not(.dark) .autoos-explorer-v4__heading h2 em,
+html:not(.dark) .autoos-explorer-v4__numberline,html:not(.dark) .autoos-explorer-v4__description strong {color:#0357a4;}
+html:not(.dark) .autoos-explorer-v4__heading p:not(.autoos-explorer-v4__eyebrow),
+html:not(.dark) .autoos-explorer-v4__description p {color:#183a61;}
+html:not(.dark) .autoos-explorer-v4__progress {color:#0a57ad;border-color:#6b9bcb;}
+html:not(.dark) .autoos-explorer-v4__choice {background:#f1f9ff9c;color:#173960;border-bottom-color:#9bb9d9;}
+html:not(.dark) .autoos-explorer-v4__choice .autoos-explorer-v4__number {color:#23659d;}
+html:not(.dark) .autoos-explorer-v4__choice.is-active,html:not(.dark) .autoos-explorer-v4__choice:hover,
+html:not(.dark) .autoos-explorer-v4__choice:focus-visible {background:#064fba;color:#fff;}
+html:not(.dark) .autoos-explorer-v4__choice.is-active .autoos-explorer-v4__number,
+html:not(.dark) .autoos-explorer-v4__choice:hover .autoos-explorer-v4__number {color:#b1f7ff;}
+html:not(.dark) .autoos-explorer-v4__role,html:not(.dark) .autoos-explorer-v4__bottom {color:#27587f;border-color:#87b7db;}
+html:not(.dark) .autoos-explorer-v4__bottom button {color:#074b9b;}
+html:not(.dark) .autoos-explorer-v4__primary {background:#055dc3;color:#fff;}
+html:not(.dark) .autoos-stage__navitem {color:#effaff;}
+html:not(.dark) .autoos-stage__navitem.is-current {color:#00328a;}
+/* Planificador / simulación: acciones más visibles y menos aspecto de tabla. */
+.autoos-module-scheduler .autoos-card,.autoos-module-simulator .autoos-card {border-radius:8px;}
+.autoos-module-scheduler button:hover:not(:disabled),.autoos-module-simulator button:hover:not(:disabled) {filter:brightness(1.08);}
+.autoos-module-scheduler :is(button,select),.autoos-module-simulator :is(button,select) {min-height:39px;}
+.autoos-module-scheduler .autoos-advanced-v3>summary {border-left:6px solid #70e6ff;}
+.autoos-module-simulator > div >section:first-of-type {border-left:6px solid #50c9ff;padding-left:15px;}
+/* El pie antiguo no enseña nada; ocultarlo evita cortes en la escena. */
+.autoos-module-app > footer {display:none!important;}
+@keyframes v4-drift {to{transform:translateX(7%);}}
+@keyframes v4-feature {from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:translateX(0)}}
+@media(max-width:1000px) {
+ .autoos-explorer-v4 {width:calc(100% - 26px);padding:23px 18px;}
+ .autoos-explorer-v4__layout {grid-template-columns:1fr;}
+ .autoos-explorer-v4__navigation {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+ .autoos-explorer-v4__choice {width:100%;min-height:53px;}
+ .autoos-explorer-v4__featured {min-height:430px;}
+}
+@media(max-width:620px) {
+ .autoos-explorer-v4__navigation {grid-template-columns:1fr;}
+ .autoos-explorer-v4__heading {flex-direction:column;align-items:flex-start;}
+ .autoos-explorer-v4__heading h2 {font-size:54px!important;}
+ .autoos-explorer-v4__featured {padding:22px 16px;}
+ .autoos-explorer-v4__featured h3 {font-size:60px!important;}
+ .autoos-explorer-v4__description {grid-template-columns:1fr;gap:4px;}
+ .autoos-explorer-v4__role {align-items:start;}
+ .autoos-explorer-v4__progress {display:none;}
+}
+@media(prefers-reduced-motion:reduce) {
+ .autoos-explorer-v4::before,.autoos-explorer-v4__featured {animation:none!important;}
+ .autoos-explorer-v4__choice,.autoos-explorer-v4__primary {transition:none!important;}
+}
+
+/* Interruptor de tema disponible en el menú de entrada. */
+.autoos-v4-menu-controls {display:flex;align-items:center;gap:9px;}
+.autoos-v4-menu-theme {display:flex;align-items:center;gap:8px;padding:9px 12px;color:#eaffff;
+  border:1px solid #b5ebff75;background:rgba(0,17,68,.52);cursor:pointer;
+  font:800 11px 'Space Grotesk',sans-serif;letter-spacing:.08em;}
+.autoos-v4-menu-theme:hover {background:#fff;color:#03479b;}
+.autoos-v4-menu-theme:focus-visible {outline:3px solid #ffe181!important;outline-offset:3px!important;}
+/* El modo claro es deliberadamente luminoso en toda la escena: no es solo
+   cambiar un icono, sino fondos, letras, opción seleccionada y panel lateral. */
+.autoos-cine--light {background:linear-gradient(126deg,#d9f7ff 0%,#8fd7ff 52%,#74b9fc 100%)!important;
+  color:#072959;--c-white:#07346b;--c-cyan:#055bb1;--c-navy:#e3f8ff;}
+.autoos-cine--light .autoos-cine__sky {background:radial-gradient(ellipse at 66% 23%,#f6ffffc9,transparent 32%),radial-gradient(ellipse at 60% 75%,#67b8f5,transparent 50%);}
+.autoos-cine--light .autoos-cine__eyebrow,.autoos-cine--light .autoos-cine__showcase-label,
+.autoos-cine--light .autoos-cine__role {color:#0352a3;}
+.autoos-cine--light .autoos-cine__brand,.autoos-cine--light .autoos-cine__live {color:#0a3164;}
+.autoos-cine--light .autoos-cine__choice {color:#123c77;background:#e9f9ffc9;border-bottom-color:#1e75b96e;}
+.autoos-cine--light .autoos-cine__choice.is-active,.autoos-cine--light .autoos-cine__choice:hover,
+.autoos-cine--light .autoos-cine__choice:focus-visible {background:#064eac!important;color:white!important;}
+.autoos-cine--light .autoos-cine__choice .autoos-cine__choice-number {color:#1761a5;}
+.autoos-cine--light .autoos-cine__choice.is-active .autoos-cine__choice-number,
+.autoos-cine--light .autoos-cine__choice:hover .autoos-cine__choice-number {color:#a7f6ff;}
+.autoos-cine--light .autoos-cine__detail p,.autoos-cine--light .autoos-cine__telemetry>div,
+.autoos-cine--light .autoos-cine__showcase-label {color:#164274;}
+.autoos-cine--light .autoos-cine__footer {background:#ffffff8f;border-top-color:#1670b35c;}
+.autoos-cine--light .autoos-cine__help,.autoos-cine--light .autoos-cine__role {color:#0d4275;}
+.autoos-cine--light .autoos-cine__title-caption {background:#eafaff;color:#0c4286;}
+.autoos-cine--light .autoos-v4-menu-theme,.autoos-cine--light .autoos-cine__sound {background:#f4fdff;color:#164b8f;border-color:#5495cb;}
+.autoos-cine--light .autoos-v4-menu-theme:hover,.autoos-cine--light .autoos-cine__sound:hover {background:#0452af;color:#fff;}
+@media(max-width:570px) {.autoos-v4-menu-controls span{display:none;}}
+/* En Simulación y Planificador la guía de tres pasos se abre al entrar.
+   Esto evita que el profesor tenga que adivinar la secuencia de uso. */
+.autoos-module-scheduler,.autoos-module-simulator {scroll-margin-top:16px;}
+.autoos-module-scheduler .autoos-card {box-shadow:0 9px 25px #00132e19;}
+html:not(.dark) .autoos-module-scheduler .autoos-card,
+html:not(.dark) .autoos-module-simulator .autoos-card {box-shadow:0 9px 25px #17518a14;}

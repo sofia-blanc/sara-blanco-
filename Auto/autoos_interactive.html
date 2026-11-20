@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <script>
       (function() {
@@ -36,6 +36,566 @@
 
 </style>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- AUTOOS_BLUE_SHIFT_V1_START -->
+<style id="autoos-blue-shift-v1">
+/* AutoOS Blue Shift — Cockpit HTML heredado. Overrides no destructivos. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+html.dark body { background: radial-gradient(circle at 87% 8%,rgba(48,127,255,.14),transparent 39%),#07152d !important; color:#f6fbff; }
+body { font-family: 'Space Grotesk',Arial,sans-serif !important; }
+body :is(h1,h2,h3) {font-family:'Barlow Condensed','Arial Narrow',sans-serif !important; letter-spacing:.02em;}
+body :is(button,input,select,a):focus-visible { outline:2px solid #5bdeff !important; outline-offset:2px !important; }
+/* Primary accent previously fuchsia. Keep warnings and danger colors intact. */
+html.dark :is(button,nav) [class*='text-[#BF40FA]'] { color:#6bdeff !important; }
+@media (prefers-reduced-motion: reduce) {body *,body *::before,body *::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}}
+/* Tailwind's original fuchsia controls: only re-skin those accents, not alerts. */
+html.dark [class*='dark:bg-[#BF40FA]'] { background-color:#2d83ff !important; }
+html.dark [class*='dark:text-[#BF40FA]'] { color:#61dfff !important; }
+html.dark [class*='dark:border-[#BF40FA]'] { border-color:#4abfff !important; }
+html.dark [class*='dark:from-[#BF40FA]'] { --tw-gradient-from:#2585ff !important; }
+html.dark [class*='dark:to-[#4928C2]'] { --tw-gradient-to:#09a6ea !important; }
+
+</style>
+<!-- AUTOOS_BLUE_SHIFT_V1_END -->
+
+<!-- AUTOOS_COCKPIT_STYLE_V2 -->
+<style id="autoos-cockpit-style-v2">
+/* AUTOOS V2 / Cockpit legacy incrustado.
+   El cockpit es un HTML independiente, por eso sus estilos deben inyectarse
+   dentro de su propio <head>. Nada de esto toca el JavaScript del vehículo. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+html.dark,html.dark body {background:#06152d!important;color:#f6fbff!important;}
+html.dark #root {background:#06152d!important;min-height:100%;}
+html.dark #root [class*='max-w-7xl'] {max-width:1640px!important;width:calc(100% - 34px)!important;}
+html.dark #root [class*='max-w-6xl'] {max-width:1540px!important;width:calc(100% - 34px)!important;}
+html.dark #root h1,html.dark #root h2,html.dark #root h3 {font-family:'Barlow Condensed','Arial Narrow',sans-serif!important;font-weight:800!important;letter-spacing:.025em;}
+html.dark #root button,html.dark #root p,html.dark #root label {font-family:'Space Grotesk',sans-serif;}
+/* El HTML heredado usa clases de Tailwind con colores morados literales. */
+html.dark #root [class*='bg-[#180E24]'] {background:#09234a!important;}
+html.dark #root [class*='bg-[#0D0714]'] {background:#071833!important;}
+html.dark #root [class*='bg-[#241438]'] {background:#153d72!important;}
+html.dark #root [class*='border-[#331E4D]'] {border-color:#2a6caa!important;}
+html.dark #root [class*='text-[#BF40FA]'] {color:#72e7ff!important;}
+html.dark #root [class*='bg-[#BF40FA]'] {background:#238bff!important;}
+/* Texto mínimo legible en tarjetas y controles. */
+html.dark #root [class*='text-[10px]'],html.dark #root [class*='text-[11px]'] {font-size:12px!important;line-height:1.35!important;}
+html.dark #root button {min-height:32px;}
+html.dark #root button:focus-visible {outline:2px solid #6de4ff!important;outline-offset:2px;}
+@media(max-width:750px) {html.dark #root [class*='max-w-7xl'] {width:calc(100% - 18px)!important;}}
+
+</style>
+
+<!-- AUTOOS_COCKPIT_AUDIO_BRIDGE_V3 -->
+<script id="autoos-cockpit-audio-bridge-v3">
+/*
+ * El reproductor Spotify original es un iframe ajeno (cross-origin).
+ * No es posible cambiar su volumen con acceso directo al DOM de Spotify.
+ * Al silenciar: descargamos el embed (about:blank), deteniendo su música.
+ * Al reactivar: recuperamos la URL. El usuario debe pulsar Play otra vez.
+ * Otros audio/video HTML5 se pausan y silencian si están presentes.
+ */
+(function () {
+  'use strict';
+  var muted = false;
+  function syncAudio() {
+    document.querySelectorAll('audio, video').forEach(function (media) {
+      media.muted = muted;
+      if (muted && typeof media.pause === 'function') media.pause();
+    });
+    document.querySelectorAll('iframe').forEach(function (frame) {
+      var url = frame.getAttribute('src') || '';
+      if (muted && /^https:\/\/open\.spotify\.com\/embed\//.test(url)) {
+        frame.dataset.autoosRestoreSpotify = url;
+        frame.setAttribute('title', 'Spotify detenido por AutoOS - sonido desactivado');
+        frame.setAttribute('src', 'about:blank');
+      } else if (!muted && frame.dataset.autoosRestoreSpotify) {
+        var restore = frame.dataset.autoosRestoreSpotify;
+        delete frame.dataset.autoosRestoreSpotify;
+        frame.setAttribute('src', restore);
+      }
+    });
+  }
+  window.addEventListener('message', function (event) {
+    // Sólo el padre React controla el audio; mensajes de sitios externos no.
+    if (event.source !== window.parent || !event.data) return;
+    if (event.data.type !== 'AUTOOS_SET_AUDIO_MUTED') return;
+    muted = event.data.muted === true;
+    syncAudio();
+  });
+  var ready = function () {
+    new MutationObserver(syncAudio).observe(document.body, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ['src']
+    });
+    syncAudio();
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready, {once:true});
+  else ready();
+})();
+</script>
+<!-- AUTOOS_COCKPIT_V4_BRIDGE -->
+<style id="autoos-cockpit-light-v4">
+/*
+ * AUTOOS V4 — Cockpit legacy: tema claro/oscuro coherente.
+ * La app antigua usa colores Tailwind escritos literalmente en el JSX.
+ * Estas reglas respetan las señales de fallo y los acentos funcionales,
+ * modificando solo las superficies neutras y textos predeterminados.
+ */
+html, body {overflow-x:hidden!important;}
+#root {width:100%;min-height:0!important;}
+#root footer {display:none!important;}
+html.dark #root {background:#06152d!important;}
+html.dark #root [class*='max-w-7xl'],html.dark #root [class*='max-w-6xl'] {
+  max-width:1680px!important;width:calc(100% - clamp(20px,3vw,60px))!important;}
+html.dark #root [class*='bg-[#E3DDD7]'] {background:#0e315b!important;}
+html.dark #root [class*='bg-[#391214]']:not(button) {background:#0a347b!important;}
+html:not(.dark),html:not(.dark) body,html:not(.dark) #root {background:#eaf5ff!important;color:#15365a!important;}
+html:not(.dark) #root [class*='max-w-7xl'],html:not(.dark) #root [class*='max-w-6xl'] {
+  max-width:1680px!important;width:calc(100% - clamp(20px,3vw,60px))!important;}
+html:not(.dark) #root [class*='bg-[#C0BAB3]'] {background:#eaf5ff!important;}
+html:not(.dark) #root [class*='bg-[#D5CFC9]'] {background:#dceeff!important;}
+html:not(.dark) #root [class*='bg-[#E3DDD7]'] {background:#ffffff!important;}
+html:not(.dark) #root [class*='bg-[#391214]'] {background:#175bd3!important;}
+html:not(.dark) #root [class*='bg-[#BF40FA]'] {background:#126add!important;}
+html:not(.dark) #root [class*='text-[#391214]'] {color:#114d9c!important;}
+html:not(.dark) #root [class*='text-[#52423D]'] {color:#405f83!important;}
+html:not(.dark) #root [class*='text-[#160F0C]'] {color:#183653!important;}
+html:not(.dark) #root [class*='border-[#887D77]'] {border-color:#a8cbe9!important;}
+/* Contraste sobre botones primarios claros: conservar texto blanco. */
+html:not(.dark) #root button[class*='bg-[#391214]'],
+html:not(.dark) #root button[class*='bg-[#BF40FA]'] {color:#fff!important;}
+html:not(.dark) #root button[class*='bg-[#391214]'] * {color:#fff!important;}
+html:not(.dark) #root input,html:not(.dark) #root textarea,html:not(.dark) #root select {
+  color:#15365a;}
+#root :is(button,a,input,select,textarea):focus-visible {outline:3px solid #66d6ff!important;outline-offset:3px!important;}
+@media(max-width:720px) {
+  #root [class*='max-w-7xl'],#root [class*='max-w-6xl'] {width:calc(100% - 16px)!important;}
+}
+@media(prefers-reduced-motion:reduce) {
+  #root * {animation-duration:.01ms!important;transition-duration:.01ms!important;}
+}
+
+</style>
+<script id="autoos-cockpit-bridge-v4">
+/*
+ * AUTOOS V4 — Puente para el Cockpit HTML heredado.
+ *
+ * ¿Por qué existe? El cockpit se ejecuta en un iframe independiente y mantiene
+ * sus propios estados y eventos. React le envía una INTENCIÓN de navegación.
+ * Este puente utiliza los controles existentes: no sustituye validaciones RBAC.
+ *
+ * También informa a React su altura real para evitar scroll doble y footer
+ * cortado. No lee cookies, claves ni información de Supabase.
+ */
+(function () {
+  'use strict';
+  var lastHeight = 0;
+  var scheduled = false;
+
+  function measure() {
+    scheduled = false;
+    var root = document.getElementById('root');
+    if (!root || !root.getBoundingClientRect().width) return;
+    var height = Math.ceil(Math.max(root.scrollHeight, root.getBoundingClientRect().height, document.body.scrollHeight));
+    height = Math.min(15000, Math.max(480, height + 20));
+    if (Math.abs(lastHeight - height) < 10) return;
+    lastHeight = height;
+    window.parent.postMessage({ type: 'AUTOOS_V4_COCKPIT_HEIGHT', height: height }, '*');
+  }
+  function requestMeasure() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(measure);
+  }
+
+  function clickButton(exactLabels) {
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('button'));
+    // Comparación por texto visible; se evita un selector CSS frágil del build.
+    for (var i = 0; i < exactLabels.length; i++) {
+      var wanted = exactLabels[i].toLocaleLowerCase('es').trim();
+      var found = buttons.find(function (button) {
+        return button.textContent && button.textContent.toLocaleLowerCase('es').replace(/\s+/g, ' ').trim() === wanted;
+      });
+      if (found) { found.click(); return true; }
+    }
+    return false;
+  }
+  function openFeature(feature, attempts) {
+    attempts = attempts || 0;
+    var nav = {
+      gps: { tab: ['Subsistemas Vehiculares'], sub: ['GPS y Ruta'] },
+      camera: { tab: ['Subsistemas Vehiculares'], sub: ['Cámara ADAS'] },
+      lidar: { tab: ['Subsistemas Vehiculares'], sub: ['LiDAR 360°'] },
+      network: { tab: ['Subsistemas Vehiculares'], sub: ['Telemetría 5G', 'Bus CAN Gateway'] },
+      climate: { tab: ['Subsistemas Vehiculares'], sub: ['Climatización HVAC'] },
+      media: { tab: ['Multimedia'] },
+      chat: { tab: ['Subsistemas Vehiculares'], sub: ['Chat de Cabina'] },
+      security: { tab: ['Seguridad y Roles RBAC'] },
+      overview: { tab: ['Panel Principal'] },
+    };
+    if (!Object.prototype.hasOwnProperty.call(nav, feature)) return;
+    var destination = nav[feature];
+    // El bundle React puede tardar en montar los botones después de cargar el iframe.
+    if (!clickButton(destination.tab)) {
+      if (attempts < 16) setTimeout(function () { openFeature(feature, attempts + 1); }, 190);
+      return;
+    }
+    if (destination.sub) {
+      // El cambio de pestaña React necesita un render antes de mostrar submenú.
+      setTimeout(function () { clickButton(destination.sub); requestMeasure(); }, 180);
+    }
+    setTimeout(requestMeasure, 350);
+  }
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== window.parent || !event.data) return;
+    if (event.data.type === 'AUTOOS_V4_OPEN_FEATURE') openFeature(event.data.feature);
+    if (event.data.type === 'AUTOOS_V4_MEASURE') requestMeasure();
+  });
+
+  function boot() {
+    var root = document.getElementById('root');
+    if (!root) return;
+    if ('ResizeObserver' in window) new ResizeObserver(requestMeasure).observe(root);
+    if ('MutationObserver' in window) {
+      new MutationObserver(requestMeasure).observe(root, { childList:true, subtree:true });
+    }
+    window.addEventListener('resize', requestMeasure);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(requestMeasure).catch(function () {});
+    requestMeasure();
+    setTimeout(requestMeasure, 500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once:true });
+  else boot();
+})();
+
+</script>
+<!-- AUTOOS_COCKPIT_THEME_V5 -->
+<style id="autoos-cockpit-theme-v5">
+/*
+ * AutoOS V5 / Cockpit heredado.
+ * Este documento vive en OTRO iframe. Por eso el tema se aplica también aquí.
+ * No crea botones ni reemplaza estados: sólo corrige superficies, contraste,
+ * tipografía, scroll horizontal y legibilidad de la vista técnica original.
+ */
+html,body,#root {width:100%!important;min-width:0!important;overflow-x:hidden!important;}
+#root {box-sizing:border-box;}
+#root > div {max-width:100%!important;min-width:0!important;}
+/* Contenedores primarios del cockpit: no conservar el tamaño estrecho.
+ * Nota: no forzamos width sobre cada botón/tarjeta; la grilla respeta Tailwind. */
+#root [class*="max-w-7xl"], #root [class*="max-w-6xl"] {
+  width:calc(100% - clamp(20px,3vw,70px))!important;
+  max-width:1650px!important;
+  margin-left:auto!important;margin-right:auto!important;
+}
+#root [class*="text-[10px]"],#root [class*="text-[11px]"] {
+  font-size:12px!important;line-height:1.4!important;
+}
+/* Tema claro legible: fondos cercanos al blanco, paneles blanco-azulados y
+ * letras azul profundo. NO cambiar estados semáforo ni alertas críticas. */
+html:not(.dark),html:not(.dark) body,html:not(.dark) #root {background:#e5effb!important;color:#123660!important;}
+html:not(.dark) #root [class*="bg-white"]:not(button) {border-color:#a7c6e4;}
+html:not(.dark) #root [class*="bg-[#E3DDD7]"] {background:#f7fbff!important;}
+html:not(.dark) #root [class*="bg-[#D5CFC9]"] {background:#e7f1fb!important;}
+html:not(.dark) #root [class*="bg-[#C0BAB3]"] {background:#e5effb!important;}
+html:not(.dark) #root [class*="border-[#887D77]"] {border-color:#a0c1e1!important;}
+html:not(.dark) #root [class*="text-[#8D7AA8]"] {color:#4a6790!important;}
+html:not(.dark) #root [class*="text-[#B8A8DC]"] {color:#315c87!important;}
+html:not(.dark) #root input,html:not(.dark) #root select,html:not(.dark) #root textarea {
+  background:#fff!important;color:#0c2d57!important;border:1px solid #7ea9d1!important;
+}
+/* Evitar títulos grandes invisibles en modo claro por herencia. */
+html:not(.dark) #root h1,html:not(.dark) #root h2,html:not(.dark) #root h3 {text-shadow:none;}
+/* Tema oscuro: paneles azul noche, con texto claro y botones legibles. */
+html.dark #root {background:#06152d!important;color:#e6f8ff!important;}
+html.dark #root input,html.dark #root select,html.dark #root textarea {border-color:#3e75ad;}
+/* Los cuadros de auditoría son datos, no enlaces; diferenciarlos visualmente. */
+#root :is(input,select,textarea,button):focus-visible {outline:3px solid #fc5bac!important;outline-offset:3px!important;}
+@media(max-width:720px) {
+ #root [class*="max-w-7xl"],#root [class*="max-w-6xl"] {width:calc(100% - 20px)!important;}
+}
+
+</style>
+<!-- AUTOOS_COCKPIT_V6_EMBEDDED -->
+<style id="autoos-v6-embedded">
+/* AutoOS V6 — presentación del Cockpit real cuando está incrustado.
+ * Se oculta únicamente la navegación que duplica el menú V6; los controles
+ * funcionales permanecen montados en React y accesibles desde el puente V4.
+ */
+html[data-autoos-v6-embedded="true"] [data-autoos-v6-duplicate-nav="true"] {
+  display:none!important;
+}
+html[data-autoos-v6-embedded="true"],
+html[data-autoos-v6-embedded="true"] body,
+html[data-autoos-v6-embedded="true"] #root {
+  max-width:100%!important;min-width:0!important;overflow-x:hidden!important;
+}
+html[data-autoos-v6-embedded="true"] #root button {
+  min-height:33px;
+}
+/* Mayor legibilidad: los tamaños menores de 11px del HTML original se usan
+ * para etiquetas y telemetría; 12px evita que desaparezcan en pantallas grandes. */
+html[data-autoos-v6-embedded="true"] #root [class*="text-[10px]"],
+html[data-autoos-v6-embedded="true"] #root [class*="text-[11px]"] {
+  font-size:12px!important;line-height:1.4!important;
+}
+html[data-autoos-v6-embedded="true"] #root button:focus-visible {
+  outline:3px solid #fb56a4!important;outline-offset:3px!important;
+}
+
+</style>
+<!-- AUTOOS_CONTRAST_V7 -->
+<style id="autoos-v7-contrast">
+/**
+ * AutoOS / Blue Shift V7 — campos legibles de Multimedia.
+ *
+ * POR QUÉ SE INYECTA EN EL HTML DEL COCKPIT:
+ * El Cockpit es un documento HTML independiente dentro de un iframe. Los
+ * estilos de App.tsx NO atraviesan el iframe. Además, el JSX compilado del
+ * reproductor de Spotify declara simultáneamente bg-white y dark:text-white.
+ * Para evitar texto blanco sobre blanco, los controles reciben fondo y texto
+ * del MISMO esquema, siguiendo html.dark (clase sincronizada por el puente).
+ *
+ * No se modifica el iframe externo de Spotify, ni sus URL ni la reproducción.
+ */
+html.dark #root input[type="text"],
+html.dark #root input[type="search"],
+html.dark #root input[type="url"],
+html.dark #root textarea {
+  background-color: #09294e !important;
+  color: #f6fcff !important;
+  border: 1px solid #67aad9 !important;
+  -webkit-text-fill-color: #f6fcff !important;
+  caret-color: #82efff !important;
+  color-scheme: dark;
+}
+html.dark #root input:is([type="text"],[type="search"],[type="url"])::placeholder,
+html.dark #root textarea::placeholder {
+  color: #c4dced !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #c4dced !important;
+}
+
+html:not(.dark) #root input[type="text"],
+html:not(.dark) #root input[type="search"],
+html:not(.dark) #root input[type="url"],
+html:not(.dark) #root textarea {
+  background-color: #fff !important;
+  color: #17395e !important;
+  border: 1px solid #678eae !important;
+  -webkit-text-fill-color: #17395e !important;
+  caret-color: #0c55ad !important;
+  color-scheme: light;
+}
+html:not(.dark) #root input:is([type="text"],[type="search"],[type="url"])::placeholder,
+html:not(.dark) #root textarea::placeholder {
+  color: #4b6680 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #4b6680 !important;
+}
+
+/* No alteramos radios, interruptores, sliders ni botones funcionales. */
+#root input:is([type="text"],[type="search"],[type="url"]):focus-visible,
+#root textarea:focus-visible {
+  outline: 3px solid #ee5ca7 !important;
+  outline-offset: 2px !important;
+}
+
+/* En ambos temas los campos se identifican claramente como editables. */
+#root input:is([type="text"],[type="search"],[type="url"]) {
+  min-height: 37px;
+  min-width: 0;
+}
+
+</style>
+<!-- AUTOOS_FINAL_V8_CSS_START -->
+<style id="autoos-final-v8-inner">
+/**
+ * AUTOOS — V8 / Multimedia accesible y controles con tamaño estable.
+ *
+ * Este CSS pertenece al DOCUMENTO INTERNO del Cockpit, no al React de fuera.
+ * El render de Spotify crea dos inputs y un botón, pero los coloca en un
+ * contenedor flex con `max-w-lg`: en el screenshot el segundo input se comprimía
+ * a menos de 20 px. La clase `autoos-v8-spotify-form` la marca el puente JS.
+ */
+:root {
+  --autoos-v8-input-bg:#fff;
+  --autoos-v8-input-fg:#12365c;
+  --autoos-v8-input-border:#668eb6;
+  --autoos-v8-action-bg:#095fba;
+  --autoos-v8-action-fg:#fff;
+}
+html.dark {
+  --autoos-v8-input-bg:#092749;
+  --autoos-v8-input-fg:#effaff;
+  --autoos-v8-input-border:#7cbce7;
+  --autoos-v8-action-bg:#278af7;
+  --autoos-v8-action-fg:#fff;
+}
+#root .autoos-v8-spotify-form {
+  display:grid !important;
+  grid-template-columns: minmax(160px, 1fr) minmax(230px, 1.65fr) minmax(150px, auto) !important;
+  align-items:center !important;
+  gap:10px !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  flex-wrap:nowrap !important;
+}
+#root .autoos-v8-spotify-form > input {
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  min-height:42px !important;
+  max-width:none !important;
+  flex:none !important;
+  font-size:13px !important;
+  background:var(--autoos-v8-input-bg) !important;
+  color:var(--autoos-v8-input-fg) !important;
+  -webkit-text-fill-color:var(--autoos-v8-input-fg) !important;
+  caret-color:var(--autoos-v8-input-fg) !important;
+  border:1px solid var(--autoos-v8-input-border) !important;
+  opacity:1 !important;
+  color-scheme:normal;
+}
+#root .autoos-v8-spotify-form > input::placeholder {
+  color:var(--autoos-v8-input-fg) !important;
+  -webkit-text-fill-color:var(--autoos-v8-input-fg) !important;
+  opacity:.76 !important;
+}
+#root .autoos-v8-spotify-form > button {
+  width:auto !important;
+  min-width:150px !important;
+  min-height:42px !important;
+  padding:10px 14px !important;
+  background:var(--autoos-v8-action-bg) !important;
+  color:var(--autoos-v8-action-fg) !important;
+  -webkit-text-fill-color:var(--autoos-v8-action-fg) !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  white-space:nowrap !important;
+  opacity:1 !important;
+}
+/* Bluetooth, Spotify y copiado: cada control tiene texto y fondo contrastados. */
+#root [data-autoos-v8-action="bluetooth"],
+#root [data-autoos-v8-action="spotify-open"],
+#root [data-autoos-v8-action="spotify-load"],
+#root [data-autoos-v8-action="spotify-copy"],
+#root [data-autoos-v8-action="spotify-web"] {
+  min-height:38px !important;
+  padding:9px 14px !important;
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
+  background-color:#095bb9 !important;
+  border:1px solid #2777d2 !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  opacity:1 !important;
+  visibility:visible !important;
+}
+html.dark #root [data-autoos-v8-action] {background-color:#1a69c2 !important;}
+#root [data-autoos-v8-action]:hover {background-color:#0079d9 !important;}
+#root [data-autoos-v8-action]:disabled {opacity:.55 !important;cursor:not-allowed;}
+#root [data-autoos-v8-action]:focus-visible,
+#root .autoos-v8-spotify-form > input:focus-visible {
+  outline:3px solid #f65aa9 !important;
+  outline-offset:2px !important;
+}
+@media (max-width: 830px) {
+  #root .autoos-v8-spotify-form {grid-template-columns:minmax(0,1fr) !important;}
+  #root .autoos-v8-spotify-form > button {width:100% !important;}
+}
+
+</style>
+<!-- AUTOOS_FINAL_V8_CSS_END -->
+<!-- AUTOOS_FINAL_V8_JS_START -->
+<script id="autoos-final-v8-interaction">
+/**
+ * AUTOOS V8 — reparador semántico de Multimedia.
+ *
+ * El Cockpit original es un HTML React ya compilado que contiene los callbacks
+ * reales de Bluetooth y Spotify. No reemplazamos esas funciones. Solo agregamos
+ * atributos a controles existentes para darles contraste y dimensiones correctas.
+ *
+ * MutationObserver detecta cambios legítimos de React (p.ej. al abrir Multimedia)
+ * y no observa atributos, evitando dispararse por nuestras propias etiquetas.
+ */
+(function () {
+  'use strict';
+  var pending = false;
+  function normalize(text) { return (text || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('es'); }
+  function enhance() {
+    pending = false;
+    var root = document.getElementById('root');
+    if (!root) return;
+    var title = root.querySelector('input[placeholder^="Título opcional"]');
+    var uri = root.querySelector('input[placeholder^="Enlace Spotify"]');
+    if (title && uri && title.parentElement === uri.parentElement) {
+      title.parentElement.classList.add('autoos-v8-spotify-form');
+      title.setAttribute('aria-label', 'Nombre opcional para guardar la playlist');
+      uri.setAttribute('aria-label', 'Enlace de Spotify de una canción o playlist');
+    }
+    var buttons = root.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+      var button = buttons[i];
+      var label = normalize(button.textContent);
+      var action = '';
+      if (label.indexOf('emparejar por bluetooth') !== -1 || label.indexOf('escaneando ble') !== -1) action='bluetooth';
+      else if (label.indexOf('abrir en spotify web') !== -1) action='spotify-web';
+      else if (label.indexOf('copiar enlace spotify') !== -1) action='spotify-copy';
+      else if (label.indexOf('cargar y guardar') !== -1) action='spotify-load';
+      if (action) button.setAttribute('data-autoos-v8-action', action);
+    }
+    var links = root.querySelectorAll('a[href*="open.spotify.com"]');
+    for (var j = 0; j < links.length; j++) {
+      if (normalize(links[j].textContent).indexOf('abrir en celular') !== -1) {
+        links[j].setAttribute('data-autoos-v8-action', 'spotify-open');
+      }
+    }
+  }
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    window.requestAnimationFrame(enhance);
+  }
+  function boot() {
+    var root = document.getElementById('root');
+    if (!root) { window.setTimeout(boot, 100); return; }
+    new MutationObserver(schedule).observe(root, {childList:true, subtree:true, characterData:true});
+    window.addEventListener('resize', schedule);
+    schedule();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once:true});
+  else boot();
+})();
+
+</script>
+<!-- AUTOOS_FINAL_V8_JS_END -->
+
+<!-- AUTOOS_RELOAD_V11_COCKPIT -->
+<style id="autoos-v11-cockpit">
+/* AUTOOS RELOAD V11 - estilo del Cockpit heredado.
+ * Se conservan todos sus eventos de React y enlaces multimedia.
+ * Los controles de entrada nunca tienen texto claro sobre fondo blanco. */
+
+html.dark body .autoos-card, html.dark body .autoos-surface {border-color:#256eb2 !important;}
+html:not(.dark) body .autoos-card, html:not(.dark) body .autoos-surface {border-color:#8cbce3 !important;}
+html.dark input:not([type=checkbox]):not([type=radio]),html.dark textarea,html.dark select {color:#f2faff !important;background:#0c2951 !important;border:1px solid #55a6d9!important;min-width:0;}
+html:not(.dark) input:not([type=checkbox]):not([type=radio]),html:not(.dark) textarea,html:not(.dark) select {color:#0a345b !important;background:#fff !important;border:1px solid #81b2d5!important;min-width:0;}
+html.dark input::placeholder {color:#aacbe0!important;}html:not(.dark) input::placeholder{color:#54799b!important;}
+html.dark body button {color:inherit;}
+html.dark body h1,html.dark body h2,html.dark body h3,html:not(.dark) body h1,html:not(.dark) body h2,html:not(.dark) body h3{font-family:'Barlow Condensed','Outfit',sans-serif;font-weight:800;letter-spacing:.02em;}
+html.dark body button:focus-visible,html:not(.dark) body button:focus-visible,html.dark input:focus-visible,html:not(.dark) input:focus-visible{outline:3px solid #ff3e99!important;outline-offset:2px;}
+@media(prefers-reduced-motion:reduce){html body *,html body *:before,html body *:after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+</style>
+<style id="autoos-v12-media-layout">
+/* AUTOOS V12: el cockpit usa CSS autónomo dentro del iframe de React. */
+html,body,#root {max-width:100%;min-width:0;}
+#root .grid > * {min-width:0;}
+#root img {max-width:100%;height:auto;}
+#root .grid:has(img[alt="QR Spotify Conexión"]) {max-width:100%;}
+@media(max-width:1100px) {
+  #root .grid:has(img[alt="QR Spotify Conexión"]) {grid-template-columns:minmax(0,1fr)!important;}
+}
+</style>
 </head>
   <body>
     <div id="root"></div>
@@ -327,9 +887,8 @@ let[spUri,setSpUri]=(0,_.useState)(getSavedSpotifyUri),
 [copied,setCopied]=(0,_.useState)(!1),
 [btErr,setBtErr]=(0,_.useState)(null),
 [btConnecting,setBtConnecting]=(0,_.useState)(!1),
-[btConnected,setBtConnected]=(0,_.useState)(()=>{
-  try{return localStorage.getItem("autoos_bt_connected")==="true";}catch(_){return!1;}
-}),
+// AUTOOS_V12_APLICADO: nunca inferir conexión física a partir de localStorage.
+[btConnected,setBtConnected]=(0,_.useState)(!1),
 [playedList,setPlayedList]=(0,_.useState)(getSavedHistory),
 [qrMode,setQrMode]=(0,_.useState)("spotify"), // "spotify" o "remote"
 [roomCode,setRoomCode]=(0,_.useState)(""),
@@ -448,30 +1007,42 @@ let handleCopyLink=()=>{
   t&&t("Multimedia: Enlace de Spotify copiado","info",spotifyWebUrl);
 };
 
-let handleBluetoothScan=()=>{
-  if(!navigator.bluetooth){
-    setBtErr("Web Bluetooth API requiere protocolo HTTPS o pestaña directa del navegador");
-    return;
-  }
-  setBtConnecting(!0);
+// Web Bluetooth solo gestiona BLE/GATT, no reemplaza Bluetooth audio ni Spotify Connect.
+let handleBluetoothScan=async()=>{
+  if(btConnecting)return;
   setBtErr(null);
-  navigator.bluetooth.requestDevice({acceptAllDevices:!0,optionalServices:["battery_service","generic_access"]})
-    .then(dev=>{
-      setBtConnected(!0);
-      setBtConnecting(!1);
-      try{
-        localStorage.setItem("autoos_bt_connected","true");
-        window.__AUTOOS_BT_CONNECTED__=!0;
-        window.dispatchEvent(new CustomEvent("autoos:bt_status",{detail:{connected:!0}}));
-      }catch(_){}
-      t&&t("Bluetooth: Dispositivo BLE vinculado","exito",dev.name||"Dispositivo BLE");
-    })
-    .catch(err=>{
-      setBtConnecting(!1);
-      if(err.name!=="NotFoundError"){
-        setBtErr(err.message||"Acceso a Bluetooth restringido por permisos del navegador");
-      }
+  setBtConnected(!1);
+  try{
+    if(!window.isSecureContext)throw new Error("Se requiere HTTPS o localhost para usar Bluetooth LE.");
+    if(!navigator.bluetooth)throw new Error("Web Bluetooth no está disponible en este navegador. Prueba Chrome o Edge en HTTPS.");
+    const policy=document.permissionsPolicy||document.featurePolicy;
+    if(policy&&typeof policy.allowsFeature==="function"&&!policy.allowsFeature("bluetooth")){
+      throw new Error("El iframe de Streamlit bloquea Bluetooth. El permiso debe habilitarse en todos los iframes superiores.");
+    }
+    setBtConnecting(!0);
+    // Solicitud DIRECTA desde el gesto de clic (Chrome/Edge exige activación del usuario).
+    const device=await navigator.bluetooth.requestDevice({acceptAllDevices:!0,optionalServices:["battery_service"]});
+    if(!device.gatt)throw new Error("Dispositivo seleccionado sin servicio GATT. No se ha establecido una conexión BLE.");
+    const server=await device.gatt.connect();
+    if(!server.connected)throw new Error("No se estableció la conexión GATT.");
+    setBtConnected(!0);
+    window.__AUTOOS_BT_CONNECTED__=!0;
+    window.dispatchEvent(new CustomEvent("autoos:bt_status",{detail:{connected:!0}}));
+    device.addEventListener("gattserverdisconnected",()=>{
+      setBtConnected(!1);
+      window.__AUTOOS_BT_CONNECTED__=!1;
+      window.dispatchEvent(new CustomEvent("autoos:bt_status",{detail:{connected:!1}}));
+      setBtErr("El dispositivo BLE se desconectó. Puedes volver a intentar emparejarlo.");
     });
+    t&&t("Bluetooth LE/GATT conectado","exito",device.name||"Dispositivo BLE");
+  }catch(err){
+    setBtConnected(!1);
+    window.__AUTOOS_BT_CONNECTED__=!1;
+    const name=err&&err.name||"";
+    setBtErr(name==="NotFoundError"?"Se canceló la selección o no se encontraron dispositivos BLE compatibles.":
+      name==="NotAllowedError"||name==="SecurityError"?"El navegador o Streamlit bloquearon Bluetooth. Comprueba HTTPS, permisos y compatibilidad.":
+      err&&err.message||"No se pudo establecer una conexión Bluetooth LE.");
+  }finally{setBtConnecting(!1);}
 };
 
 let currentItem=playedList.find(p=>p.id===spUri)||{id:spUri,title:spUri.startsWith("track/")?"Pista Personalizada":"Playlist Personalizada",desc:"Enlace directo de Spotify",icon:"🎵"};
@@ -488,7 +1059,7 @@ return(0,C.jsxDEV)("div",{className:"space-y-6",children:[
             (0,C.jsxDEV)("p",{className:"text-xs text-[#52423D] dark:text-[#8D7AA8]",children:"Escanea dispositivos Bluetooth Low Energy cercanos desde el navegador"},void 0,!1,{fileName:k,lineNumber:282,columnNumber:1},void 0)
           ]},void 0,!0,{fileName:k,lineNumber:283,columnNumber:1},void 0)
         ]},void 0,!0,{fileName:k,lineNumber:284,columnNumber:1},void 0),
-        (0,C.jsxDEV)("span",{className:"px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#52423D]/10 dark:bg-white/10 text-[#52423D] dark:text-[#8D7AA8]",children:btConnected?"BLE CONECTADO":"BLE EN ESPERA"},void 0,!1,{fileName:k,lineNumber:285,columnNumber:1},void 0)
+        (0,C.jsxDEV)("span",{className:"px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-[#52423D]/10 dark:bg-white/10 text-[#52423D] dark:text-[#8D7AA8]",children:btConnected?"GATT CONECTADO":"BLE SIN CONECTAR"},void 0,!1,{fileName:k,lineNumber:285,columnNumber:1},void 0)
       ]},void 0,!0,{fileName:k,lineNumber:286,columnNumber:1},void 0),
 
       (0,C.jsxDEV)("div",{className:"flex flex-wrap gap-2 my-3",children:[
@@ -507,7 +1078,7 @@ return(0,C.jsxDEV)("div",{className:"space-y-6",children:[
         (0,C.jsxDEV)("p",{className:"flex-1",children:btErr},void 0,!1,{fileName:k,lineNumber:294,columnNumber:1},void 0)
       ]},void 0,!0,{fileName:k,lineNumber:292,columnNumber:1},void 0):null
     ]},void 0,!0,{fileName:k,lineNumber:295,columnNumber:1},void 0),
-    (0,C.jsxDEV)("p",{className:"text-[11px] text-[#52423D]/70 dark:text-[#8D7AA8]/70 mt-2",children:"Para conectar con tu teléfono en tiempo real, escanea el código QR de Spotify a la derecha con la cámara de tu celular."},void 0,!1,{fileName:k,lineNumber:296,columnNumber:1},void 0)
+    (0,C.jsxDEV)("p",{className:"text-[11px] text-[#52423D]/70 dark:text-[#8D7AA8]/70 mt-2",children:"Bluetooth LE sirve para dispositivos GATT compatibles; no transmite audio de Spotify. Usa el QR para abrir Spotify en tu teléfono."},void 0,!1,{fileName:k,lineNumber:296,columnNumber:1},void 0)
   ]},void 0,!0,{fileName:k,lineNumber:279,columnNumber:1},void 0),
 
   (0,C.jsxDEV)("div",{className:"p-5 rounded-2xl border transition-all shadow-sm bg-white dark:bg-[#180E24] border-[#887D77]/30 dark:border-[#331E4D] flex flex-col justify-between",children:[
@@ -683,6 +1254,60 @@ return(0,C.jsxDEV)("div",{className:"space-y-6",children:[
     }
   });
 })();
+</script>
+<script id="autoos-v6-embedded-script">
+/**
+ * AutoOS V6: puente de presentación dentro del Cockpit HTML independiente.
+ *
+ * Este documento contiene un React compilado que no debe desmontarse porque
+ * perderíamos sus controles (GPS, ADAS, Spotify y auditoría). Cuando el padre
+ * abre una herramienta por el puente V4, ocultamos SOLAMENTE la barra de
+ * pestañas duplicada. El puente V4 sigue pudiendo pulsar esos botones con JS.
+ *
+ * IMPORTANTE: La vista HTML independiente se conserva sin cambios cuando
+ * no recibe el mensaje de navegación desde la aplicación AutoOS.
+ */
+(function () {
+  'use strict';
+  var active = false;
+  var scheduled = false;
+  function collapseRedundantNavigation() {
+    scheduled = false;
+    if (!active) return;
+    var buttons = document.querySelectorAll('#root button');
+    for (var i = 0; i < buttons.length; i++) {
+      var button = buttons[i];
+      var text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+      if (text !== 'Panel Principal') continue;
+      var row = button.parentElement;
+      if (row && row.querySelectorAll('button').length >= 3) {
+        row.dataset.autoosV6DuplicateNav = 'true';
+      }
+      break;
+    }
+  }
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(collapseRedundantNavigation);
+  }
+  window.addEventListener('message', function (event) {
+    if (event.source !== window.parent || !event.data) return;
+    if (event.data.type !== 'AUTOOS_V4_OPEN_FEATURE') return;
+    active = true;
+    document.documentElement.dataset.autoosV6Embedded = 'true';
+    schedule();
+  });
+  function boot() {
+    var root = document.getElementById('root');
+    if (!root) return;
+    new MutationObserver(schedule).observe(root, { childList: true, subtree: true });
+    schedule();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
+  else boot();
+})();
+
 </script>
 </body>
 </html>

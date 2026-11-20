@@ -1,5 +1,6 @@
 import type { ScenarioId, Weather } from './scenarios';
 import { saveSimulationReportToSupabase } from '../supabaseClient';
+import { sendCloudRequest } from '../kernelBridge';
 
 export interface SimulationSnapshot {
   battery: number;
@@ -7,6 +8,11 @@ export interface SimulationSnapshot {
   weather: Weather;
   cpuLoad: number;
   usedMemory: number;
+  /** Campos V9 opcionales para mantener informes V8 anteriores compatibles. */
+  energyWh?: number;
+  powerW?: number;
+  swapMb?: number;
+  cpuBusyPct?: number;
   running: number;
   suspended: number;
   failures: string[];
@@ -39,7 +45,9 @@ const dateText = (value: string) => new Date(value).toLocaleString('es-CO');
 export function reportAsText(report: AutoOSReport): string {
   const snap = (item: SimulationSnapshot) => [
     `Batería: ${item.battery.toFixed(1)} % | Velocidad: ${item.speed} km/h | Tiempo CPU: ${item.tick}`,
-    `Carga solicitada CPU: ${item.cpuLoad} % | Memoria ocupada: ${item.usedMemory} MB`,
+    `Demanda CPU: ${item.cpuLoad} % | Utilización CPU: ${item.cpuBusyPct ?? 'no disponible'} %`,
+    `RAM física estimada: ${item.usedMemory} MB / 2048 MB | SWAP solicitada: ${item.swapMb ?? 0} MB`,
+    `Potencia instantánea estimada: ${item.powerW ?? 'no disponible'} W | Energía consumida en sesión: ${item.energyWh?.toFixed(1) ?? 'no disponible'} Wh`,
     `Procesos en actividad: ${item.running} | Suspendidos: ${item.suspended}`,
     `Dispositivos con anomalía: ${item.failures.length ? item.failures.join(', ') : 'ninguno'}`,
     `Scheduler: ${item.scheduler} | Clima: ${item.weather}`,
@@ -58,7 +66,7 @@ export function reportAsText(report: AutoOSReport): string {
     ...(report.actions.length ? report.actions.map((a, i) => `${i + 1}. ${a.time} | ${a.choice}\n   ${a.effect}`) : ['Sin intervención registrada.']),
     '', 'ESTADO FINAL', snap(report.final),
     '', 'RECOMENDACIONES', ...report.recommendations.map((r) => `- ${r}`),
-    '', 'IMPORTANTE: Los valores corresponden a una abstracción educativa de un sistema operativo vehicular; no son telemetría de un automóvil real.',
+    '', 'IMPORTANTE: Estas cifras corresponden al motor DIDÁCTICO React (memoria por proceso y consumo energético estimados). NO provienen de un automóvil real ni de la instancia kernel Python.',
   ].join('\n');
 }
 
@@ -69,10 +77,18 @@ export function saveReport(report: AutoOSReport): void {
     localStorage.setItem(key, JSON.stringify([report, ...previous.filter((r) => r.id !== report.id)].slice(0, 20)));
   } catch { /* almacenamiento del navegador deshabilitado: aún es posible exportar */ }
 
-  // Sincronizar de manera asíncrona con Supabase Cloud si está configurado
-  saveSimulationReportToSupabase(report).catch((err) => {
-    console.debug('[AutoOS] Fallback local activo para reporte:', err);
+  // AUTOOS V11: si Streamlit está disponible, el servidor persiste el
+  // reporte con sus propios Secrets y controles RBAC. Evitar doble escritura.
+  const viaStreamlit = sendCloudRequest({
+    type: 'autoos:cloud-report', requestId: `report_${report.id}`,
+    report: report as unknown as Record<string, unknown>,
   });
+  if (!viaStreamlit) {
+    // En Vite independiente, usar el cliente web con clave pública si existe.
+    saveSimulationReportToSupabase(report).catch((err) => {
+      console.debug('[AutoOS] Reporte solo local, sin sincronización Cloud:', err);
+    });
+  }
 }
 
 export function readReports(): AutoOSReport[] {
