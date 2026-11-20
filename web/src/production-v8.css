@@ -1,0 +1,122 @@
+:root { --autoos-v8-version: ready; }
+
+/**
+ * AUTOOS — V8 / Cierre visual de entrega.
+ *
+ * CAUSA RAÍZ: la primera paleta aplicaba `#root > div > header` con
+ * `!important`. Ese selector tiene un ID y anulaba los estilos del encabezado
+ * cinematográfico. Este archivo se carga AL FINAL y usa el componente exacto,
+ * sin recolorear cabeceras genéricas del sistema.
+ *
+ * Los dos temas comparten cabecera azul profundo para garantizar contraste.
+ * El fondo de las pantallas interiores sí cambia de oscuro a claro.
+ */
+
+/* Encabezado escénico: tema explícito de React, no una detección de Streamlit. */
+#root > div.autoos-module-app > header.autoos-stage {
+  background-color: #071e48 !important;
+  background-image:
+    radial-gradient(ellipse at 85% 15%, rgba(39,151,221,.26), transparent 42%),
+    linear-gradient(113deg, #031637 0%, #07377c 51%, #061a44 100%) !important;
+  color: #f9fdff !important;
+  border-bottom: 3px solid #6be3ff !important;
+  isolation: isolate;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__title,
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__title > span {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  opacity: 1 !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  text-shadow: 8px 9px 0 #03122e !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__summary,
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__brand,
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__status,
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__statusgroup,
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__statusgroup strong {
+  color: #e2f4ff !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__kicker {
+  color: #b4f4ff !important;
+  -webkit-text-fill-color: #b4f4ff !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__title i {
+  color: #58dbff !important;
+  -webkit-text-fill-color: #58dbff !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__navitem.is-current {
+  background: #fff !important;
+  color: #06326f !important;
+  border-left-color: #ff4d9b !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__navitem:not(.is-current) {
+  background: #0b3069 !important;
+  color: #ecf9ff !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__navitem:is(:hover,:focus-visible) {
+  background: #d3f9ff !important;
+  color: #072d67 !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__back {
+  background: #fff !important;
+  color: #07356f !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__controls :is(button,select) {
+  background: #092a60 !important;
+  color: #fff !important;
+  border-color: #86def7 !important;
+}
+#root > div.autoos-module-app > header.autoos-stage .autoos-stage__controls :is(button,select):hover {
+  background: #1656ab !important;
+}
+
+/* Pantallas internas claras: alta legibilidad sin sacrificar la cabecera. */
+#root > div.autoos-module-app[data-autoos-theme="light"] {
+  background: linear-gradient(155deg, #f2f8ff, #dceafa 85%) !important;
+  color: #102d55 !important;
+}
+#root > div.autoos-module-app[data-autoos-theme="dark"] {
+  background: linear-gradient(155deg, #06152d, #071f49 85%) !important;
+  color: #f3faff !important;
+}
+#root > div.autoos-module-app[data-autoos-theme="light"] > main {
+  color: #14385e !important;
+}
+
+/* El menú de entrada en tema claro NO debe presentar un título lavado. */
+#root .autoos-cine--light .autoos-cine__title span,
+#root .autoos-cine--light .autoos-cine__detail h2 {
+  color: #0a3478 !important;
+  -webkit-text-fill-color: #0a3478 !important;
+  text-shadow: 5px 6px 0 rgba(255,255,255,.65) !important;
+  opacity: 1 !important;
+}
+#root .autoos-cine--light .autoos-cine__title strong {
+  color: #0057bd !important;
+  -webkit-text-fill-color: #0057bd !important;
+}
+
+/* Transiciones discretas y foco visible, también con el teclado. */
+#root .autoos-stage__navitem,
+#root .autoos-v6-tool__nav > button {
+  transition: transform 180ms ease, background-color 160ms ease, color 160ms ease;
+}
+#root :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #f052a2 !important;
+  outline-offset: 3px;
+}
+@media (max-width: 820px) {
+  #root .autoos-stage__title { white-space: normal !important; font-size: clamp(56px, 12vw, 90px) !important; }
+  #root .autoos-stage__body { grid-template-columns: 1fr !important; }
+  #root .autoos-v6-tool__body { grid-template-columns: 1fr !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .autoos-stage *, #root .autoos-v6-tool * {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

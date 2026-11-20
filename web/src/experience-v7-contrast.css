@@ -1,0 +1,72 @@
+/**
+ * AutoOS / Blue Shift V7 — contraste de la cabecera en tema claro.
+ *
+ * PROBLEMA OBSERVADO:
+ * El título blanco de ModuleScene a veces heredaba un fondo demasiado claro
+ * después de cambiar el tema. La cabecera usa deliberadamente un fondo azul
+ * profundo en AMBOS temas; el cuerpo de la página sí cambia a tonos claros.
+ *
+ * El atributo data-autoos-theme proviene del estado React de App.tsx.
+ * No dependemos únicamente de la clase .dark de Streamlit o del documento.
+ */
+.autoos-module-app[data-autoos-theme="light"] > header.autoos-stage,
+header.autoos-stage[data-autoos-theme="light"] {
+  background-color: #082b61 !important;
+  background-image:
+    radial-gradient(ellipse at 83% 10%, rgba(41,165,230,.32), transparent 43%),
+    linear-gradient(113deg,#051d47 0%,#104889 56%,#082a59 100%) !important;
+  color: #f8fcff !important;
+  border-bottom-color: #47cefa !important;
+  isolation: isolate;
+}
+
+/* El texto blanco y sus decoraciones se quedan siempre sobre azul oscuro. */
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__title,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__title > span,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__brand,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__summary,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__status,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__statusgroup {
+  color: #f8fcff !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__title {
+  text-shadow: 6px 7px 0 rgba(0,18,57,.60) !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__kicker,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__statusgroup strong {
+  color: #c2f3ff !important;
+}
+
+/* Estados seleccionados: nunca texto blanco encima de una tarjeta blanca. */
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem.is-current,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem:hover,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem:focus-visible {
+  background: #f8fdff !important;
+  color: #08396f !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem:not(.is-current):not(:hover):not(:focus-visible) {
+  background: #092e62 !important;
+  color: #edfaff !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem.is-current .autoos-stage__navnumber,
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__navitem:hover .autoos-stage__navnumber {
+  color: #a71960 !important;
+}
+
+/* El cuerpo sigue siendo CLARO. La solución no desactiva el selector. */
+.autoos-module-app[data-autoos-theme="light"] > main {
+  color: #143458;
+}
+
+/* Accesibilidad de los botones de volver y elegir tema. */
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__back {
+  background: #fff !important;
+  color: #06396f !important;
+}
+.autoos-module-app[data-autoos-theme="light"] .autoos-stage__controls :is(button,select) {
+  background: #072b5b !important;
+  color: #fff !important;
+  border-color: #8bdcf6 !important;
+}

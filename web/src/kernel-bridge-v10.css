@@ -1,0 +1,21 @@
+/* AutoOS V10: comparador compacto de dos motores reales, visible en ambos temas. */
+.autoos-kernel-bridge{margin:18px auto;max-width:1500px;padding:20px;border-radius:20px;background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-color);box-shadow:0 14px 30px rgba(0,16,49,.12)}
+.autoos-kernel-bridge__header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:15px}
+.autoos-kernel-bridge__header small{color:var(--accent-primary);font:bold 11px 'JetBrains Mono',monospace;letter-spacing:.09em}
+.autoos-kernel-bridge__header h3{font:bold clamp(20px,2.2vw,30px) 'Barlow Condensed',sans-serif;display:flex;gap:8px;align-items:center;color:var(--text-primary);line-height:1.2;margin:7px 0}
+.autoos-kernel-bridge__header p{color:var(--text-secondary);font-size:13px;line-height:1.55;max-width:660px}
+.autoos-kernel-bridge__header button{display:flex;gap:8px;align-items:center;justify-content:center;padding:12px 16px;background:var(--accent-primary);color:white;font-weight:800;font-size:13px;border-radius:8px;min-height:44px;cursor:pointer;border:2px solid transparent}
+.autoos-kernel-bridge__header button:focus-visible{outline:3px solid #38cefe;outline-offset:2px}
+.autoos-kernel-bridge__header button:disabled{opacity:.6;cursor:not-allowed}
+.autoos-kernel-bridge__metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}
+.autoos-kernel-bridge__metrics>div{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:10px;display:flex;flex-direction:column;padding:12px;min-width:0;gap:5px}
+.autoos-kernel-bridge__metrics span{display:flex;gap:5px;align-items:center;font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--text-secondary)}
+.autoos-kernel-bridge__metrics strong{font-size:clamp(13px,1.8vw,19px);color:var(--text-primary);font-variant-numeric:tabular-nums}
+.autoos-kernel-bridge__metrics strong small{font-size:10px;font-weight:500;color:var(--text-secondary)}
+.autoos-kernel-bridge__notice{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--text-secondary);font-weight:700;line-height:1.5}
+.autoos-kernel-bridge__errors{border:1px solid #f59e0b;background:rgba(245,158,11,.12);padding:10px;color:var(--text-primary);font-size:12px;margin-top:12px;border-radius:6px}
+.autoos-kernel-bridge__note{margin-top:12px;font-size:11px;line-height:1.5;color:var(--text-muted)}
+@keyframes autoos-kernel-spin{to{transform:rotate(360deg)}}.autoos-kernel-bridge__spin{animation:autoos-kernel-spin 1s linear infinite}
+@media(max-width:900px){.autoos-kernel-bridge__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.autoos-kernel-bridge{padding:12px}.autoos-kernel-bridge__metrics{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.autoos-kernel-bridge__spin{animation:none}}

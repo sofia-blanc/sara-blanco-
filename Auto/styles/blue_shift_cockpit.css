@@ -1,0 +1,15 @@
+/* AutoOS Blue Shift — Cockpit HTML heredado. Overrides no destructivos. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+html.dark body { background: radial-gradient(circle at 87% 8%,rgba(48,127,255,.14),transparent 39%),#07152d !important; color:#f6fbff; }
+body { font-family: 'Space Grotesk',Arial,sans-serif !important; }
+body :is(h1,h2,h3) {font-family:'Barlow Condensed','Arial Narrow',sans-serif !important; letter-spacing:.02em;}
+body :is(button,input,select,a):focus-visible { outline:2px solid #5bdeff !important; outline-offset:2px !important; }
+/* Primary accent previously fuchsia. Keep warnings and danger colors intact. */
+html.dark :is(button,nav) [class*='text-[#BF40FA]'] { color:#6bdeff !important; }
+@media (prefers-reduced-motion: reduce) {body *,body *::before,body *::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}}
+/* Tailwind's original fuchsia controls: only re-skin those accents, not alerts. */
+html.dark [class*='dark:bg-[#BF40FA]'] { background-color:#2d83ff !important; }
+html.dark [class*='dark:text-[#BF40FA]'] { color:#61dfff !important; }
+html.dark [class*='dark:border-[#BF40FA]'] { border-color:#4abfff !important; }
+html.dark [class*='dark:from-[#BF40FA]'] { --tw-gradient-from:#2585ff !important; }
+html.dark [class*='dark:to-[#4928C2]'] { --tw-gradient-to:#09a6ea !important; }

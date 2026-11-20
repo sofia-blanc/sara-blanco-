@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import type { BatteryState, UserRole, VehicleDevice } from '../types/scheduler';
 import type { SimulationState } from '../utils/schedulerEngine';
+import type { OSResourceSnapshot, OSResourceSample } from '../simulation/resources';
+import { OSResourceMonitor } from './OSResourceMonitor';
 import { SCENARIOS, scenarioById, type ScenarioId, type SimulationAction, type Weather } from '../simulation/scenarios';
 import {
   downloadReport, readReports, reportAsText, saveReport,
@@ -17,6 +19,9 @@ interface Props {
   battery: BatteryState;
   devices: VehicleDevice[];
   state: SimulationState;
+  resources: OSResourceSnapshot;
+  resourceHistory: OSResourceSample[];
+  onOpenScheduler: () => void;
   userRole: UserRole;
   onStart: (id: ScenarioId) => void;
   onAction: (id: SimulationAction) => void;
@@ -30,7 +35,7 @@ interface Props {
 const readClock = () => new Date().toLocaleTimeString('es-CO', { hour12: false });
 const formatNum = (value: number) => Math.round(value).toLocaleString('es-CO');
 
-export function SimulationCenter({ battery, devices, state, userRole, onStart, onAction, onDriveTick, onBattery, onFault, onCpuStress, onWeather }: Props) {
+export function SimulationCenter({ battery, devices, state, resources, resourceHistory, onOpenScheduler, userRole, onStart, onAction, onDriveTick, onBattery, onFault, onCpuStress, onWeather }: Props) {
   const [selected, setSelected] = useState<ScenarioId>('battery');
   const [activeId, setActiveId] = useState<ScenarioId | null>(null);
   const [running, setRunning] = useState(false);
@@ -50,8 +55,10 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
   const definition = scenarioById(activeId || selected);
   const activeProcesses = state.processes.filter((p) => p.state === 'LISTO' || p.state === 'EJECUTANDO' || p.state === 'BLOQUEADO');
   // Carga solicitada, no utilización física: suma de demandas de procesos en la simulación.
-  const cpuLoad = Math.min(100, activeProcesses.reduce((sum, p) => sum + p.cpuUsagePct, 0));
-  const usedMemory = activeProcesses.reduce((sum, p) => sum + p.memoryMb, 0);
+  // V9: demanda y memoria vienen del mismo modelo que usan CPU y Conducción.
+  // La demanda no se limita a 100%: así se hace visible la sobresaturación.
+  const cpuLoad = resources.cpuDemandPct;
+  const usedMemory = resources.ramPhysicalMb;
   const suspended = state.processes.filter((p) => p.state === 'SUSPENDIDO').length;
   const faults = devices.filter((d) => d.status !== 'operativo');
   const wifiFail = devices.some((d) => d.code === 'DEV_COM_V2X' && d.status !== 'operativo');
@@ -62,6 +69,10 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
 
   const takeSnapshot = (): SimulationSnapshot => ({
     battery: battery.level, speed, weather, cpuLoad, usedMemory,
+    energyWh: resources.consumedWh,
+    powerW: resources.totalPowerW,
+    swapMb: resources.swapRequestedMb,
+    cpuBusyPct: resources.cpuBusyPct,
     running: activeProcesses.length, suspended,
     failures: faults.map((d) => `${d.code} (${d.status})`),
     scheduler: state.algorithm, tick: state.currentTime,
@@ -74,7 +85,8 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
     if (!activeId || !running || report) return;
     const timer = window.setInterval(() => {
       setElapsed((t) => t + 1);
-      setDistance((km) => km + speed / 3600);
+      // 1 s de demostración = 1 minuto de ruta virtual acelerada.
+      setDistance((km) => km + speed / 60);
       onDriveTick(speed, weather);
     }, 1000);
     return () => window.clearInterval(timer);
@@ -212,6 +224,9 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
         </div>
       </section>
 
+      {/* V9: instrumento protagonista del laboratorio, misma fuente del Planificador. */}
+      <OSResourceMonitor snapshot={resources} history={resourceHistory} onOpenScheduler={userRole === 'mecanico' ? onOpenScheduler : undefined} />
+
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] gap-5">
         <div className="space-y-5 min-w-0">
           <section className="autoos-card rounded-2xl overflow-hidden">
@@ -254,14 +269,14 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
                 <span className="text-xs text-white/60">{distance.toFixed(2)} km recorridos</span>
               </div>
               <div className="absolute bottom-3 left-3 right-3 bg-[#07101c]/85 rounded-xl p-2 flex flex-wrap gap-x-5 gap-y-1 justify-between text-[11px] font-mono border border-white/15">
-                <span>⚡ {battery.level.toFixed(1)} % batería</span><span>🧠 CPU demandada {cpuLoad} %</span><span>💾 {formatNum(usedMemory)} MB</span><span>⏱ {elapsed} s</span>
+                <span>⚡ {battery.level.toFixed(2)} % batería</span><span>🧠 CPU solicitada {cpuLoad} %</span><span>💾 RAM {formatNum(usedMemory)} MB</span><span>⏱ {elapsed} min virtuales</span>
               </div>
             </div>
             <div className="p-4 space-y-3">
               <div className="flex gap-2 flex-wrap items-center">
                 <button disabled={!activeId || !!report} onClick={() => setRunning((v) => !v)} className="bg-[var(--accent-primary)] text-white px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-40 flex gap-2 items-center">{running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Pausar' : 'Continuar'}</button>
                 <button disabled={!activeId} onClick={() => activeId && start(activeId)} className="border border-[var(--border-color)] px-3 py-2 rounded-lg text-xs flex gap-1 items-center disabled:opacity-40"><RotateCcw size={14} /> Reiniciar</button>
-                <span className="text-xs text-[var(--text-muted)]">El tiempo avanza al reproducir y ejecuta ciclos del planificador.</span>
+                <span className="text-xs text-[var(--text-muted)]">1 segundo de demostración equivale a 1 minuto de viaje virtual y un tick del planificador.</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
                 <label className="text-xs font-semibold flex gap-2 items-center"><Gauge size={15} /> Velocidad del vehículo: <b>{speed} km/h</b></label>
@@ -273,27 +288,15 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
           </section>
 
           <section className="autoos-card rounded-2xl p-4 space-y-3">
-            <h3 className="font-bold flex items-center gap-2 text-sm"><Activity size={16} /> Telemetría del sistema operativo <span className="text-[10px] text-[var(--text-muted)] font-normal">(datos simulados)</span></h3>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {[
-                { icon: <Battery size={17}/>, label: 'Batería', value: `${battery.level.toFixed(1)} %`, sub: battery.isLowBatteryMode ? 'Ahorro activo' : 'Normal' },
-                { icon: <Cpu size={17}/>, label: 'Demanda CPU', value: `${cpuLoad} %`, sub: state.algorithm.replaceAll('_',' ') },
-                { icon: <HardDrive size={17}/>, label: 'Memoria', value: `${formatNum(usedMemory)} MB`, sub: `${suspended} procesos suspendidos` },
-                { icon: <Radio size={17}/>, label: 'Dispositivos', value: `${devices.length - faults.length}/${devices.length}`, sub: faults.length ? `${faults.length} con anomalía` : 'Todos operativos' },
-              ].map((item) => <div key={item.label} className="autoos-surface rounded-xl p-3 min-w-0">
-                <div className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">{item.icon} {item.label}</div>
-                <div className="font-bold text-xl mt-2 tabular-nums">{item.value}</div>
-                <div className="text-[10px] truncate mt-1 text-[var(--text-muted)]">{item.sub}</div>
-              </div>)}
-            </div>
+            <h3 className="font-bold text-sm">DISPOSITIVOS Y BITÁCORA DEL SISTEMA</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="autoos-surface rounded-xl p-3">
-                <div className="font-semibold text-xs mb-2">Dispositivos y buses</div>
-                <div className="max-h-48 overflow-y-auto space-y-1">{devices.map((d) => <div key={d.code} className="text-[11px] flex items-center justify-between gap-2"><span className="truncate" title={d.name}>{d.name}</span><span className={`font-bold shrink-0 ${d.status === 'operativo' ? 'text-emerald-500' : d.status === 'degradado' ? 'text-amber-500' : 'text-red-500'}`}>{d.status}</span></div>)}</div>
+                <div className="font-semibold text-xs mb-2">Hardware / buses</div>
+                <div className="max-h-48 overflow-y-auto space-y-1">{devices.map((d) => <div key={d.code} className="text-[11px] flex justify-between gap-2"><span className="truncate" title={d.name}>{d.name}</span><span className={d.status === 'operativo' ? 'text-emerald-500' : 'text-red-500'}>{d.status}</span></div>)}</div>
               </div>
               <div className="autoos-surface rounded-xl p-3">
-                <div className="font-semibold text-xs mb-2">Bitácora del kernel · últimos eventos</div>
-                <div className="max-h-48 overflow-y-auto space-y-2">{latestEvents.map((event) => <div key={event.id} className="text-[11px] flex gap-2"><span className="text-[var(--text-muted)] shrink-0">t={event.time}</span><span className="leading-tight">{event.message}</span></div>)}</div>
+                <div className="font-semibold text-xs mb-2">Últimos eventos del planificador</div>
+                <div className="max-h-48 overflow-y-auto space-y-2">{latestEvents.map((e) => <div key={e.id} className="text-[11px] flex gap-2"><span className="text-[var(--text-muted)]">t={e.time}</span><span>{e.message}</span></div>)}</div>
               </div>
             </div>
           </section>
@@ -308,7 +311,9 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
               {!!activeId && <ul className="text-xs space-y-1 mt-3 list-disc pl-4">
                 {battery.level <= 20 && <li>Batería en umbral bajo: {battery.level.toFixed(1)} %.</li>}
                 {faults.length > 0 && <li>{faults.length} dispositivo(s) reportan anomalías.</li>}
-                {cpuLoad >= 90 && <li>Demanda alta de CPU: {cpuLoad} %.</li>}
+                {cpuLoad >= 90 && <li>Demanda alta de CPU: {cpuLoad} % (por encima de la capacidad cuando supera 100%).</li>}
+                {resources.swapRequestedMb > 0 && <li>Presión de memoria: {resources.swapRequestedMb} MB requieren SWAP estimada.</li>}
+                {resources.totalPowerW > 0 && <li>Potencia estimada: {(resources.totalPowerW / 1000).toFixed(2)} kW.</li>}
                 {weather !== 'soleado' && <li>Clima adverso, visibilidad reducida.</li>}
                 {risk === 'NORMAL' && <li>Los indicadores monitoreados permanecen estables.</li>}
               </ul>}
@@ -352,8 +357,8 @@ export function SimulationCenter({ battery, devices, state, userRole, onStart, o
               <div className="font-bold text-xs text-emerald-500 flex gap-2 items-center"><CheckCircle size={16}/> Informe generado y guardado</div>
               <div className="text-xs"><b>{report.title}</b> · {report.status}</div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-lg p-2 bg-[var(--bg-surface)]"><b>Antes</b><p>Batería: {report.initial.battery.toFixed(1)} %</p><p>CPU: {report.initial.cpuLoad} %</p><p>Fallas: {report.initial.failures.length}</p></div>
-                <div className="rounded-lg p-2 bg-[var(--bg-surface)]"><b>Después</b><p>Batería: {report.final.battery.toFixed(1)} %</p><p>CPU: {report.final.cpuLoad} %</p><p>Fallas: {report.final.failures.length}</p></div>
+                <div className="rounded-lg p-2 bg-[var(--bg-surface)]"><b>Antes</b><p>Batería: {report.initial.battery.toFixed(2)} %</p><p>CPU solicitada: {report.initial.cpuLoad} %</p><p>RAM: {report.initial.usedMemory} MB</p><p>SWAP: {report.initial.swapMb || 0} MB</p><p>Fallas: {report.initial.failures.length}</p></div>
+                <div className="rounded-lg p-2 bg-[var(--bg-surface)]"><b>Después</b><p>Batería: {report.final.battery.toFixed(2)} %</p><p>CPU solicitada: {report.final.cpuLoad} %</p><p>RAM: {report.final.usedMemory} MB</p><p>SWAP: {report.final.swapMb || 0} MB</p><p>Consumo: {Math.round(report.final.energyWh || 0)} Wh</p><p>Fallas: {report.final.failures.length}</p></div>
               </div>
               <p className="text-[11px]">Acciones registradas: <b>{report.actions.length}</b>. {report.recommendations[0]}</p>
               <button onClick={() => downloadReport(report)} className="w-full rounded-xl border border-[var(--accent-primary)] px-4 py-2 text-xs font-bold flex gap-2 items-center justify-center"><Download size={15}/> Descargar informe .txt</button>

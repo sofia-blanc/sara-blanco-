@@ -1,0 +1,101 @@
+/* AUTOOS V12 — cierre de UX, rendimiento y ajuste de márgenes.
+ * Se importa al final de web/src/main.tsx. No sustituye los estilos del kernel.
+ * El menú ya no desplaza un SVG enorme ni anima gradientes o sombras por fotograma.
+ */
+#root, #root .autoos-module-app {min-width:0;max-width:100%;}
+#root .autoos-module-app > main {min-width:0;max-width:100%;}
+#root .autoos-v4-workspace {max-width:100%;min-width:0;overflow-x:clip;}
+#root .autoos-v6-tool {max-width:1540px;box-sizing:border-box;padding-inline:clamp(16px,2vw,30px);}
+#root .autoos-v6-tool__body {grid-template-columns:minmax(200px,240px) minmax(0,1fr);gap:16px;}
+#root .autoos-v6-tool__main,#root .autoos-v6-tool__instrument {max-width:100%;min-width:0;}
+#root .autoos-v6-tool__instrument iframe {width:100%!important;max-width:100%!important;min-width:0!important;display:block;}
+#root .autoos-v6-tool__nav {max-width:100%;min-width:0;}
+#root .autoos-v6-tool__nav>button {min-width:0;}
+#root .autoos-v6-tool__nav>button strong {min-width:0;overflow-wrap:anywhere;}
+#root .autoos-v6-tool__top h2 {overflow-wrap:anywhere;max-width:100%;}
+#root .v11-stage__core,#root .v11-stage__dock {max-width:1510px;width:100%;box-sizing:border-box;}
+#root .v11-stage__mark {max-width:110px;max-height:110px;overflow:hidden;pointer-events:none;opacity:.25;}
+#root .v12-stage--cabina .v11-stage__title h1 {font-size:clamp(45px,5.2vw,88px)!important;}
+/* Evita el doble espacio lateral y la superposición a anchuras intermedias. */
+@media(max-width:1180px){
+  #root .autoos-v6-tool__body {grid-template-columns:minmax(0,1fr);}
+  #root .autoos-v6-tool__nav {position:static;display:flex;flex-wrap:wrap;gap:8px;padding:12px;}
+  #root .autoos-v6-tool__nav>p {flex-basis:100%;}
+  #root .autoos-v6-tool__nav>button {flex:1 1 160px;width:auto;max-width:100%;}
+  #root .autoos-v6-tool__nav>button.autoos-v6-tool__to-overview {margin-top:0;}
+}
+@media(max-width:760px){
+  #root .autoos-v6-tool__top {clip-path:none;padding:18px;flex-wrap:wrap;}
+  #root .autoos-v6-tool__top h2 {font-size:clamp(35px,10vw,56px)!important;}
+  #root .autoos-v6-tool__instruction {padding:14px;align-items:flex-start;}
+}
+/* Explicación operativa real de Cabina y Telemetría. */
+#root .autoos-v12-guide {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 14px;}
+#root .autoos-v12-guide>div {min-width:0;padding:15px 16px;background:#05265f80;border-top:3px solid #70e6ff;border-left:1px solid #b6e9ff50;}
+#root .autoos-v12-guide b {font-size:11px;color:#83ebff;letter-spacing:.13em;}
+#root .autoos-v12-guide p {font-size:13px;line-height:1.5;margin:7px 0 0;color:#effaff;}
+#root .autoos-v12-howto {display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 23px;color:#e7faff;font-size:12px;}
+#root .autoos-v12-howto strong {font-size:12px;color:#73f0ff;letter-spacing:.05em;}
+#root .autoos-v12-howto span {padding:7px 10px;background:#0a3473a6;border:1px solid #9df4ff45;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-guide>div {background:#ffffffdd;border-color:#4a97d0;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-guide b {color:#0753a2;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-guide p {color:#18375b;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-howto {color:#16457c;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-howto strong {color:#044b97;}
+#root .autoos-module-app[data-autoos-theme='light'] .autoos-v12-howto span {background:#fff;color:#193d69;border-color:#8db4d2;}
+@media(max-width:920px){#root .autoos-v12-guide {grid-template-columns:1fr;}}
+/* Menú principal ligero: sin SVG gigante, filtros drop-shadow ni animaciones infinitas. */
+#root .v11-menu {min-height:100svh;overflow-x:clip;overflow-y:auto;contain:layout paint;background:#063795;}
+#root .v11-menu__ocean {inset:0;animation:none!important;transform:none!important;background:linear-gradient(142deg,#118dd5 4%,#0a4cae 45%,#071e66 100%);}
+#root .v11-menu__ripple,#root .v11-menu__particles {display:none!important;animation:none!important;}
+#root .v11-menu:before {width:53%;background:linear-gradient(112deg,#f3fdff 0%,#d3f4ff 73%,#b7e9f9 100%);clip-path:polygon(0 0,85% 0,100% 100%,0 100%);opacity:1;}
+#root .v11-menu__content {width:min(590px,46vw);margin:clamp(24px,4vh,45px) 0 96px clamp(24px,4.6vw,78px);animation:none!important;}
+#root .v11-menu__logo {font-size:clamp(80px,9vw,143px);filter:none;}
+#root .v11-menu__choice {animation:none!important;filter:none!important;transition:background-color .14s ease,color .14s ease,transform .14s ease;}
+#root .v11-menu__choice.is-active {animation:none!important;filter:none!important;box-shadow:6px 6px 0 #ff3c98;}
+#root .v11-menu__nav {width:100%;max-width:540px;}
+#root .v11-menu__warning {min-height:30px;}
+#root .v11-menu__footer {min-height:54px;}
+#root .v12-menu__preview {position:absolute;z-index:3;top:calc(76px + 6.5%);right:clamp(20px,4vw,80px);width:min(610px,42vw);min-height:540px;max-height:calc(100% - 160px);padding:clamp(23px,2.7vw,43px);display:flex;flex-direction:column;overflow:auto;box-sizing:border-box;background:linear-gradient(140deg,#032d84e8 0%,#041956ee 100%);border:1px solid #91efff70;border-top:5px solid #8af4ff;box-shadow:12px 12px 0 #00174c6e;color:#fff;}
+#root .v12-menu__preview-top {display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;font-size:10px;letter-spacing:.13em;font-weight:900;color:#90eaff;}
+#root .v12-menu__preview-icon {display:flex;align-items:center;justify-content:space-between;color:#9cf6ff;margin:25px 0 14px;}
+#root .v12-menu__preview-index {font:italic 900 31px 'Barlow Condensed',Impact,sans-serif;color:#a0eaff;}
+#root .v12-menu__preview-eyebrow {color:#ff86bd;font-size:11px;font-weight:900;letter-spacing:.2em;}
+#root .v12-menu__preview h2 {font:italic 900 clamp(42px,4.2vw,69px)/1 'Barlow Condensed',Impact,sans-serif;color:#fff!important;margin:2px 0 12px;overflow-wrap:anywhere;}
+#root .v12-menu__preview-summary {max-width:480px;font-size:15px;color:#e0f7ff;line-height:1.5;}
+#root .v12-menu__preview-steps {margin:21px 0 22px;border-top:1px solid #a4f3ff5b;}
+#root .v12-menu__preview-steps>div {display:grid;grid-template-columns:30px minmax(0,1fr);gap:9px;padding:11px 0;border-bottom:1px solid #a4f3ff34;}
+#root .v12-menu__preview-steps span {font:900 15px 'Barlow Condensed',sans-serif;color:#ff7fb4;}
+#root .v12-menu__preview-steps p {font-size:13px;line-height:1.5;color:#f4ffff;margin:0;}
+#root .v12-menu__preview-metrics {display:flex;flex-wrap:wrap;gap:22px;margin-top:auto;color:#b7efff;font-weight:800;font-size:12px;}
+#root .v12-menu__preview-metrics span {display:flex;align-items:center;gap:6px;}
+#root .v12-menu__preview-metrics b {color:#fff;}
+#root .v12-menu__preview-open {min-height:48px;margin-top:22px;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:12px 18px;background:#f9feff;color:#003784;font:900 18px 'Barlow Condensed',Impact,sans-serif;border:0;border-left:5px solid #ff4aa0;cursor:pointer;}
+#root .v12-menu__preview-open:hover {background:#aaf7ff;}
+#root .v12-menu__preview-open:focus-visible {outline:3px solid #ff65b2;outline-offset:3px;}
+/* En modo claro, la previsualización sigue azul oscuro para dar contraste. */
+#root .v11-menu[data-autoos-theme='light'] .v12-menu__preview {background:linear-gradient(145deg,#073d94,#031b58);color:#fff;}
+#root .v11-menu[data-autoos-theme='light'] .v12-menu__preview-top {color:#a4edff;}
+#root .v11-menu[data-autoos-theme='light'] .v12-menu__preview-summary {color:#e0f7ff;}
+#root .v11-menu[data-autoos-theme='light'] .v12-menu__preview h2 {color:#fff!important;}
+#root .v11-menu[data-autoos-theme='light'] .v11-menu__content {color:#042b66;}
+@media(max-width:1100px){
+  #root .v11-menu__content {width:min(52vw,580px);margin-left:24px;}
+  #root .v12-menu__preview {width:41vw;right:17px;padding:22px;max-height:calc(100% - 130px);}
+  #root .v12-menu__preview h2 {font-size:46px;}
+}
+@media(max-width:790px){
+  #root .v11-menu {min-height:100svh;display:flex;flex-direction:column;}
+  #root .v11-menu:before {width:100%;height:65%;clip-path:polygon(0 0,100% 0,100% 90%,0 100%);}
+  #root .v11-menu__content {width:calc(100% - 36px);max-width:none;margin:24px 18px 20px;}
+  #root .v11-menu__nav {max-width:620px;}
+  #root .v11-menu__choice {max-width:95%;}
+  #root .v12-menu__preview {position:relative;top:auto;right:auto;width:calc(100% - 36px);max-height:none;min-height:0;margin:0 18px 72px;padding:22px;order:3;}
+  #root .v11-menu__footer {position:relative;order:4;margin-top:auto;}
+  #root .v11-menu__content {order:2;}
+  #root .v11-menu__top {order:1;}
+  #root .v12-menu__preview h2 {font-size:47px;}
+}
+@media(prefers-reduced-motion:reduce){
+  #root .v11-menu,#root .v11-menu *,#root .v11-menu:before {animation:none!important;transition:none!important;}
+}

@@ -1,0 +1,60 @@
+/**
+ * AutoOS / Blue Shift V7 — campos legibles de Multimedia.
+ *
+ * POR QUÉ SE INYECTA EN EL HTML DEL COCKPIT:
+ * El Cockpit es un documento HTML independiente dentro de un iframe. Los
+ * estilos de App.tsx NO atraviesan el iframe. Además, el JSX compilado del
+ * reproductor de Spotify declara simultáneamente bg-white y dark:text-white.
+ * Para evitar texto blanco sobre blanco, los controles reciben fondo y texto
+ * del MISMO esquema, siguiendo html.dark (clase sincronizada por el puente).
+ *
+ * No se modifica el iframe externo de Spotify, ni sus URL ni la reproducción.
+ */
+html.dark #root input[type="text"],
+html.dark #root input[type="search"],
+html.dark #root input[type="url"],
+html.dark #root textarea {
+  background-color: #09294e !important;
+  color: #f6fcff !important;
+  border: 1px solid #67aad9 !important;
+  -webkit-text-fill-color: #f6fcff !important;
+  caret-color: #82efff !important;
+  color-scheme: dark;
+}
+html.dark #root input:is([type="text"],[type="search"],[type="url"])::placeholder,
+html.dark #root textarea::placeholder {
+  color: #c4dced !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #c4dced !important;
+}
+
+html:not(.dark) #root input[type="text"],
+html:not(.dark) #root input[type="search"],
+html:not(.dark) #root input[type="url"],
+html:not(.dark) #root textarea {
+  background-color: #fff !important;
+  color: #17395e !important;
+  border: 1px solid #678eae !important;
+  -webkit-text-fill-color: #17395e !important;
+  caret-color: #0c55ad !important;
+  color-scheme: light;
+}
+html:not(.dark) #root input:is([type="text"],[type="search"],[type="url"])::placeholder,
+html:not(.dark) #root textarea::placeholder {
+  color: #4b6680 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #4b6680 !important;
+}
+
+/* No alteramos radios, interruptores, sliders ni botones funcionales. */
+#root input:is([type="text"],[type="search"],[type="url"]):focus-visible,
+#root textarea:focus-visible {
+  outline: 3px solid #ee5ca7 !important;
+  outline-offset: 2px !important;
+}
+
+/* En ambos temas los campos se identifican claramente como editables. */
+#root input:is([type="text"],[type="search"],[type="url"]) {
+  min-height: 37px;
+  min-width: 0;
+}

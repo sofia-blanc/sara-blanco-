@@ -142,6 +142,13 @@ if "theme_mode" not in st.session_state:
 paleta = obtener_paleta(st.session_state["theme_mode"])
 aplicar_estilos_cockpit(st.session_state["theme_mode"])
 
+# AUTOOS_BLUE_SHIFT_V1: tema adicional; no altera lógica.
+if st.session_state["theme_mode"] == "oscuro":
+    _css_file = CURRENT_DIR / "styles" / "blue_shift_streamlit.css"
+    if _css_file.is_file():
+        st.markdown("<style>" + _css_file.read_text(encoding="utf-8") + "</style>", unsafe_allow_html=True)
+
+
 # Diccionario de traducción de estados del RTOS a español
 ESTADOS_PROCESO_ES = {
     "READY": "Listo",
@@ -253,6 +260,170 @@ st.markdown(f"""
 # ------------------------------------------------------------------
 # BARRA LATERAL: PERFIL DE USUARIO, RBAC, TEMA Y CONTROLES GLOBALES
 # ------------------------------------------------------------------
+# AUTOOS_CINEMATIC_V1 — Entrada cinematográfica de la presentación.
+# La interfaz React es un componente independiente (HTML dentro de iframe).
+# El dashboard Python original permanece íntegro como "Panel RTOS".
+if "autoos_presentation" not in st.session_state:
+    st.session_state["autoos_presentation"] = "cinematic"
+
+if st.session_state["autoos_presentation"] == "cinematic":
+    # Estos estilos se aplican SOLO a la vista de bienvenida.
+    st.markdown("""
+    <style>
+      [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] {display: none !important;}
+      [data-testid="stAppViewContainer"] {background: #03102d !important;}
+      [data-testid="stHeader"] {background: #03102d !important;}
+      [data-testid="stMainBlockContainer"],.block-container {max-width:100% !important;padding:0 !important;}
+      [data-testid="stVerticalBlock"] {gap:0 !important;}
+      .stButton > button[kind="secondary"] {border:1px solid #529de7;}
+    </style>
+    """, unsafe_allow_html=True)
+    # AUTOOS_V12_APLICADO: quitamos la etiqueta de prototipo de la portada.
+    _, top_right = st.columns([6, 1.7])
+    with top_right:
+        if st.button("🛠 Panel RTOS completo", key="autoos_open_technical", use_container_width=True):
+            st.session_state["autoos_presentation"] = "technical"
+            st.rerun()
+    # AUTOOS V10: un componente bidireccional puede enviar eventos de React a
+    # Python y devolver métricas reales del kernel First-Fit de esta sesión.
+    # `components.html` solo presenta contenido: nunca retorna valores de React.
+    _cinematic_bundle = CURRENT_DIR / "autoos_unified.html"
+    _bridge_frontend = CURRENT_DIR / "bridge_component" / "index.html"
+    if _bridge_frontend.is_file():
+        from streamlit.components.v1 import declare_component
+        from bridge_react_kernel import kernel_status, sync_react_with_kernel
+        from modules.auth_security import tiene_permiso, obtener_usuario_actual
+
+        _bridge_component = declare_component(
+            "autoos_react_kernel_v10", path=str(_bridge_frontend.parent)
+        )
+        # Componente estable por sesión. Streamlit conserva el iframe entre
+        # reruns, mientras el estado real del kernel persiste en session_state.
+        _prior_result = st.session_state.get("autoos_v10_bridge_response", {})
+        _kernel_payload = kernel_status(
+            kernel, st.session_state,
+            message=_prior_result.get("message", ""),
+            errors=_prior_result.get("errors", []),
+        )
+        # V11: estado Cloud registrado por el servidor; no contiene secretos.
+        _kernel_payload["cloud"] = st.session_state.get(
+            "autoos_v11_cloud_status", {"ok": False, "message": "Aún sin verificar."}
+        )
+        # AUTOOS_V14_BLACKBOX_CLOUD: estado de acuses separado del indicador
+        # de conexión Supabase; un fallo de un lote no borra una consulta válida.
+        _kernel_payload["blackbox"] = st.session_state.get(
+            "autoos_v14_blackbox_status", {"ok": False, "message": "Sin eventos por sincronizar."}
+        )
+        _event = _bridge_component(
+            kernel=_kernel_payload, key="autoos_react_kernel_component", default=None
+        )
+        if isinstance(_event, dict) and _event.get("type") == "autoos:kernel-sync":
+            # Autoridad: el rol Python, NUNCA el rol declarado por JS.
+            _allowed = tiene_permiso(obtener_usuario_actual(), "proceso.crear")
+            _last = st.session_state.get("autoos_v10_last_request_id")
+            _request = _event.get("requestId")
+            if isinstance(_request, str) and _last != _request:
+                _answer = sync_react_with_kernel(
+                    _event, kernel, st.session_state, allowed=_allowed
+                )
+                st.session_state["autoos_v10_bridge_response"] = _answer
+                # Acuse de recibo también en errores de validación y RBAC:
+                # evita una cadena infinita de reruns por la misma solicitud.
+                st.session_state["autoos_v10_last_request_id"] = _request
+                st.rerun()
+        # AUTOOS V11: prueba de lectura y persistencia Supabase POR SERVIDOR.
+        # Nunca exponemos la clave de servicio al HTML. El componente solo
+        # intercambia mensajes validados y el rol Python decide la autorización.
+        if isinstance(_event, dict) and _event.get("type") in (
+            "autoos:cloud-test", "autoos:cloud-event", "autoos:cloud-report"
+        ):
+            import re
+            from config import test_supabase_connection_py, sincronizar_evento_supabase
+            from modules.auth_security import tiene_permiso, obtener_usuario_actual
+            _cloud_request = _event.get("requestId", "")
+            _prior = st.session_state.get("autoos_v11_cloud_last_id")
+            if (isinstance(_cloud_request, str)
+                and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", _cloud_request)
+                and _cloud_request != _prior):
+                if _event["type"] == "autoos:cloud-test":
+                    _cloud_result = test_supabase_connection_py()
+                    _cloud_status = {"ok": bool(_cloud_result.get("ok")),
+                        "message": str(_cloud_result.get("mensaje", "Sin respuesta"))[:450],
+                        "ack": _cloud_request}
+                elif _event["type"] == "autoos:cloud-report":
+                    from v11_cloud_bridge import validate_cloud_report
+                    from config import guardar_reporte_simulacion
+                    _authorized = tiene_permiso(obtener_usuario_actual(), "proceso.crear")
+                    if not _authorized:
+                        _cloud_status = {"ok": False, "message":
+                            "RBAC Python: no autorizado para guardar reportes.",
+                            "ack": _cloud_request}
+                    else:
+                        try:
+                            _data = validate_cloud_report(_event)
+                            _saved, _result_message = guardar_reporte_simulacion(_data)
+                            _remote = "supabase" in _result_message.lower() and (
+                                "sincronizado" in _result_message.lower() or "respaldado" in _result_message.lower()
+                            )
+                            _cloud_status = {"ok": bool(_saved and _remote),
+                                "message": _result_message[:450], "ack": _cloud_request}
+                        except (ValueError, TypeError) as error:
+                            _cloud_status = {"ok": False, "message":
+                                f"Reporte rechazado: {error}", "ack": _cloud_request}
+                else:
+                    _message = _event.get("message", "")
+                    _severity = _event.get("severity", "info")
+                    _authorized = tiene_permiso(obtener_usuario_actual(), "proceso.crear")
+                    if not _authorized:
+                        _cloud_status = {"ok": False, "message":
+                            "RBAC Python: solo el mecánico puede registrar este evento manual.",
+                            "ack": _cloud_request}
+                    elif not isinstance(_message, str) or not 1 <= len(_message) <= 240 or _severity not in ("info", "advertencia", "critico"):
+                        _cloud_status = {"ok": False, "message":
+                            "Evento rechazado por formato o longitud.", "ack": _cloud_request}
+                    else:
+                        _stored = sincronizar_evento_supabase({
+                            "tipo_evento": "simulacion",
+                            "severidad": _severity,
+                            "mensaje": _message,
+                            "detalles": {"origen": "react_v11", "nota": "telemetria didactica"},
+                            "resuelto": _severity == "info",
+                        })
+                        _cloud_status = {"ok": bool(_stored), "message":
+                            "Evento guardado en Supabase." if _stored else
+                            "No se guardó: revisa credenciales, red, tablas y política RLS.",
+                            "ack": _cloud_request}
+                st.session_state["autoos_v11_cloud_last_id"] = _cloud_request
+                st.session_state["autoos_v11_cloud_status"] = _cloud_status
+                st.rerun()
+        # AUTOOS_V14_BLACKBOX_CLOUD: sincronización por lotes idempotentes.
+        # El navegador NO escribe directamente a Supabase ni decide el rol.
+        if isinstance(_event, dict) and _event.get("type") == "autoos:blackbox-batch":
+            import re
+            from blackbox_cloud_sync import persist_blackbox_batch
+            from config import get_supabase_client
+            _req = _event.get("requestId")
+            _previous = st.session_state.get("autoos_v14_last_batch_id")
+            if isinstance(_req, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,64}", _req) and _req != _previous:
+                _allowed = tiene_permiso(obtener_usuario_actual(), "proceso.crear")
+                _outcome = persist_blackbox_batch(
+                    _event, get_supabase_client(), st.session_state, allowed=_allowed
+                )
+                st.session_state["autoos_v14_last_batch_id"] = _req
+                st.session_state["autoos_v14_blackbox_status"] = _outcome
+                st.rerun()
+    elif _cinematic_bundle.is_file():
+        # Retrocompatibilidad cuando no se ha generado el componente V10.
+        components.html(_cinematic_bundle.read_text(encoding="utf-8"), height=1100, scrolling=True)
+    else:
+        st.error("Falta el HTML de AutoOS. Ejecuta tools/build_streamlit_bundle.py")
+    st.stop()
+
+# El retorno a esta pantalla conserva la sesión del kernel y la base de datos.
+if st.button("← Volver al menú cinematográfico", key="autoos_back_to_cinematic"):
+    st.session_state["autoos_presentation"] = "cinematic"
+    st.rerun()
+
 with st.sidebar:
     st.markdown("### 🚗 AutoOS v2.4 RTOS")
     st.caption("Sistema Operativo Vehicular Autónomo")

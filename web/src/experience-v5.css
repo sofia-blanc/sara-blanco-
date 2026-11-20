@@ -1,0 +1,206 @@
+/*
+ * AutoOS V5 — tema coherente y workspace fluido.
+ *
+ * CAPAS:
+ *  1. Corrige el ancho del workspace generado en V4 (causa del iframe 450px).
+ *  2. Proporciona alto contraste real para el modo claro, sin fondo blanco
+ *     debajo de titulares blancos.
+ *  3. Diseña dos vistas React funcionales: Conducción y Seguridad/RBAC.
+ *
+ * No modifica las clases de alerta rojo/ámbar/verde utilizadas por la lógica.
+ */
+:root {
+  --v5-canvas:#e7f1fd; --v5-paper:#fff; --v5-paper2:#eaf5ff;
+  --v5-ink:#0a2853; --v5-muted:#375f8b; --v5-border:#92bce2;
+  --v5-accent:#0059d6; --v5-shadow:rgba(12,57,117,.14);
+}
+html.dark {
+  --v5-canvas:#06152e; --v5-paper:#0a2755; --v5-paper2:#11376a;
+  --v5-ink:#f5fbff; --v5-muted:#b7d8f6; --v5-border:#3976b6;
+  --v5-accent:#73e4ff; --v5-shadow:rgba(0,8,28,.42);
+}
+/* V4 aplicaba margin:auto pero no width al elemento flex. El navegador lo
+ * contraía al tamaño intrínseco del iframe (~450px). */
+.autoos-module-app > main.autoos-module-cockpit {
+  align-items:stretch!important; width:100%!important; max-width:none!important;
+  min-width:0!important; padding:0 clamp(14px,2vw,42px) 38px!important;
+}
+.autoos-module-app > main.autoos-module-cockpit > .autoos-v4-workspace {
+  width:100%!important;max-width:1740px!important; min-width:0!important;
+  margin:0 auto!important; display:block!important; flex:1 1 auto!important;
+}
+.autoos-module-app > main.autoos-module-cockpit iframe.autoos-v4-cockpit-frame {
+  display:block!important; width:100%!important; max-width:100%!important;
+  min-width:0!important; box-sizing:border-box!important;
+}
+.autoos-v4-workspace__bar {width:100%;box-sizing:border-box;}
+
+/* Modo claro: portada deliberadamente azul noche sobre área luminosa.
+ * Evitamos el texto blanco sobre gris claro mostrado en V4. */
+html:not(.dark) .autoos-module-app {
+  background:linear-gradient(135deg,#eaf5ff,#dcecff 62%,#e8f3ff)!important;
+  color:#11355f!important;
+}
+html:not(.dark) .autoos-stage {
+  color:#fff!important;
+  background:radial-gradient(ellipse at 84% 16%,rgba(90,220,255,.26),transparent 37%),
+    linear-gradient(112deg,#05214b 0%,#0750a7 51%,#082b66 100%)!important;
+  border-bottom:3px solid #39baf6!important;
+}
+html:not(.dark) .autoos-stage__title {color:#fff!important;text-shadow:8px 8px 0 #001e55c9!important;}
+html:not(.dark) .autoos-stage__summary,
+html:not(.dark) .autoos-stage__kicker,
+html:not(.dark) .autoos-stage__status,
+html:not(.dark) .autoos-stage__select {color:#e5f7ff!important;}
+html:not(.dark) .autoos-stage__statusgroup strong {color:#fff!important;}
+html:not(.dark) .autoos-stage__navitem:not(.is-current) {color:#eefaff!important;background:rgba(3,20,59,.47)!important;}
+html:not(.dark) .autoos-stage__navitem.is-current {background:#fff!important;color:#003d8d!important;}
+html:not(.dark) .autoos-stage__navitem:hover {background:#c0f1ff!important;color:#002e71!important;}
+html:not(.dark) .autoos-stage__theme,
+html:not(.dark) .autoos-stage__select select {background:#052553!important;color:white!important;border-color:#8fdfff!important;}
+html:not(.dark) .autoos-stage__audio {background:#082755!important;color:#f4fcff!important;border-color:#72c9fd!important;}
+html:not(.dark) .autoos-stage__brand {color:#fff!important;}
+/* Mantener el héroe del explorador saturado y el contenido de trabajo legible. */
+html:not(.dark) .autoos-explorer-v4 {background:linear-gradient(120deg,#d7ebff,#adceee)!important;}
+html:not(.dark) .autoos-explorer-v4__heading h2 {color:#072c68!important;text-shadow:none!important;}
+html:not(.dark) .autoos-explorer-v4__featured {background:rgba(255,255,255,.94)!important;}
+html:not(.dark) .autoos-v4-workspace__bar {background:#0b3878!important;color:white!important;}
+html:not(.dark) .autoos-v4-workspace__bar button {background:#fff!important;color:#063b7c!important;}
+html:not(.dark) .autoos-module-app .autoos-surface,
+html:not(.dark) .autoos-module-app .autoos-card {border-color:#a1bfdb!important;}
+html:not(.dark) .autoos-module-app > main.autoos-module-scheduler,
+html:not(.dark) .autoos-module-app > main.autoos-module-simulator {color:#123961!important;}
+html:not(.dark) .autoos-module-app .autoos-guide-v3 {box-shadow:0 14px 27px #135fa11a;}
+
+/* Nuevas vistas nativas de Conducción y Seguridad. */
+.autoos-v5-page {color:var(--v5-ink);width:100%;box-sizing:border-box; padding:clamp(14px,2.2vw,34px);
+  background:var(--v5-canvas);font-family:'Space Grotesk','Segoe UI',sans-serif;}
+.autoos-v5-page * {box-sizing:border-box;}
+.autoos-v5-eyebrow {color:#5bdfff;font-size:12px;letter-spacing:.18em;font-weight:900;margin:0 0 10px;}
+.autoos-v5-hero {position:relative;overflow:hidden;isolation:isolate;padding:clamp(24px,3.2vw,52px);
+  background:linear-gradient(118deg,#052151,#0754b2 62%,#043178);color:#fff;border-left:7px solid #ff55a5;
+  box-shadow:0 18px 35px var(--v5-shadow);}
+.autoos-v5-hero::before {content:'';position:absolute;inset:0;z-index:-1;opacity:.3;pointer-events:none;
+  background:repeating-linear-gradient(110deg,transparent 0 88px,#9aefff16 89px 92px,transparent 93px 138px);
+  animation:autoos-v5-drift 22s linear infinite;}
+.autoos-v5-hero::after {content:'';position:absolute;z-index:-1;width:590px;height:590px;right:-200px;top:-250px;
+  border:4px solid #d9fbff34;border-radius:50%;box-shadow:0 0 0 55px #baf5ff10,0 0 0 125px #baf5ff0a;}
+.autoos-v5-hero h2 {font:italic 900 clamp(49px,6vw,115px)/.95 'Barlow Condensed','Arial Narrow',sans-serif!important;
+  letter-spacing:.007em;margin:0 0 17px!important;color:#fff!important;transform:skewX(-5deg);}
+.autoos-v5-hero h2 em {font-style:inherit;color:#a2f6ff;}
+.autoos-v5-hero>p:not(.autoos-v5-eyebrow) {font-size:clamp(15px,1.3vw,19px);line-height:1.48;color:#e0f4ff;max-width:820px;}
+.autoos-v5-hero__status {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:24px;
+  font-size:12px;color:#ebffff;font-weight:700;letter-spacing:.04em;}
+.autoos-v5-hero__status svg {color:#58ffce;}
+.autoos-v5-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 32px;}
+.autoos-v5-metrics>div {background:var(--v5-paper);border:1px solid var(--v5-border);padding:20px 23px;
+  display:grid;grid-template-columns:40px 1fr;grid-template-rows:repeat(3,auto);column-gap:12px;
+  box-shadow:0 7px 18px var(--v5-shadow);}
+.autoos-v5-metrics svg {grid-row:1/4;color:var(--v5-accent);align-self:center;}
+.autoos-v5-metrics span {font-size:11px;font-weight:900;letter-spacing:.11em;color:var(--v5-muted);}
+.autoos-v5-metrics strong {font-size:clamp(28px,3vw,45px);font-weight:900;line-height:1.13;}
+.autoos-v5-metrics small {font-size:12px;color:var(--v5-muted);}
+.autoos-v5-action-section,.autoos-v5-security__roles,.autoos-v5-security__permissions,.autoos-v5-security__events {
+  padding:clamp(20px,2vw,32px);border:1px solid var(--v5-border);background:var(--v5-paper);margin:18px 0;
+  box-shadow:0 8px 24px var(--v5-shadow);}
+.autoos-v5-section-heading {display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:24px;}
+.autoos-v5-section-heading .autoos-v5-eyebrow {color:var(--v5-accent);margin-bottom:4px;}
+.autoos-v5-section-heading h3 {font:italic 900 clamp(31px,3.3vw,52px)/1 'Barlow Condensed','Arial Narrow',sans-serif!important;
+  margin:0!important;color:var(--v5-ink)!important;}
+.autoos-v5-section-heading>span {font-size:13px;color:var(--v5-muted);max-width:370px;}
+.autoos-v5-action-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.autoos-v5-action {display:flex;align-items:center;gap:14px;padding:17px 16px;min-width:0;min-height:96px;
+  cursor:pointer;text-align:left;border:1px solid var(--v5-border);background:var(--v5-paper2);color:var(--v5-ink);
+  transition:transform .18s ease,background .18s ease,border-color .18s ease;}
+.autoos-v5-action>svg:first-of-type {color:var(--v5-accent);flex-shrink:0;}
+.autoos-v5-action>svg:last-child {margin-left:auto;flex-shrink:0;}
+.autoos-v5-action__number {font-size:11px;color:var(--v5-muted);font-weight:900;}
+.autoos-v5-action__copy {display:grid;gap:6px;min-width:0;}
+.autoos-v5-action__copy strong {font:italic 900 clamp(20px,1.6vw,28px)/1 'Barlow Condensed',sans-serif;letter-spacing:.03em;}
+.autoos-v5-action__copy small {font-size:11px;color:var(--v5-muted);}
+.autoos-v5-action:hover,.autoos-v5-action:focus-visible {transform:translateY(-4px);border-color:var(--v5-accent);
+  background:var(--v5-paper);box-shadow:6px 6px 0 #ff50a0;}
+.autoos-v5-note {display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:18px 0;padding:23px;
+  border-left:5px solid #ff55a5;background:var(--v5-paper2);color:var(--v5-ink);}
+.autoos-v5-note>svg {color:var(--v5-accent);flex-shrink:0;}
+.autoos-v5-note>div {flex:1;min-width:220px;}
+.autoos-v5-note strong {font-size:14px;}
+.autoos-v5-note p {margin:6px 0 0;font-size:13px;color:var(--v5-muted);}
+.autoos-v5-note button,.autoos-v5-link,.autoos-v5-secondary {display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  cursor:pointer;border:1px solid var(--v5-border);padding:12px 17px;background:var(--v5-paper);color:var(--v5-ink);
+  font-size:12px;font-weight:900;}
+.autoos-v5-note button:hover,.autoos-v5-link:hover,.autoos-v5-secondary:hover {background:var(--v5-paper2);border-color:var(--v5-accent);}
+.autoos-v5-security__choices {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.autoos-v5-role {display:flex;align-items:center;gap:12px;width:100%;min-width:0;min-height:110px;padding:18px;text-align:left;
+  cursor:pointer;border:2px solid var(--v5-border);color:var(--v5-ink);background:var(--v5-paper2);transition:background .18s,transform .2s;}
+.autoos-v5-role>span {display:grid;gap:6px;flex:1;}
+.autoos-v5-role strong {font-size:15px;}
+.autoos-v5-role small {font-size:11px;color:var(--v5-muted);}
+.autoos-v5-role.is-current {border-color:var(--v5-accent);box-shadow:inset 5px 0 0 #ff55a5;}
+.autoos-v5-role:hover {transform:translateY(-3px);border-color:var(--v5-accent);}
+.autoos-v5-role svg {flex-shrink:0;color:var(--v5-accent);}
+.autoos-v5-footnote {color:var(--v5-muted);font-size:13px;line-height:1.5;margin:14px 0;}
+.autoos-v5-security__columns {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;}
+.autoos-v5-security__columns>div {background:var(--v5-paper2);border:1px solid var(--v5-border);padding:20px;}
+.autoos-v5-security__columns h4 {display:flex;align-items:center;gap:8px;font-weight:900;font-size:13px;margin:0 0 18px;color:var(--v5-ink);}
+.autoos-v5-security__columns ul {padding:0;margin:0;list-style:none;display:grid;gap:11px;}
+.autoos-v5-security__columns li {display:flex;align-items:center;gap:10px;font-size:13px;color:var(--v5-ink);}
+.autoos-v5-security__columns svg {color:var(--v5-accent);flex-shrink:0;}
+.autoos-v5-security__columns p {font-size:13px;color:var(--v5-muted);}
+.autoos-v5-search {display:grid;gap:8px;font-size:11px;font-weight:900;color:var(--v5-muted);letter-spacing:.1em;}
+.autoos-v5-search input,.autoos-v5-export textarea {font:14px 'Space Grotesk',sans-serif;
+  border:1px solid var(--v5-border);padding:12px;color:var(--v5-ink);background:var(--v5-paper2);width:100%;}
+.autoos-v5-eventlist {display:grid;gap:5px;margin:16px 0;}
+.autoos-v5-eventlist>div {display:grid;grid-template-columns:12px minmax(100px,140px) minmax(0,1fr) 100px;
+  gap:12px;align-items:start;padding:12px 13px;border-bottom:1px solid var(--v5-border);font-size:12px;}
+.autoos-v5-eventlist>p {font-size:13px;color:var(--v5-muted);}
+.autoos-v5-eventlist>div>span:nth-of-type(2) {color:var(--v5-ink);}
+.autoos-v5-eventlist small {color:var(--v5-muted);text-align:right;}
+.autoos-v5-eventdot {width:9px;height:9px;border-radius:100%;background:#58bbfc;margin-top:3px;}
+.autoos-v5-eventdot--warning {background:#d8a500;}
+.autoos-v5-eventdot--critical {background:#ed3f67;}
+.autoos-v5-eventdot--success {background:#0fb77b;}
+.autoos-v5-export {margin-top:15px;padding:18px;background:var(--v5-paper2);border:1px solid var(--v5-border);}
+.autoos-v5-export textarea {font:12px 'JetBrains Mono',monospace;resize:vertical;}
+.autoos-v5-export p {font-size:13px;color:var(--v5-muted);}
+.autoos-v5-page :is(button,input,textarea):focus-visible {outline:3px solid #ff4fa5!important;outline-offset:3px!important;}
+@keyframes autoos-v5-drift {to {transform:translateX(6%);}}
+@media(max-width:1100px) {.autoos-v5-action-grid {grid-template-columns:repeat(2,minmax(0,1fr));}.autoos-v5-security__choices {grid-template-columns:1fr;}}
+@media(max-width:720px) {.autoos-v5-metrics,.autoos-v5-action-grid,.autoos-v5-security__columns {grid-template-columns:1fr;}.autoos-v5-eventlist>div {grid-template-columns:12px 1fr;}.autoos-v5-eventlist small {text-align:left;}}
+@media(prefers-reduced-motion:reduce) {.autoos-v5-hero::before {animation:none;} .autoos-v5-action,.autoos-v5-role {transition:none;}}
+/* Selección asimétrica: las funciones se apilan como menú cinematográfico;
+ * sólo la seleccionada ocupa el panel protagonista. */
+.autoos-v5-feature-layout {display:grid;grid-template-columns:minmax(275px,40%) minmax(0,1fr);gap:clamp(12px,2vw,30px);align-items:stretch;}
+.autoos-v5-feature-nav {display:grid;gap:7px;align-content:start;min-width:0;}
+.autoos-v5-feature-nav .autoos-v5-action {
+  min-height:74px;transform:skewX(-6deg);border-left:5px solid transparent;
+  padding:14px;transition:transform .22s ease,background .22s ease,box-shadow .22s ease;
+}
+.autoos-v5-feature-nav .autoos-v5-action>* {transform:skewX(6deg);}
+.autoos-v5-feature-nav .autoos-v5-action.is-selected {
+  background:#0652ae;color:#fff;border-color:#ff4fa5;box-shadow:7px 7px 0 #ff4fa5;
+  transform:translateX(7px) skewX(-6deg);
+}
+.autoos-v5-feature-nav .autoos-v5-action.is-selected :is(svg,.autoos-v5-action__number,.autoos-v5-action__copy small) {color:#e8faff;}
+.autoos-v5-feature-panel {position:relative;overflow:hidden;min-width:0;padding:clamp(24px,3vw,48px);
+  display:flex;flex-direction:column;justify-content:center;
+  background:linear-gradient(130deg,#062151,#0a4a9e 75%,#1366bb);color:#f5fcff;
+  border-top:5px solid #5cdfff;box-shadow:0 14px 25px var(--v5-shadow);
+  animation:autoos-v5-feature-in .3s ease-out both;}
+.autoos-v5-feature-panel .autoos-v5-eyebrow {position:relative;z-index:1;color:#8cefff;}
+.autoos-v5-feature-panel h4 {font:italic 900 clamp(50px,5.4vw,94px)/.98 'Barlow Condensed',sans-serif!important;
+  margin:0 0 22px!important;color:#fff!important;position:relative;z-index:1;}
+.autoos-v5-feature-panel>p:not(.autoos-v5-eyebrow) {color:#e1f4ff;font-size:clamp(15px,1.1vw,18px);line-height:1.55;max-width:580px;position:relative;z-index:1;}
+.autoos-v5-feature-panel__watermark {position:absolute;right:-40px;top:12px;width:340px;height:340px;opacity:.09;transform:rotate(-14deg);}
+.autoos-v5-feature-panel__watermark svg {width:100%;height:100%;}
+.autoos-v5-feature-open {display:flex;align-items:center;gap:25px;align-self:start;margin-top:36px;cursor:pointer;
+  border:0;border-left:6px solid #ff4fa5;background:#fff;color:#07366e;
+  font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.06em;padding:15px 22px;
+  transition:transform .2s ease,box-shadow .2s ease;}
+.autoos-v5-feature-open:hover {transform:translateY(-3px);box-shadow:6px 6px 0 #ff4fa5;}
+.autoos-v5-feature-panel>small {margin-top:18px;color:#b7e4ff;font-size:12px;}
+@keyframes autoos-v5-feature-in {from{opacity:.4;transform:translateY(11px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:900px){.autoos-v5-feature-layout {grid-template-columns:1fr;}.autoos-v5-feature-panel {min-height:350px;}}
+@media(prefers-reduced-motion:reduce){.autoos-v5-feature-panel{animation:none;}}
+
+.autoos-v5-link:disabled {cursor:not-allowed;opacity:.55;box-shadow:none!important;background:var(--v5-paper2);}

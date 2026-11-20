@@ -1,0 +1,69 @@
+/*
+ * AUTOOS / EXPERIENCIA V3
+ * Motivo: menos dashboard y más jerarquía editorial, sin borrar controles.
+ * Este CSS se aplica exclusivamente a los módulos React (no a Streamlit).
+ */
+.autoos-stage { border-bottom:0!important; }
+.autoos-stage__inner { padding-top:20px!important;padding-bottom:22px!important; }
+.autoos-stage__title { font-size:clamp(68px,7.1vw,126px)!important;line-height:1.02!important; padding:7px 10px 10px 3px!important; }
+.autoos-stage__body { padding-top:10px!important;padding-bottom:12px!important; }
+.autoos-stage__navitem { background:transparent!important;border-left-color:transparent!important; }
+.autoos-stage__navitem.is-current { background:#f5fbff!important; }
+.autoos-stage__navitem:hover { background:#dbf6ff!important; }
+/* La banda oblicua sustituye el aspecto de barra de navegación genérica. */
+.autoos-stage::before {opacity:.15!important;}
+.autoos-stage__editorial:after {content:'';position:absolute;left:0;bottom:-12px;width:clamp(120px,18vw,290px);height:5px;background:linear-gradient(90deg,#ff529c 0 20%,#fff 20% 63%,#79eeff 63%);transform:skewX(-25deg);}
+
+/* Guía: una pieza editorial legible y con función didáctica. */
+.autoos-guide-v3 {display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:stretch;
+  max-width:1680px;width:calc(100% - clamp(24px,5vw,90px));margin:22px auto 0;
+  background:linear-gradient(105deg,#f3faff 0 4px,#06235c 4px 100%);
+  border-bottom:1px solid #a0e8ff65;color:#f3fcff;position:relative;overflow:hidden;}
+.autoos-guide-v3::after {content:'';position:absolute;right:-70px;top:-90px;width:220px;height:260px;
+  border:14px solid #6ae5ff10;transform:rotate(28deg);pointer-events:none;}
+.autoos-guide-v3__identity {background:#f6fcff;color:#0050ad;display:flex;flex-direction:column;
+  justify-content:center;align-items:center;transform:skewX(-11deg);margin:0 0 0 -14px;padding:18px 11px 18px 23px;}
+.autoos-guide-v3__identity>* {transform:skewX(11deg);}
+.autoos-guide-v3__identity span {font-size:11px;letter-spacing:.14em;font-weight:900;}
+.autoos-guide-v3__identity strong {font-family:'Barlow Condensed',sans-serif;font-size:70px;font-weight:900;line-height:.85;}
+.autoos-guide-v3__copy {padding:18px 28px 17px 12px;min-width:0;}
+.autoos-guide-v3__eyebrow {display:flex;align-items:center;gap:8px;color:#7ef0ff;font-size:11px;font-weight:900;letter-spacing:.17em;}
+.autoos-guide-v3__copy>p {font-size:clamp(14px,1.1vw,17px);line-height:1.48;font-weight:600;max-width:1200px;margin:9px 0 13px;}
+.autoos-guide-v3 details {border-top:1px solid #a2dafa35;padding-top:9px;}
+.autoos-guide-v3 summary {display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;cursor:pointer;
+  color:#f5faff;font-weight:800;font-size:13px;list-style:none;padding:5px 7px 5px 0;}
+.autoos-guide-v3 summary::-webkit-details-marker {display:none;}
+.autoos-guide-v3 summary:hover {color:#7ee7ff;}
+.autoos-guide-v3 ol {list-style:none;margin:14px 0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.autoos-guide-v3 li {display:flex;gap:10px;align-items:flex-start;line-height:1.48;font-size:13px;
+  padding:12px 13px;background:#010f34a8;border-left:2px solid #60b7ff;}
+.autoos-guide-v3 li b {font-family:'Barlow Condensed',sans-serif;font-size:26px;line-height:1;color:#78e8ff;}
+.autoos-guide-v3__tip {font-size:12px!important;color:#a5e5ff;margin:10px 0 0!important;font-weight:500!important;}
+/* Planificador: CPU primero; diagnósticos avanzados solo cuando se solicitan. */
+.autoos-advanced-v3 {margin-top:4px;border:1px solid #4177ba;background:#08234a;border-radius:8px;overflow:hidden;}
+.autoos-advanced-v3>summary {padding:18px 22px;display:flex;gap:16px;align-items:center;cursor:pointer;
+  font-weight:900;font-size:15px;color:#e8faff;background:linear-gradient(115deg,#093167,#0c2347);}
+.autoos-advanced-v3>summary::marker {color:#79e9ff;}
+.autoos-advanced-v3>summary small {font-weight:600;color:#aacff5;line-height:1.4;}
+.autoos-advanced-v3>section {padding:20px 15px 18px;}
+.autoos-advanced-v3[open]>summary {border-bottom:1px solid #467cb9;}
+.autoos-module-cockpit {max-width:1780px!important;}
+.autoos-module-cockpit>div:first-child {border-left:5px solid #ff4f9a!important;font-family:'Space Grotesk',sans-serif!important;}
+/* Reducción de paneles repetitivos y mejor accesibilidad visual. */
+.autoos-module-scheduler :is(button,[role='button']) {font-size:clamp(12px,.85vw,14px)!important;}
+.autoos-module-scheduler :is(.autoos-card,h3) {line-height:1.3;}
+@media(max-width:860px) {
+  .autoos-guide-v3 {grid-template-columns:76px 1fr;width:calc(100% - 26px);}
+  .autoos-guide-v3__identity strong {font-size:50px;}
+  .autoos-guide-v3 ol {grid-template-columns:1fr;}
+  .autoos-guide-v3__copy {padding:16px 14px 14px 0;}
+  .autoos-stage__title {font-size:clamp(52px,10vw,88px)!important;}
+}
+@media(prefers-reduced-motion:reduce) { .autoos-guide-v3,.autoos-guide-v3 * {animation:none!important;transition:none!important;} }
+/* Audio global: siempre visible en las escenas, junto al perfil activo. */
+.autoos-stage__audio {display:flex;align-items:center;gap:7px;padding:8px 13px;
+  background:#032960;color:#f6fdff;border:1px solid #86dcff;
+  font:800 11px 'Space Grotesk',sans-serif;letter-spacing:.05em;cursor:pointer;}
+.autoos-stage__audio:hover,.autoos-stage__audio:focus-visible {color:#00398a;background:#f5fcff;}
+.autoos-stage__audio[aria-pressed='false'] {border-color:#ff91b7;color:#ffc5de;}
+@media(max-width:640px) {.autoos-stage__audio span{display:none}.autoos-guide-v3__identity{margin-left:-10px}}

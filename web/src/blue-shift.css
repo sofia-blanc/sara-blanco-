@@ -1,0 +1,50 @@
+/* AutoOS Blue Shift — React fuente y HTML empaquetado de Streamlit. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+:root {
+  --bg-base: #edf5ff;
+  --bg-surface: #fff;
+  --bg-card: #f5f9ff;
+  --bg-card-hover: #e4f0ff;
+  --border-color: #c2d8f4;
+  --text-primary: #132b50;
+  --text-secondary: #365a88;
+  --text-muted: #53749d;
+  --accent-primary: #1763dd;
+  --accent-glow: rgba(23,99,221,.18);
+}
+.dark {
+  --bg-base: #06152d;
+  --bg-surface: #0d2244;
+  --bg-card: #102b53;
+  --bg-card-hover: #194071;
+  --border-color: #2a578a;
+  --text-primary: #f6fbff;
+  --text-secondary: #c7e3ff;
+  --text-muted: #9ec2e8;
+  --accent-primary: #307fff;
+  --accent-glow: rgba(48,127,255,.24);
+}
+body {
+  font-family: 'Space Grotesk',Arial,sans-serif !important;
+  background: radial-gradient(circle at 86% 8%,var(--accent-glow),transparent 40%),var(--bg-base) !important;
+  color: var(--text-primary);
+}
+.font-serif, h1, h2, h3 { font-family: 'Barlow Condensed','Arial Narrow',sans-serif !important; font-weight: 800; letter-spacing: .015em; }
+.font-mono, code, pre { font-family: 'JetBrains Mono',Consolas,monospace; }
+.autoos-card { background: var(--bg-card); border-color: var(--border-color); box-shadow: 0 10px 26px rgba(0,12,38,.15); }
+.autoos-surface { background: var(--bg-surface); border-color: var(--border-color); }
+#root > div > header:not(.autoos-stage) { background: linear-gradient(115deg,var(--bg-surface),var(--bg-base)) !important; border-bottom: 1px solid var(--border-color); }
+#root > div > header::after {
+  content: ''; position: absolute; top: 0; right: 12%; width: 16%; height: 100%;
+  background: linear-gradient(105deg,transparent,rgba(75,197,255,.09),transparent);
+  transform: skewX(-19deg); pointer-events:none;
+}
+#root > div > header:not(.autoos-stage) { position: relative; }
+#root :is(button,select,input,a):focus-visible { outline: 2px solid #67dfff !important; outline-offset: 2px; }
+#root :is(button,select,input) { font-family: 'Space Grotesk',Arial,sans-serif; }
+#root button:not(:disabled) { transition: background-color .18s ease,color .18s ease,transform .18s ease; }
+#root button:not(:disabled):active { transform: scale(.985); }
+@media (max-width: 740px) { #root > div > header::after { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  #root *, #root *::before, #root *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
