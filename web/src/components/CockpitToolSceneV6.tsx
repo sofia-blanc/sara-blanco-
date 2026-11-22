@@ -61,7 +61,7 @@ type Props = {
 export function CockpitToolSceneV6({ feature, role, onFeature, onBack, children }: Props) {
   const selected = TOOLS.find((tool) => tool.id === feature) ?? TOOLS[0];
   const Icon = selected.icon;
-  const isRestricted = (id: ToolId) => id === 'security-original' && role !== 'mecanico';
+  const isRestricted = (id: ToolId) => (id === 'security-original' && role !== 'admin') || (role === 'pasajero' && !['media','chat','climate'].includes(id));
 
   return (
     <section className="autoos-v6-tool" aria-label={`Herramienta ${selected.name}`}>
@@ -115,3 +115,5 @@ export function CockpitToolSceneV6({ feature, role, onFeature, onBack, children 
     </section>
   );
 }
+
+// AUTOOS_V15_APLICADO — Administrador tiene acceso técnico; backend independiente.

@@ -192,7 +192,7 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [lastInjectedPhase, setLastInjectedPhase] = useState<string | null>(null);
 
-  const canInject = userRole === 'mecanico';
+  const canInject = (userRole === 'mecanico' || userRole === 'admin');
 
   // Handle device change in custom builder
   const handleDeviceChange = (devCode: string) => {
@@ -709,3 +709,5 @@ export const CriticalProcessSimulator: React.FC<CriticalProcessSimulatorProps> =
     </div>
   );
 };
+
+// AUTOOS_V15_APLICADO — Administrador tiene acceso técnico; backend independiente.

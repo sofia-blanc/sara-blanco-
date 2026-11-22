@@ -1,6 +1,6 @@
 export type ProcessState = 'NUEVO' | 'LISTO' | 'EJECUTANDO' | 'BLOQUEADO' | 'TERMINADO' | 'SUSPENDIDO';
 
-export type UserRole = 'mecanico' | 'conductor' | 'pasajero';
+export type UserRole = 'admin' | 'mecanico' | 'conductor' | 'pasajero'; // AUTOOS_V15_APLICADO
 
 export type ProcessPriority = 1 | 2 | 3 | 4 | 5; // 1 = Crítica, 5 = Muy Baja
 

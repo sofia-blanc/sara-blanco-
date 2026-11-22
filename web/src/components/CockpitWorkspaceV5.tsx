@@ -21,6 +21,7 @@ import {
   Radar, ShieldCheck, UserRoundCheck, Users, Wrench,
 } from 'lucide-react';
 import type { UserRole, VehicleDevice, SimulationEvent } from '../types/scheduler';
+import {isTechnician} from '../simulation/accessPolicyV15'; // AUTOOS_V15_APLICADO
 import type { CockpitFeatureId } from './CockpitExplorerV4';
 
 type OpenFeature = (feature: CockpitFeatureId) => void;
@@ -65,7 +66,7 @@ export function CockpitOverviewV5({ role, batteryLevel, devices, onOpen }: Overv
           {alerts.length > 0 ? <CircleAlert size={18} /> : <ShieldCheck size={18} />}
           <strong>{alerts.length ? `${alerts.length} DISPOSITIVOS CON FALLOS` : 'SISTEMA SIN FALLOS CRÍTICOS'}</strong>
           <span>·</span>
-          <span>Perfil: {role === 'mecanico' ? 'Mecánico / Admin' : role === 'conductor' ? 'Conductor' : 'Pasajero'}</span>
+          <span>Perfil: {role === 'admin' ? 'Administrador' : role === 'mecanico' ? 'Mecánico' : role === 'conductor' ? 'Conductor' : 'Pasajero'}</span>
         </div>
       </section>
 
@@ -128,9 +129,12 @@ const ROLES: ReadonlyArray<{
   allowed: readonly string[];
   restricted: readonly string[];
 }> = [
-  { id: 'mecanico', label: 'MECÁNICO / ADMIN', description: 'Mantenimiento y supervisión técnica',
+  { id: 'admin', label: 'ADMINISTRADOR', description: 'Administración y auditoría demostrativas',
+    allowed: ['Gestionar acceso y auditoría visual', 'Consultar nube', 'Supervisar el planificador', 'Diagnosticar todos los subsistemas'],
+    restricted: ['Las operaciones reales siguen los permisos del servidor Python'] },
+  { id: 'mecanico', label: 'MECÁNICO', description: 'Mantenimiento y supervisión técnica',
     allowed: ['Consultar sensores y telemetría', 'Configurar procesos y planificador', 'Calibrar dispositivos', 'Ejecutar pruebas de fallos'],
-    restricted: [] },
+    restricted: ['No administra cuentas ni concede permisos de Supabase'] },
   { id: 'conductor', label: 'CONDUCTOR', description: 'Operación habitual del vehículo',
     allowed: ['Consultar la ruta y el estado del vehículo', 'Controlar climatización', 'Utilizar multimedia y asistente'],
     restricted: ['Calibración de hardware', 'Inyección de fallos críticos'] },
@@ -187,7 +191,7 @@ export function CockpitSecurityV5({ role, onChangeRole, onOpenOriginalAudit, eve
       </section>
       <section className="autoos-v5-security__roles" aria-label="Cambiar perfil de la demostración">
         <div className="autoos-v5-section-heading"><div><p className="autoos-v5-eyebrow">01 · IDENTIDAD</p><h3>ELIGE UN PERFIL</h3></div>
-          <span>Los tres botones cambian el perfil activo de la simulación.</span></div>
+          <span>Los cuatro botones cambian solo el perfil de demostración de React.</span></div>
         <div className="autoos-v5-security__choices">
           {ROLES.map((item) => (
             <button key={item.id} type="button" aria-pressed={role === item.id}
@@ -211,9 +215,9 @@ export function CockpitSecurityV5({ role, onChangeRole, onOpenOriginalAudit, eve
       <section className="autoos-v5-security__events">
         <div className="autoos-v5-section-heading"><div><p className="autoos-v5-eyebrow">03 · TRAZABILIDAD</p><h3>EVENTOS DE SIMULACIÓN</h3></div>
           <button type="button" className="autoos-v5-link" onClick={onOpenOriginalAudit}
-            disabled={role !== 'mecanico'}
-            title={role === 'mecanico' ? 'Abrir registros originales del Cockpit' : 'Solo el perfil Mecánico / Admin puede acceder a esta auditoría'}>
-            {role === 'mecanico' ? 'VER AUDITORÍA DEL COCKPIT' : 'AUDITORÍA RESTRINGIDA AL ADMIN'} <ArrowRight size={18}/>
+            disabled={role !== 'admin'}
+            title={role === 'admin' ? 'Abrir registros originales del Cockpit' : 'Solo el Administrador puede acceder a esta auditoría'}>
+            {role === 'admin' ? 'VER AUDITORÍA DEL COCKPIT' : 'AUDITORÍA RESTRINGIDA AL ADMIN'} <ArrowRight size={18}/>
           </button></div>
         <p className="autoos-v5-footnote">Esta lista refleja los eventos de la sesión React. La auditoría de seguridad del Cockpit original se abre con el botón de arriba.</p>
         <label className="autoos-v5-search">BUSCAR EVENTOS

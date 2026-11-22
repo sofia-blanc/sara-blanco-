@@ -33,3 +33,8 @@ require('./scenarios.test.ts');
 require('./resources.test.ts');
 
 require('./navigation.test.ts');
+require('./v15.test.cjs'); // AUTOOS_V15_APLICADO
+
+require('./v16.test.cjs'); // AUTOOS V16, escenarios y permisos
+
+require('./v17.test.cjs'); // AUTOOS V17, rutas y checkpoints

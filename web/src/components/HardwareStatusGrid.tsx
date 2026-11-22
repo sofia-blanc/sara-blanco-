@@ -82,7 +82,7 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
   onResetAllScenarios,
   currentTime,
 }) => {
-  const canModify = userRole === 'mecanico';
+  const canModify = (userRole === 'mecanico' || userRole === 'admin');
   const [calibratingDevice, setCalibratingDevice] = useState<string | null>(null);
 
   // Calculate overall health
@@ -349,3 +349,5 @@ export const HardwareStatusGrid: React.FC<HardwareStatusGridProps> = ({
     </div>
   );
 };
+
+// AUTOOS_V15_APLICADO — Administrador tiene acceso técnico; backend independiente.

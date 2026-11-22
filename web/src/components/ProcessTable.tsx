@@ -38,7 +38,7 @@ export const ProcessTable: React.FC<ProcessTableProps> = ({
       onRoleRestricted('Terminar Procesos del Sistema (SIGKILL)');
       return;
     }
-    if (proc.critical && userRole !== 'mecanico') {
+    if (proc.critical && (userRole !== 'mecanico' && userRole !== 'admin')) {
       onRoleRestricted(`Abortar Proceso Crítico ASIL-D '${proc.name}' (Solo Mecánico / Nivel 10)`);
       return;
     }
@@ -239,3 +239,5 @@ export const ProcessTable: React.FC<ProcessTableProps> = ({
     </div>
   );
 };
+
+// AUTOOS_V15_APLICADO — Administrador tiene acceso técnico; backend independiente.

@@ -1,0 +1,23 @@
+/** Reglas V17 independientes de React, navegador y Supabase. */
+const assert = require('node:assert/strict');
+const { missionViewV17, routePathsV17, minutesUntilForkV17, canChoosePathV17 } = require('../src/simulation/missionGameV17.ts');
+const { scenarioById } = require('../src/simulation/scenarios.ts');
+const standard = {active:true,finished:false,checkpointDue:false,running:true,batteryPct:75};
+assert.equal(missionViewV17({...standard,active:false}), 'ready');
+assert.equal(missionViewV17(standard), 'driving');
+assert.equal(missionViewV17({...standard,running:false}), 'paused');
+assert.equal(missionViewV17({...standard,checkpointDue:true}), 'fork');
+assert.equal(missionViewV17({...standard,checkpointDue:true,batteryPct:0}), 'exhausted');
+assert.equal(missionViewV17({...standard,finished:true}), 'finished');
+assert.equal(canChoosePathV17(standard,true),false);
+assert.equal(canChoosePathV17({...standard,checkpointDue:true},true),true);
+assert.equal(canChoosePathV17({...standard,checkpointDue:true},false),false);
+assert.equal(canChoosePathV17({...standard,checkpointDue:true,batteryPct:0},true),false);
+assert.equal(minutesUntilForkV17(0,0),5);
+assert.equal(minutesUntilForkV17(4,0),1);
+assert.equal(minutesUntilForkV17(5,0),0);
+assert.equal(minutesUntilForkV17(5,1),5);
+assert.equal(minutesUntilForkV17(43,8),2);
+assert.equal(routePathsV17(scenarioById('normal')).length,2);
+assert.equal(routePathsV17(scenarioById('battery')).length,3);
+console.log('OK V17: rutas solo en checkpoints, pausa, bateria y opciones del escenario.');
