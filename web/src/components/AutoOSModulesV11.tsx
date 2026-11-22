@@ -9,6 +9,9 @@
  * de cartografía real. "Ubicación del navegador" pide permiso explícito.
  */
 import React, {useEffect,useMemo,useState} from 'react';
+import {NavigationMissionV15} from './NavigationMissionV15'; // AUTOOS_V15_APLICADO
+import {canExecute} from '../simulation/accessPolicyV15';
+import type {MissionDecision} from '../simulation/missionDecisionsV15';
 import { Activity, ArrowRight, AlertTriangle, BatteryCharging, CheckCircle2, Cloud, CloudOff,
   Compass, Cpu, Download, ExternalLink, HardDrive, History, MapPin, Navigation, Pause,
   Play, RadioTower, RefreshCw, Route, Shield, ShieldAlert, Signal, Wifi, Zap } from 'lucide-react';
@@ -40,6 +43,7 @@ export interface OperationsProps {
   onMissionTick:()=>void;
   onMissionSpeed:(speed:number)=>void;
   onInjectGpsFault:()=>void;
+  onDecision:(decision:MissionDecision)=>void;
   blackboxCloud:BlackboxCloudStatus;
   onRetryBlackbox:()=>void;
 }
@@ -97,59 +101,8 @@ function Home({p}:{p:OperationsProps}) {
   </div>;
 }
 
-function GPS({p}:{p:OperationsProps}) {
-  const route=currentRoute(p.mission.routeId);
-  const progress=routeProgress(p.mission);
-  const fail=p.devices.find(d=>d.code==='DEV_GPS_01')?.status!=='operativo';
-  const networkFail=p.devices.find(d=>d.code==='DEV_COM_V2X')?.status!=='operativo';
-  // El reloj se controla desde App.tsx para continuar en otras pantallas.
-  // Esto evita que navegar fuera de GPS reinicie o desmonte el intervalo.
-  const [realPos,setRealPos]=useState<{lat:number,lon:number}|null>(null);
-  const [geoMessage,setGeoMessage]=useState('');
-  const polyline=route.mapPoints.map(pt=>pt.join(',')).join(' ');
-  const at=(()=>{const segments=route.mapPoints.length-1;const f=Math.min(.999999,progress)*segments;const i=Math.floor(f);const t=f-i;return [route.mapPoints[i][0]+(route.mapPoints[i+1][0]-route.mapPoints[i][0])*t,
-  route.mapPoints[i][1]+(route.mapPoints[i+1][1]-route.mapPoints[i][1])*t]})();
-  const checkPosition=()=>{
-    if(!('geolocation' in navigator)){setGeoMessage('Geolocalización no disponible en este navegador.');return;}
-    setGeoMessage('Solicitando permiso de ubicación…');
-    navigator.geolocation.getCurrentPosition(pos=>{setRealPos({lat:pos.coords.latitude,lon:pos.coords.longitude});setGeoMessage('Ubicación del navegador obtenida. No se envía a la nube.');},
-      err=>setGeoMessage('No fue posible leer la ubicación: '+err.message),{timeout:9000,enableHighAccuracy:false,maximumAge:2000});
-  };
-  return <div className="v11-wrap v11-gps">
-    <section className="v11-section v11-gps__main"><div className="v11-section-heading"><div><p className="v11-eyebrow">NAVEGACIÓN · CIRCUITO VIRTUAL</p><h2>RUTA <em>ACTIVA</em></h2><p>Avanza por ciclos de un minuto. El SO actualiza reloj, batería, CPU y caja negra.</p></div><StatusLabel ok={!fail} text={fail?'SIN SEÑAL GPS':'GNSS / RTK ACTIVO'}/></div>
-      <div className="v11-map"><svg viewBox="0 0 900 470" role="img" aria-label={`Circuito virtual ${route.name} con progreso ${Math.round(progress*100)} por ciento`}>
-        <defs><pattern id="v11-grid" width="62" height="62" patternUnits="userSpaceOnUse"><path d="M62 0H0V62" fill="none" stroke="#73daff" strokeOpacity=".15"/></pattern><linearGradient id="v11-route" x1="0" x2="1"><stop stopColor="#69eaff"/><stop offset="1" stopColor="#fff"/></linearGradient></defs>
-        <rect width="900" height="470" fill="url(#v11-grid)"/>
-        {Array.from({length:12},(_,i)=><path key={i} d={`M${i*110-180} 470 L${i*105+120} 0`} stroke="#79dfff" strokeOpacity=".08" strokeWidth="9"/>)}
-        <polyline points={polyline} fill="none" stroke="#4c72c7" strokeWidth="24" strokeLinecap="round" strokeLinejoin="round"/>
-        <polyline points={polyline} fill="none" stroke="url(#v11-route)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="11 9"/>
-        <circle cx={route.mapPoints[0][0]} cy={route.mapPoints[0][1]} r="14" fill="#5ff4ff" stroke="#001b56" strokeWidth="5"/>
-        <circle cx={route.mapPoints[route.mapPoints.length-1][0]} cy={route.mapPoints[route.mapPoints.length-1][1]} r="17" fill="#ff438f" stroke="white" strokeWidth="4"/>
-        <circle cx={at[0]} cy={at[1]} r="25" fill="none" stroke="#7fe7ff" strokeWidth="3" opacity=".5"/>
-        <circle cx={at[0]} cy={at[1]} r="11" fill="white" stroke="#008ce9" strokeWidth="5"/>
-      </svg><div className="v11-map__over"><span>DEMO · TRAZADO ILUSTRATIVO</span><strong>{route.destination}</strong><small>Las líneas no representan calles reales.</small></div>
-      <div className="v11-map__progress"><b>{Math.round(progress*100)}%</b><span>{p.mission.distanceKm.toFixed(2)} / {route.km} km</span></div></div>
-      <div className="v11-map__controls"><label>DESTINO VIRTUAL<select value={p.mission.routeId} onChange={e=>p.onRoute(e.target.value as RouteId)} disabled={p.mission.active}>
-        {DEMO_ROUTES.map(r=><option key={r.id} value={r.id}>{r.name} · {r.km} km</option>)}
-      </select></label><label>VELOCIDAD<select value={p.mission.speedKmh} onChange={e=>p.onMissionSpeed(Number(e.target.value))}>
-        {[0,25,45,65,85].map(v=><option key={v} value={v}>{v} km/h</option>)}</select></label>
-      <button className="v11-primary" onClick={p.mission.active?p.onMissionStop:p.onMissionStart}>{p.mission.active?<Pause size={17}/>:<Play size={17}/>} {p.mission.active?'DETENER RUTA':'INICIAR RUTA'}</button>
-      <button className="v11-secondary" disabled={!p.mission.active} onClick={p.onMissionTick}><ArrowRight size={17}/> AVANZAR 1 MIN</button></div>
-    </section>
-    <aside className="v11-gps__aside"><div className="v11-gps__readout"><p className="v11-eyebrow">TELEMETRÍA GNSS</p><strong>{p.mission.latitude.toFixed(4)}°</strong><span>LATITUD VIRTUAL</span><strong>{p.mission.longitude.toFixed(4)}°</strong><span>LONGITUD VIRTUAL</span>
-    <div className="v11-split"><div><b>{p.mission.speedKmh}</b><small>km/h</small></div><div><b>{etaMinutes(p.mission)??'—'}</b><small>ETA min</small></div></div>
-    <StatusLabel ok={!networkFail} text={networkFail?'RED DESCONECTADA':'V2X DISPONIBLE'}/>
-    {fail&&<p className="v11-warning">El odómetro sigue avanzando; la última coordenada queda congelada hasta recuperar GPS.</p>}
-    </div><section className="v11-section v11-gps__tools"><p className="v11-eyebrow">DIAGNÓSTICO Y PRIVACIDAD</p>
-      <button className="v11-link" onClick={checkPosition}><MapPin size={17}/> LEER UBICACIÓN REAL (CON PERMISO)</button>
-      <p className="v11-muted">{geoMessage||'Solo se consulta si lo solicitas. No se usa para calcular la ruta virtual.'}</p>
-      {realPos&&<p className="v11-real-coords">Navegador: {realPos.lat.toFixed(5)}°, {realPos.lon.toFixed(5)}°</p>}
-      <button className="v11-link" onClick={()=>window.open(`https://www.openstreetmap.org/?mlat=${encodeURIComponent(String(realPos?.lat??p.mission.latitude))}&mlon=${encodeURIComponent(String(realPos?.lon??p.mission.longitude))}#map=13/${encodeURIComponent(String(realPos?.lat??p.mission.latitude))}/${encodeURIComponent(String(realPos?.lon??p.mission.longitude))}`,'_blank','noopener,noreferrer')}><ExternalLink size={17}/> ABRIR MAPA REAL EN OSM</button>
-      {p.role==='mecanico'&&<button className="v11-link v11-link--danger" onClick={p.onInjectGpsFault}><AlertTriangle size={17}/> INYECTAR FALLA GNSS</button>}
-      <button className="v11-link" onClick={()=>p.onNavigate('SIMULATOR')}><Zap size={17}/> ABRIR LABORATORIO DE ESCENARIOS</button>
-    </section></aside>
-  </div>;
-}
+// V15: sustituimos SOLO la vista GPS; el estado y callbacks siguen en App.tsx.
+function GPS({p}:{p:OperationsProps}) {return <NavigationMissionV15 p={p}/>;}
 
 function BlackBox({p}:{p:OperationsProps}) {
   const entries=useMemo(()=>[
@@ -167,13 +120,13 @@ function BlackBox({p}:{p:OperationsProps}) {
     window.setTimeout(()=>URL.revokeObjectURL(url),1500);
   };
   return <div className="v11-wrap v11-blackbox"><div className="v11-section-heading"><div><p className="v11-eyebrow">TRAZABILIDAD OPERACIONAL</p><h2>CAJA <em>NEGRA</em></h2><p>Historial unido de ruta, simulación, CPU y decisiones del usuario.</p></div>
-  <button className="v11-primary" onClick={exportJSON}><Download size={17}/> EXPORTAR JSON</button></div>
+  <button className="v11-primary" disabled={!canExecute(p.role,'audit.read')} onClick={exportJSON}><Download size={17}/> EXPORTAR JSON</button></div>
   <div className="v14-cloud-sync" role="status" aria-live="polite">
     <div><strong>Sincronización automática · Supabase</strong>
       <span>Confirmados: {p.blackboxCloud.confirmed} · Pendientes: {p.blackboxCloud.pending}</span>
       <small>{p.blackboxCloud.message}</small>
     </div>
-    <button type="button" className="v11-secondary" onClick={p.onRetryBlackbox}>
+    <button type="button" className="v11-secondary" disabled={!canExecute(p.role,'audit.read')} onClick={p.onRetryBlackbox}>
       <RefreshCw size={16}/> REINTENTAR PENDIENTES
     </button>
   </div>
@@ -181,7 +134,7 @@ function BlackBox({p}:{p:OperationsProps}) {
   <div className="v11-blackbox__body"><section className="v11-section"><div className="v11-section-heading"><h3>Registro de acontecimientos</h3><div className="v11-switch"><button className={filter==='all'?'is-active':''} onClick={()=>setFilter('all')}>TODOS</button><button className={filter==='warning'?'is-active':''} onClick={()=>setFilter('warning')}>ALERTAS</button></div></div>
   <div className="v11-events">{displayed.length?displayed.map(e=><div className="v11-event" key={`${e.kind}-${e.id}`}><small>TICK {e.tick}</small><div><b>{e.kind}</b><p>{e.text}</p></div><span className={`v11-event__${e.severity}`}>{e.severity.toUpperCase()}</span></div>):<p className="v11-muted">Aún no hay eventos. Inicia una ruta o un escenario de simulación.</p>}</div></section>
   <section className="v11-section"><p className="v11-eyebrow">HISTORIAL GRÁFICO</p><h3>Consumo de CPU y batería</h3><Trend points={p.resourceHistory.map(v=>v.cpuDemandPct)}/><p className="v11-muted">Demanda de CPU (%) por ciclo de la simulación React.</p><Trend points={p.resourceHistory.map(v=>v.batteryPct)}/><p className="v11-muted">Carga de batería simulada (%) por ciclo.</p>
-  <button className="v11-secondary" onClick={()=>p.onNavigate('SCHEDULER')}><Cpu size={18}/> VER PROCESOS Y GANTT</button></section></div></div>;
+  <button className="v11-secondary" disabled={!canExecute(p.role,'kernel.configure')} onClick={()=>p.onNavigate('SCHEDULER')}><Cpu size={18}/> VER PROCESOS Y GANTT</button></section></div></div>;
 }
 
 function CloudStatus({p}:{p:OperationsProps}) {

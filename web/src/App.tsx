@@ -30,6 +30,8 @@ import { CinematicMenu } from './components/CinematicMenu';
 import { AutoOSModulesV11 } from './components/AutoOSModulesV11';
 import { advanceMission, createMission, startMission, type MissionState, type MissionEvent, type RouteId } from './simulation/navigation';
 import { ModuleScene } from './components/ModuleScene';
+import {canOpenModule,canExecute,isTechnician,ROLE_NAMES} from './simulation/accessPolicyV15'; // AUTOOS_V15_APLICADO
+import {MISSION_OPTIONS,type MissionDecision} from './simulation/missionDecisionsV15';
 import { ModuleOrientationV3 } from './components/ModuleOrientationV3';
 import { CockpitExplorerV4 } from './components/CockpitExplorerV4';
 import type { CockpitFeatureId } from './components/CockpitExplorerV4';
@@ -290,7 +292,7 @@ export default function App() {
     } catch (_) {}
     try {
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_THEME', theme }, '*');
-      iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_ROLE', role: userRole }, '*');
+      iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_ROLE', role: userRole==='admin'?'mecanico':userRole }, '*');
       iframe.contentWindow?.postMessage({ type: 'AUTOOS_SET_AUDIO_MUTED', muted: audioMuted }, '*');
       const win = iframe.contentWindow as unknown as {
         __AUTOOS_SET_THEME__?: (t: string) => void;
@@ -300,7 +302,7 @@ export default function App() {
         win.__AUTOOS_SET_THEME__(theme);
       }
       if (typeof win?.__AUTOOS_SET_ROLE__ === 'function') {
-        win.__AUTOOS_SET_ROLE__(userRole);
+        win.__AUTOOS_SET_ROLE__(userRole==='admin'?'mecanico':userRole);
       }
     } catch (_) {}
   }, [theme, userRole, audioMuted]);
@@ -331,10 +333,18 @@ export default function App() {
   // V11: conductor y pasajero pueden navegar por GPS, Inicio y Caja Negra.
   // Únicamente se abandona el planificador si deja de estar autorizado.
   useEffect(() => {
-    if (userRole !== 'mecanico' && activeTab === 'SCHEDULER') {
+    // V15: al cambiar el perfil, abandonar inmediatamente vistas no autorizadas.
+    if (!canOpenModule(userRole,activeTab)) {
       setActiveTab('HOME');
+      setCockpitWorkspace(false);
     }
-  }, [userRole, activeTab]);
+    if(userRole==='pasajero' && !['overview','security','media','chat','climate'].includes(cockpitFeature)){
+      setCockpitWorkspace(false); setCockpitFeature('overview');
+    }
+    if(userRole!=='admin' && cockpitFeature==='security-original'){
+      setCockpitFeature('security');
+    }
+  }, [userRole, activeTab, cockpitFeature]);
 
   // Bidirectional listener from Cockpit iframe
   useEffect(() => {
@@ -350,13 +360,13 @@ export default function App() {
         const next = e.data.theme === 'dark' ? 'dark' : 'light';
         setTheme(next);
       }
-      if (e.data.type === 'AUTOOS_ROLE_CHANGED') {
-        if (['mecanico', 'conductor', 'pasajero'].includes(e.data.role)) {
+      if (e.data.type === 'AUTOOS_ROLE_CHANGED' && e.source === iframeRef.current?.contentWindow && userRole !== 'admin') {
+        if (['admin', 'mecanico', 'conductor', 'pasajero'].includes(e.data.role)) {
           setUserRole(e.data.role as UserRole);
         }
       }
-      if (e.data.type === 'AUTOOS_NAVIGATE_TAB') {
-        if (e.data.tab === 'SCHEDULER') {
+      if (e.data.type === 'AUTOOS_NAVIGATE_TAB' && e.source === iframeRef.current?.contentWindow) {
+        if (e.data.tab === 'SCHEDULER' && canOpenModule(userRole,'SCHEDULER')) {
           setActiveTab('SCHEDULER');
         }
       }
@@ -374,9 +384,9 @@ export default function App() {
 
   // RBAC rejection trigger
   const handleRoleRestricted = (action: string) => {
-    const roleName = userRole === 'pasajero' ? 'Pasajero' : userRole === 'conductor' ? 'Conductor' : 'Mecánico';
+    const roleName=ROLE_NAMES[userRole];
     setRbacAlertMessage(
-      `⛔ Acceso Denegado por Política RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. Cambia de rol en la barra superior para continuar.`
+      `⛔ Acceso Denegado por Política RBAC! El rol actual [${roleName}] no posee privilegios de seguridad para: ${action}. El selector es únicamente demostrativo; la autorización del servidor requiere una sesión válida.`
     );
   };
 
@@ -758,7 +768,7 @@ export default function App() {
 
   // Reset single device
   const handleResetDevice = (deviceCode: string) => {
-    if (userRole !== 'mecanico') {
+    if (!isTechnician(userRole)) {
       handleRoleRestricted('Restablecer Dispositivo de Hardware (Acción exclusiva del Administrador / Mecánico)');
       return;
     }
@@ -805,7 +815,7 @@ export default function App() {
 
   // Reset all devices and faults
   const handleResetAllDevices = () => {
-    if (userRole !== 'mecanico') {
+    if (!isTechnician(userRole)) {
       handleRoleRestricted('Restablecer Fallas del Sistema (Acción exclusiva del Administrador / Mecánico)');
       return;
     }
@@ -1111,9 +1121,38 @@ export default function App() {
   }, [mission.active, activeTab, missionTick]);
 
   const injectMissionFault=useCallback(()=>{
-    if(userRole!=='mecanico'){handleRoleRestricted('Inyectar fallo GPS del laboratorio');return;}
+    if(!isTechnician(userRole)){handleRoleRestricted('Inyectar fallo GPS del laboratorio');return;}
     handleSimulatorFault('DEV_GPS_01');recordMissionEvent('Falla GNSS inyectada por mecánico.','critical','GPS');
   },[userRole,handleSimulatorFault,recordMissionEvent]);
+
+  /**
+   * V15 — decisiones de navegación. Ninguna tarjeta inventa una batería o CPU
+   * adicional. Los handlers existentes aplican el efecto al estado de App y
+   * recordMissionEvent registra la elección para Caja Negra y Supabase V14.
+   */
+  const navigationDecision = useCallback((decision:MissionDecision)=>{
+    const option=MISSION_OPTIONS.find(item=>item.id===decision);
+    if(!option || !canExecute(userRole,option.permission)){
+      handleRoleRestricted(`Decisión de navegación: ${decision}`);return;
+    }
+    if(decision==='start') missionStart();
+    else if(decision==='continue') missionTick();
+    else if(decision==='slow') {missionSpeed(25);setDriveSpeedKmh(25);}
+    else if(decision==='economy') setBattery(prev=>makeBattery(prev.level,true));
+    else if(decision==='reroute') {
+      const routes:RouteId[]=['norte','centro','aeropuerto'];
+      const alternate=routes[(routes.indexOf(mission.routeId)+1)%routes.length];
+      setMission(startMission(alternate,Math.max(25,mission.speedKmh)));
+    }
+    else if(decision==='inspect') missionStop();
+    else if(decision==='recover') handleSimulatorAction('restart_gps');
+    else if(decision==='inject') injectMissionFault();
+    // "Ignorar" NO repara una falla: solo deja una advertencia auditable.
+    recordMissionEvent(`${ROLE_NAMES[userRole]}: ${option.label}. ${option.detail}`,
+      decision==='ignore'?'warning':decision==='inject'?'critical':'info',
+      decision==='recover'||decision==='inject'?'GPS':'RUTA');
+  },[userRole,mission,missionStart,missionStop,missionTick,missionSpeed,
+    handleSimulatorAction,injectMissionFault,recordMissionEvent]);
 
   const suspendedProcesses = simState.processes.filter((p) => p.state === 'SUSPENDIDO');
 
@@ -1144,12 +1183,15 @@ export default function App() {
         onToggleAudio={() => setAudioMuted((prev) => !prev)}
         onHome={() => { setIsPlaying(false); setCockpitWorkspace(false); setShowCinematicMenu(true); }}
         onSelect={(destination) => {
+          if(!canOpenModule(userRole,destination)){
+            handleRoleRestricted(`Abrir ${destination}`);return;
+          }
           setActiveTab(destination);
           if (destination === 'COCKPIT') setCockpitWorkspace(false);
         }}
         onRoleChange={(nextRole: UserRole) => {
           setUserRole(nextRole);
-          if (nextRole !== 'mecanico' && activeTab === 'SCHEDULER') setActiveTab('HOME');
+          if (!isTechnician(nextRole) && activeTab === 'SCHEDULER') setActiveTab('HOME');
         }}
         onThemeChange={toggleTheme}
         onRestricted={handleRoleRestricted}
@@ -1196,9 +1238,9 @@ export default function App() {
             page={activeTab} resources={osResources} resourceHistory={resourceHistory}
             simState={simState} battery={battery} devices={devices}
             mission={mission} missionEvents={missionEvents} role={userRole}
-            blackboxCloud={blackboxCloud} onRetryBlackbox={retryBlackboxCloud}
+            blackboxCloud={blackboxCloud} onRetryBlackbox={retryBlackboxCloud} onDecision={navigationDecision}
             onNavigate={(next)=>{
-              if(next==='SCHEDULER'&&userRole!=='mecanico'){handleRoleRestricted('Abrir planificador técnico');return;}
+              if(!canOpenModule(userRole,next)){handleRoleRestricted(`Abrir ${next}`);return;}
               setActiveTab(next);if(next==='COCKPIT')setCockpitWorkspace(false);
             }}
             onRoute={routeSelect} onMissionStart={missionStart} onMissionStop={missionStop}
@@ -1264,7 +1306,7 @@ export default function App() {
           {failingDevices.length > 0 && (
             <button
               onClick={() => {
-                if (userRole !== 'mecanico') {
+                if (!isTechnician(userRole)) {
                   handleRoleRestricted('Restablecer Fallas del Sistema (Acción exclusiva del Administrador / Mecánico)');
                   return;
                 }
@@ -1543,6 +1585,9 @@ export default function App() {
         <OSResourceMonitor snapshot={osResources} history={resourceHistory} compact />
         {!cockpitWorkspace ? (
           <CockpitExplorerV4 role={userRole} onOpen={(feature: CockpitFeatureId) => {
+            if(userRole==='pasajero'&&!['overview','media','chat','climate','security'].includes(feature)){
+              handleRoleRestricted(`Abrir herramienta de cabina ${feature}`);return;
+            }
             setCockpitFeature(feature);
             setCockpitHeight(1200);
             setCockpitWorkspace(true);
@@ -1564,7 +1609,12 @@ export default function App() {
                 role={userRole}
                 batteryLevel={battery.level}
                 devices={devices}
-                onOpen={(feature) => { setCockpitFeature(feature); setCockpitHeight(1200); }}
+                onOpen={(feature) => {
+                  if(userRole==='pasajero'&&!['media','chat','climate','security'].includes(feature)){
+                    handleRoleRestricted(`Abrir instrumento ${feature}`);return;
+                  }
+                  setCockpitFeature(feature); setCockpitHeight(1200);
+                }}
               />
             ) : cockpitFeature === 'security' ? (
               <CockpitSecurityV5
@@ -1622,7 +1672,7 @@ export default function App() {
           resources={osResources}
           resourceHistory={resourceHistory}
           onOpenScheduler={() => {
-            if (userRole === 'mecanico') setActiveTab('SCHEDULER');
+            if (isTechnician(userRole)) setActiveTab('SCHEDULER');
             else handleRoleRestricted('Ver planificador técnico del sistema operativo');
           }}
           userRole={userRole}
@@ -1637,7 +1687,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      {(activeTab === 'SCHEDULER' || activeTab === 'SIMULATOR') && userRole === 'mecanico' && (
+      {(activeTab === 'SCHEDULER' || activeTab === 'SIMULATOR') && isTechnician(userRole) && (
       <footer className="autoos-surface border-t text-xs text-[var(--text-muted)] py-3.5 px-6 text-center font-mono">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <span>AutoOS — Sistema Operativo Vehicular</span>
@@ -1678,8 +1728,8 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onNavigate={(destination: AutoOSModule) => {
-          if (destination === 'SCHEDULER' && userRole !== 'mecanico') {
-            handleRoleRestricted('Abrir el planificador RTOS');
+          if (!canOpenModule(userRole,destination)) {
+            handleRoleRestricted(`Abrir ${destination}`);
             return;
           }
           setActiveTab(destination);

@@ -15,6 +15,10 @@ import './kernel-bridge-v10.css';
 import './v11-reload.css';
 import './v12-finish.css'; // AUTOOS_V12_APLICADO
 import './v14-blackbox.css'; // AUTOOS_V14_BLACKBOX_CLOUD
+import './v15-final.css'; // AUTOOS_V15_APLICADO
+import './v16-mission.css'; // AUTOOS_V16_ESCENA_JUGABLE
+import './v17-final.css'; // AUTOOS_V17_BIFURCACIONES
+import './v18-polish.css'; // AUTOOS_V18_PULIDO_VISUAL
 import { startStreamlitAutoResize } from './utils/iframeResize';
 
 createRoot(document.getElementById('root')!).render(<App />);

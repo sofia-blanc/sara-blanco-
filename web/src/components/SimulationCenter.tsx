@@ -14,6 +14,8 @@ import {
   type AutoOSReport, type SimulationDecisionRecord, type SimulationSnapshot,
 } from '../simulation/report';
 import { isSupabaseConfigured } from '../supabaseClient';
+import { MissionStageV17 } from './MissionStageV17'; // AUTOOS_V17_BIFURCACIONES
+import { maySimulate, decisionCheckpoint, canRunMission } from '../simulation/missionGameV16';
 
 interface Props {
   battery: BatteryState;
@@ -51,6 +53,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
   const [history, setHistory] = useState<AutoOSReport[]>(() => readReports());
   const [faultTarget, setFaultTarget] = useState('DEV_CAM_FRONT');
   const [showHistory, setShowHistory] = useState(false);
+  const [decisionHint, setDecisionHint] = useState('');
 
   const definition = scenarioById(activeId || selected);
   const activeProcesses = state.processes.filter((p) => p.state === 'LISTO' || p.state === 'EJECUTANDO' || p.state === 'BLOQUEADO');
@@ -80,9 +83,11 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
 
   const selectedDefinition = useMemo(() => scenarioById(selected), [selected]);
   const latestEvents = state.events.slice(0, 6);
+  const checkpointDue = Boolean(activeId && !report && decisionCheckpoint(elapsed, decisions.length));
+  const allowed = maySimulate(userRole);
 
   useEffect(() => {
-    if (!activeId || !running || report) return;
+    if (!activeId || !running || report || !canRunMission(true, false, battery.level)) return;
     const timer = window.setInterval(() => {
       setElapsed((t) => t + 1);
       // 1 s de demostración = 1 minuto de ruta virtual acelerada.
@@ -90,7 +95,11 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
       onDriveTick(speed, weather);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [activeId, running, report, speed, weather, onDriveTick]);
+  }, [activeId, running, report, speed, weather, onDriveTick, battery.level]);
+
+  // V16: cada 5 ticks de viaje se congela la escena hasta elegir una respuesta.
+  useEffect(() => { if (checkpointDue && running) setRunning(false); }, [checkpointDue, running]);
+  useEffect(() => { if (activeId && battery.level <= 0 && running) { setRunning(false); setSpeed(0); } }, [activeId, battery.level, running]);
 
   // La instantánea se obtiene cuando React termina de renderizar el estado de arranque del SO.
   useEffect(() => {
@@ -100,6 +109,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
   }, [activeId, initial, report]);
 
   const start = (id: ScenarioId) => {
+    if (!maySimulate(userRole)) { setDecisionHint('El perfil actual no puede iniciar el laboratorio.'); return; }
     const scenario = scenarioById(id);
     onStart(id);
     setSelected(id);
@@ -114,17 +124,32 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     setInitial(null);
     setReport(null);
     setRunning(true);
+    setDecisionHint('Misión iniciada. Gestiona los recursos y espera el próximo punto de decisión.');
   };
 
   const choose = (id: SimulationAction) => {
-    if (!activeId || report || (userRole === 'pasajero' && id !== 'ignore')) return;
+    // V17: no se pueden ejecutar decisiones por fuera de la bifurcacion.
+    if (!activeId || report || !maySimulate(userRole) || !checkpointDue) return;
     const option = definition.options.find((a) => a.id === id);
     if (!option) return;
     onAction(id);
+    let effect = option.explanation;
+    let autoResume = true; // AUTOOS_V18_CONSECUENCIAS
     if (id === 'reduce_speed') setSpeed((v) => Math.min(v, 35));
     if (id === 'offline_navigation' || id === 'local_mode') setOfflineMode(true);
     if (id === 'restart_gps' || id === 'restart_network') setOfflineMode(false);
-    setDecisions((old) => [...old, { time: readClock(), choice: option.label, effect: option.explanation }]);
+    if (id === 'ignore') {
+      setSpeed(0);
+      setRunning(false);
+      onBattery(Math.max(0, battery.level - 6));
+      effect = `${option.explanation} AutoOS detuvo el vehículo para evitar que el riesgo siguiera aumentando.`;
+      setDecisionHint(`Decisión ejecutada: ${option.label}. El vehículo quedó detenido por riesgo sostenido.`);
+      autoResume = false;
+    } else {
+      setDecisionHint(`Decisión ejecutada: ${option.label}. ${option.explanation}`);
+    }
+    setDecisions((old) => [...old, { time: readClock(), choice: option.label, effect }]);
+    if (autoResume && canRunMission(true, false, battery.level)) setRunning(true);
   };
 
   const addIntervention = (name: string, effect: string) => {
@@ -132,7 +157,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
   };
 
   const finish = () => {
-    if (!activeId || !initial) return;
+    if (!activeId || !initial || !maySimulate(userRole)) return;
     setRunning(false);
     const end = takeSnapshot();
     const recommendations = [
@@ -162,10 +187,11 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
   };
 
   const dangerClass = risk === 'CRÍTICO' ? 'text-red-400' : risk === 'PRECAUCIÓN' ? 'text-amber-400' : 'text-emerald-400';
-  const canEditHardware = userRole !== 'pasajero';
+  // V16: el laboratorio modifica el kernel simulado; solo técnicos autorizados.
+  const canEditHardware = allowed;
 
   return (
-    <div className="w-full max-w-[1560px] mx-auto p-4 lg:p-7 space-y-5 font-sans">
+    <div className="v16-center w-full space-y-5 font-sans" data-v16="escena-jugable">
       <section className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-xs font-mono uppercase tracking-[.26em] text-[var(--accent-primary)] font-bold">AutoOS · Laboratorio interactivo</p>
@@ -179,7 +205,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
               : 'border-amber-500/50 bg-amber-500/10 text-amber-300'
           }`}>
             <span className={`w-2 h-2 rounded-full ${isSupabaseConfigured() ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-            {isSupabaseConfigured() ? 'Supabase: Conectado' : 'Modo Local (Sin credenciales)'}
+            {isSupabaseConfigured() ? 'Cliente React configurado' : 'Persistencia: verificar en Nube'}
           </span>
           <span className={`rounded-lg border px-3 py-2 ${activeId ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-[var(--border-color)]'}`}>
             {activeId ? (running ? '● Simulación en marcha' : '◼ Simulación pausada') : '○ Sin sesión activa'}
@@ -198,13 +224,13 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
           </div>)}
           <p className="text-[11px] text-[var(--text-muted)]">
             {isSupabaseConfigured()
-              ? '🟢 Sincronización activa con Supabase Cloud (tabla reportes_simulacion y eventos).'
+              ? 'Cliente configurado. La persistencia real se verifica en Nube / Supabase y Caja Negra.'
               : '🟡 Almacenamiento local en el navegador; para sincronizar con la nube, configura web/.env con tus credenciales de Supabase.'}
           </p>
         </section>
       )}
 
-      <section className="autoos-card rounded-2xl p-4 space-y-3">
+      <section className="autoos-card rounded-2xl p-4 space-y-3 v16-scenario-tray">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold flex items-center gap-2"><Sliders size={17} /> Selecciona un escenario</h3>
           <span className="text-[11px] text-[var(--text-muted)] font-mono">7 guiados + laboratorio libre</span>
@@ -220,73 +246,27 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
         </div>
         <div className="flex flex-wrap gap-2 items-center justify-between border-t border-[var(--border-color)] pt-3">
           <p className="text-xs text-[var(--text-muted)] max-w-[720px]"><b className="text-[var(--text-primary)]">{selectedDefinition.icon} {selectedDefinition.title}:</b> {selectedDefinition.cause}</p>
-          <button onClick={() => start(selected)} className="px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white text-sm font-bold flex items-center gap-2 hover:brightness-110"><Play size={16} /> {activeId ? 'Iniciar nuevo escenario' : 'Iniciar simulación'}</button>
+          {activeId && selected !== activeId ? <button type="button" onClick={() => start(selected)} disabled={!allowed} className="px-5 py-2.5 rounded-xl bg-[var(--accent-primary)] text-white text-sm font-bold disabled:opacity-40">CARGAR ESCENARIO SELECCIONADO</button> : <span className="text-xs font-semibold text-[var(--text-muted)]">Pulsa INICIAR desde la escena; para cambiar de misión elige otra tarjeta y cárgala aquí.</span>}
         </div>
       </section>
 
-      {/* V9: instrumento protagonista del laboratorio, misma fuente del Planificador. */}
-      <OSResourceMonitor snapshot={resources} history={resourceHistory} onOpenScheduler={userRole === 'mecanico' ? onOpenScheduler : undefined} />
+      {/* AUTOOS_V16_ESCENA_JUGABLE: escena de ancho completo y decisiones del mismo motor React. */}
+      <MissionStageV17 scenario={definition} active={!!activeId} running={running} finished={!!report}
+        checkpointDue={checkpointDue} battery={battery} devices={devices} resources={resources} weather={weather}
+        speed={speed} elapsed={elapsed} distance={distance} offline={offlineMode} risk={risk}
+        decisions={decisions} role={userRole} onStart={()=>start(selected)}
+        onTogglePause={()=>setRunning(v=> !v && canRunMission(!!activeId,!!report,battery.level) && !checkpointDue)}
+        onRestart={()=>{if(activeId)start(activeId);}} onSelect={choose}
+        onSpeed={v=>setSpeed(v)} />
+      <div className="v16-stage-feedback" role="status">{decisionHint || 'La Caja Negra registra las decisiones a través de los eventos del planificador.'}</div>
+      {/* Monitor completo conservado como panel técnico desplegable; el HUD de la escena usa los mismos datos. */}
+      <details className="v16-aux-monitor autoos-card rounded-xl p-3">
+        <summary className="cursor-pointer font-bold text-sm">Ver monitor avanzado de recursos del SO</summary>
+        <OSResourceMonitor snapshot={resources} history={resourceHistory} onOpenScheduler={allowed ? onOpenScheduler : undefined} />
+      </details>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] gap-5">
+      <div className="v16-secondary-grid">
         <div className="space-y-5 min-w-0">
-          <section className="autoos-card rounded-2xl overflow-hidden">
-            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-[var(--border-color)]">
-              <span className="font-bold text-sm flex gap-2 items-center"><Car size={18} /> Cabina de conducción · Vehículo virtual</span>
-              <span className={`text-xs font-mono font-bold ${dangerClass}`}>● {risk}</span>
-            </div>
-            <div className="relative overflow-hidden bg-[#101e30] text-white" style={{ minHeight: 315 }}>
-              <svg className="w-full h-[315px]" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Carretera virtual con montaña, cielo, calzada y vehículo">
-                <defs>
-                  <linearGradient id="simSky" x1="0" x2="0" y1="0" y2="1"><stop stopColor={weather === 'soleado' ? '#4179c5' : '#25374f'} /><stop offset="1" stopColor={weather === 'soleado' ? '#a9d5ec' : '#607187'} /></linearGradient>
-                  <linearGradient id="simRoad" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#555967" /><stop offset="1" stopColor="#141923" /></linearGradient>
-                </defs>
-                <rect width="900" height="380" fill="url(#simSky)" />
-                <circle cx="730" cy="70" r="32" fill={weather === 'soleado' ? '#f6e8aa' : '#b7c2d2'} opacity="0.85" />
-                <path d="M0 210 L115 112 L231 207 L385 108 L545 211 L710 135 L900 205 V380 H0" fill="#365b65" />
-                <path d="M0 245 L165 182 L280 233 L475 163 L610 221 L770 182 L900 228 V380 H0" fill="#294b53" />
-                <path d="M0 251 Q260 231 450 245 Q670 227 900 253 V380 H0" fill="#365541" />
-                <path d="M418 233 L482 233 L885 380 L17 380 Z" fill="url(#simRoad)" />
-                <path d="M418 233 L17 380" stroke="#e2dddd" strokeWidth="4" opacity=".65" />
-                <path d="M482 233 L885 380" stroke="#e2dddd" strokeWidth="4" opacity=".65" />
-                <path d="M450 240 L450 250 M450 275 L450 303 M450 332 L450 380" stroke="#ffd986" strokeWidth="5" strokeDasharray="20 18" className={running ? 'autoos-lane-moving' : ''} opacity=".88" />
-                <g transform="translate(450 316)">
-                  <ellipse cy="35" rx="81" ry="13" fill="#000" opacity=".5" />
-                  <path d="M-62 0 L-44 -27 Q0 -46 44 -27 L62 0 L66 36 Q0 49 -66 36 Z" fill="#c6d5e8" stroke="#64748b" strokeWidth="3" />
-                  <path d="M-40 -24 Q0 -35 40 -24 L48 -3 L-48 -3 Z" fill="#19283e" />
-                  <rect x="-60" y="15" width="22" height="10" rx="3" fill="#ff5e5e" />
-                  <rect x="38" y="15" width="22" height="10" rx="3" fill="#ff5e5e" />
-                  <rect x="-44" y="32" width="88" height="6" rx="3" fill="#233145" />
-                </g>
-                {weather === 'lluvia' && Array.from({ length: 28 }, (_, i) => <line key={i} x1={(i * 101) % 900} y1={(i * 71) % 330} x2={(i * 101) % 900 - 14} y2={(i * 71) % 330 + 23} stroke="#dbeafe" strokeWidth="2" opacity=".45" />)}
-                {weather === 'niebla' && <rect width="900" height="380" fill="#e6ebf0" opacity=".38" />}
-              </svg>
-              <div className="absolute top-4 left-4 bg-[#07101c]/85 rounded-xl px-4 py-2 text-white text-xs font-mono border border-white/15">
-                <div className="flex items-center gap-2"><Navigation size={15} className={gpsFail ? 'text-red-400' : 'text-emerald-400'} /> {gpsFail ? 'GPS sin señal' : offlineMode ? 'Navegación offline' : 'Ruta virtual activa'}</div>
-                <div className="mt-1 text-white/60">{weather === 'soleado' ? '☀️ Despejado' : weather === 'lluvia' ? '🌧️ Lluvia' : '🌫️ Niebla'} · {wifiFail ? 'Sin enlace V2X' : 'V2X conectado'}</div>
-              </div>
-              <div className="absolute top-4 right-4 text-right bg-[#07101c]/85 rounded-xl px-4 py-2 border border-white/15">
-                <div className="text-3xl font-bold tabular-nums">{speed} <span className="text-xs text-white/60">km/h</span></div>
-                <span className="text-xs text-white/60">{distance.toFixed(2)} km recorridos</span>
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 bg-[#07101c]/85 rounded-xl p-2 flex flex-wrap gap-x-5 gap-y-1 justify-between text-[11px] font-mono border border-white/15">
-                <span>⚡ {battery.level.toFixed(2)} % batería</span><span>🧠 CPU solicitada {cpuLoad} %</span><span>💾 RAM {formatNum(usedMemory)} MB</span><span>⏱ {elapsed} min virtuales</span>
-              </div>
-            </div>
-            <div className="p-4 space-y-3">
-              <div className="flex gap-2 flex-wrap items-center">
-                <button disabled={!activeId || !!report} onClick={() => setRunning((v) => !v)} className="bg-[var(--accent-primary)] text-white px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-40 flex gap-2 items-center">{running ? <Pause size={14} /> : <Play size={14} />} {running ? 'Pausar' : 'Continuar'}</button>
-                <button disabled={!activeId} onClick={() => activeId && start(activeId)} className="border border-[var(--border-color)] px-3 py-2 rounded-lg text-xs flex gap-1 items-center disabled:opacity-40"><RotateCcw size={14} /> Reiniciar</button>
-                <span className="text-xs text-[var(--text-muted)]">1 segundo de demostración equivale a 1 minuto de viaje virtual y un tick del planificador.</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-center">
-                <label className="text-xs font-semibold flex gap-2 items-center"><Gauge size={15} /> Velocidad del vehículo: <b>{speed} km/h</b></label>
-                <span className="text-xs text-[var(--text-muted)]">Control de conducción</span>
-                <input type="range" min="0" max="120" step="5" disabled={!activeId || !!report} value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-full accent-[var(--accent-primary)] disabled:opacity-30" aria-label="Velocidad de conducción virtual" />
-                <div className="flex gap-1">{[0, 35, 80].map((v) => <button key={v} disabled={!activeId || !!report} onClick={() => setSpeed(v)} className="px-2 py-1 rounded border border-[var(--border-color)] text-[11px] disabled:opacity-30">{v} km/h</button>)}</div>
-              </div>
-            </div>
-          </section>
-
           <section className="autoos-card rounded-2xl p-4 space-y-3">
             <h3 className="font-bold text-sm">DISPOSITIVOS Y BITÁCORA DEL SISTEMA</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -318,14 +298,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
                 {risk === 'NORMAL' && <li>Los indicadores monitoreados permanecen estables.</li>}
               </ul>}
             </div>
-            <h4 className="font-semibold text-xs">Opciones que propone el SO</h4>
-            {userRole === 'pasajero' && <p className="text-xs text-amber-400">Rol pasajero: las intervenciones de sistema están restringidas (solo observación).</p>}
-            <div className="space-y-2">{definition.options.map((option) => (
-              <button disabled={!activeId || !!report || (userRole === 'pasajero' && option.id !== 'ignore')} onClick={() => choose(option.id)} key={option.id} className="group w-full text-left rounded-xl p-3 border border-[var(--border-color)] bg-[var(--bg-surface)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-card-hover)] disabled:opacity-40 transition">
-                <span className="font-bold text-xs flex justify-between items-center gap-2">{option.label}<ArrowRight size={15} className="shrink-0" /></span>
-                <span className="text-[11px] text-[var(--text-muted)] block mt-1">{option.detail}</span>
-              </button>
-            ))}</div>
+            <p className="text-xs text-[var(--text-muted)]">Las opciones jugables están dentro de la escena principal. Aquí se conserva el diagnóstico y el historial técnico.</p>
             {decisions.length > 0 && <div className="border-t border-[var(--border-color)] pt-3 space-y-2">
               <h4 className="font-semibold text-xs">Decisiones del usuario y consecuencias</h4>
               {decisions.slice(-4).map((d, i) => <div key={i} className="rounded-lg bg-[var(--bg-surface)] p-2 text-[11px]"><b>{d.time} · {d.choice}</b><p className="text-[var(--text-muted)] mt-1">{d.effect}</p></div>)}
@@ -371,3 +344,5 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     </div>
   );
 }
+
+// AUTOOS_V15_APLICADO — Administrador tiene acceso técnico; backend independiente.

@@ -10,6 +10,8 @@ import React,{useCallback,useEffect,useRef,useState} from 'react';
 import {ArrowDown,ArrowUp,BatteryCharging,CarFront,ChevronRight,Cpu,FlaskConical, Gauge,
   History,Home,MapPin,Moon,Shield,Sun,Volume2,VolumeX,Wifi} from 'lucide-react';
 import type {UserRole} from '../types/scheduler';
+import {canOpenModule} from '../simulation/accessPolicyV15'; // AUTOOS_V15_APLICADO
+import {VehicleHeroV17} from './VehicleHeroV17'; // AUTOOS_V17_HERO
 
 export type AutoOSModule='HOME'|'GPS'|'COCKPIT'|'SIMULATOR'|'SCHEDULER'|'BLACKBOX'|'CLOUD';
 type Item={key:AutoOSModule;number:string;name:string;sub:string;icon:typeof Home;restricted?:boolean};
@@ -57,7 +59,7 @@ export function CinematicMenu({role,batteryLevel,health,onNavigate,audioMuted,on
   const select=useCallback((i:number)=>{if(leaving)return;setSelected(i);setWarning('');playFeedback('change',audioMuted);},[audioMuted,leaving]);
   const open=useCallback((i:number)=>{
     const item=V11_MENU_ITEMS[i];if(!item||leaving)return;
-    if(item.restricted&&role!=='mecanico'){playFeedback('locked',audioMuted);setWarning('Planificador RTOS: se necesita el rol Mecánico / Admin.');return;}
+    if(!canOpenModule(role,item.key)) {playFeedback('locked',audioMuted);setWarning('Acceso restringido para este perfil de demostración.');return;}
     playFeedback('open',audioMuted);setLeaving(true);
     t.current=setTimeout(()=>onNavigate(item.key),window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:280);
   },[audioMuted,leaving,onNavigate,role]);
@@ -83,6 +85,7 @@ export function CinematicMenu({role,batteryLevel,health,onNavigate,audioMuted,on
     {/* Vista previa estática: reemplaza SVG vertical pesado y partículas animadas. */}
     <aside className="v12-menu__preview" aria-label={`Vista previa de ${current.name}`}>
       <div className="v12-menu__preview-top"><span>VISTA PREVIA / {current.number}</span><span>SISTEMA OPERATIVO</span></div>
+      <div className="v12-menu__preview-art"><VehicleHeroV17/></div>
       <div className="v12-menu__preview-icon"><CurrentIcon size={46} strokeWidth={1.5}/><span className="v12-menu__preview-index">{current.number} / 07</span></div>
       <p className="v12-menu__preview-eyebrow">MÓDULO SELECCIONADO</p>
       <h2>{V12_MODULE_INFO[current.key].title}</h2>
@@ -97,7 +100,7 @@ export function CinematicMenu({role,batteryLevel,health,onNavigate,audioMuted,on
       <h1 className="v11-menu__logo"><span>AUTO</span><i>OS</i><sup>11</sup></h1>
       <div className="v11-menu__command"><span>SELECCIONA UN MÓDULO</span><i>///</i></div>
       <nav className="v11-menu__nav" aria-label="Módulos de AutoOS">
-        {V11_MENU_ITEMS.map((item,i)=>{const Icon=item.icon;const locked=item.restricted&&role!=='mecanico';return <button
+        {V11_MENU_ITEMS.map((item,i)=>{const Icon=item.icon;const locked=!canOpenModule(role,item.key);return <button
           key={item.key} type="button" className={`v11-menu__choice ${selected===i?'is-active':''}`}
           style={{'--row-indent':`${i*11}px`} as React.CSSProperties} aria-current={selected===i?'page':undefined}
           aria-label={item.name+(locked?' restringido':'')}
@@ -109,7 +112,7 @@ export function CinematicMenu({role,batteryLevel,health,onNavigate,audioMuted,on
     </div>
     <footer className="v11-menu__footer"><div><ArrowUp size={18}/><ArrowDown size={18}/> MOVER <b>ENTER</b> CONFIRMAR <span>1—7 ACCESO DIRECTO</span></div>
       <div className="v11-menu__metrics"><BatteryCharging size={16}/> {batteryLevel.toFixed(0)}% BMS · SALUD {health}%</div>
-      <label>PERFIL <select value={role} onChange={e=>onRoleChange(e.target.value as UserRole)} aria-label="Perfil de demostración">
-        <option value="mecanico">MECÁNICO / ADMIN</option><option value="conductor">CONDUCTOR</option><option value="pasajero">PASAJERO</option></select></label></footer>
+      <label>PERFIL <select value={role} onChange={e=>onRoleChange(e.target.value as UserRole)} aria-label="Perfil de demostración, no autenticación del servidor">
+        <option value="admin">ADMINISTRADOR</option><option value="mecanico">MECÁNICO</option><option value="conductor">CONDUCTOR</option><option value="pasajero">PASAJERO</option></select></label></footer>
   </section>;
 }
