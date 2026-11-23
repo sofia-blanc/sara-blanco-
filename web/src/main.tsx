@@ -19,6 +19,9 @@ import './v15-final.css'; // AUTOOS_V15_APLICADO
 import './v16-mission.css'; // AUTOOS_V16_ESCENA_JUGABLE
 import './v17-final.css'; // AUTOOS_V17_BIFURCACIONES
 import './v18-polish.css'; // AUTOOS_V18_PULIDO_VISUAL
+import './v19-minigame.css'; // AUTOOS_V19_MINIJUEGO
+import './v20-conduccion.css'; // AUTOOS_V20_CRUCES_SIN_PAUSA
+import './v21-conduccion.css'; // AUTOOS_V21_MENOS_CRUCES
 import { startStreamlitAutoResize } from './utils/iframeResize';
 
 createRoot(document.getElementById('root')!).render(<App />);

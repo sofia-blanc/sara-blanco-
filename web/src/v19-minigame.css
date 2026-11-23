@@ -1,0 +1,31 @@
+/* AUTOOS V19 - minijuego final. Se carga DESPUES de V18. */
+#root .v17-stage{outline:none;}
+#root .v17-stage:focus-visible{outline:2px solid #87ebff;outline-offset:2px;}
+#root .v19-driver{transition:transform .15s cubic-bezier(.2,.82,.25,1);}
+#root .v17-stage__space{min-height:405px;}
+#root .v19-steering{position:relative;z-index:4;align-self:flex-end;margin:0 auto 9px 0;
+  background:rgba(2,19,50,.93);border:1px solid #61d8fb;border-left:5px solid #52e3ff;
+  padding:13px 16px;max-width:min(450px,96%);box-shadow:5px 6px 0 rgba(0,5,22,.4);}
+#root .v19-steering p{margin:0 0 8px;font-size:11px;letter-spacing:.1em;font-weight:900;color:#f2fbff;}
+#root .v19-steering>div{display:flex;align-items:center;gap:11px;justify-content:space-between;}
+#root .v19-steering button{font-size:24px;font-weight:900;width:60px;height:45px;
+  background:#0b5eaf;border:1px solid #65eaff;color:#fff;cursor:pointer;}
+#root .v19-steering button:hover:not(:disabled){background:#25a9dd;color:#051837;}
+#root .v19-steering button:disabled{opacity:.25;cursor:not-allowed;}
+#root .v19-steering>div span{color:#c6f3ff;font-size:10px;font-weight:900;text-align:center;line-height:1.35;}
+#root .v19-steering small{display:block;margin-top:8px;color:#75ebdb;font-size:10px;font-weight:800;}
+#root .v19-incident{position:absolute;z-index:8;width:min(500px,96%);right:10px;top:8px;
+  padding:18px 20px;background:#061940f5;border:2px solid #ff5c9c;border-top:5px solid #ff5c9c;
+  box-shadow:8px 8px 0 #03132d9d;}
+#root .v19-incident>span{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.09em;color:#ff9fc8;font-weight:900;}
+#root .v19-incident h3{margin:8px 0;color:#fff;font:italic 900 clamp(26px,3.4vw,38px)/1 'Barlow Condensed',Impact,sans-serif;}
+#root .v19-incident p{margin:0 0 12px;color:#d6eeff;line-height:1.5;font-size:12px;}
+#root .v19-incident button{display:flex;align-items:center;gap:7px;background:#e8fbff;color:#052d61;
+  padding:11px 15px;font-size:11px;font-weight:900;border-left:5px solid #ff5694;cursor:pointer;}
+#root .v19-incident button:disabled{opacity:.4;cursor:not-allowed;}
+@media(max-width:740px){
+  #root .v17-stage__space{min-height:460px;}
+  #root .v19-steering{max-width:100%;margin-left:0;}
+  #root .v19-incident{position:relative;right:auto;top:auto;margin:0 auto 15px;}
+}
+@media(prefers-reduced-motion:reduce){#root .v19-driver{transition:none!important;}}
