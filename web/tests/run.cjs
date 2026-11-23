@@ -38,3 +38,7 @@ require('./v15.test.cjs'); // AUTOOS_V15_APLICADO
 require('./v16.test.cjs'); // AUTOOS V16, escenarios y permisos
 
 require('./v17.test.cjs'); // AUTOOS V17, rutas y checkpoints
+
+require('./v19.test.cjs'); // AUTOOS V19 minijuego interactivo
+require('./v20.test.cjs'); // AUTOOS V20 rutas sin clic
+require('./v21.test.cjs'); // AUTOOS V21 estado y cruces

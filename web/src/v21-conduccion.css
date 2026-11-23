@@ -1,0 +1,8 @@
+/* V21 - estado explícito de protección de energía durante la conducción. */
+#root .v21-saving-status {
+  display:block; width:fit-content; max-width:100%;
+  border-radius:6px; border:1px solid rgba(91,247,185,.65);
+  background:rgba(9,78,71,.82); color:#afffe1;
+  padding:5px 9px; margin:4px 0 7px;
+  font-size:10px; font-weight:900; letter-spacing:.055em;
+}

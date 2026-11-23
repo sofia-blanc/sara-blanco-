@@ -1073,6 +1073,21 @@ export default function App() {
     setSimState((prev) => insertWorkload(prev, 'cpu'));
   }, []);
 
+  // AUTOOS_V19_EVENTOS: un único origen de auditoría para carriles y colisiones.
+  // Los eventos del juego entran en el estado REAL del scheduler React, cuyo
+  // flujo existente los envía a Caja Negra y a Supabase cuando está configurado.
+  // Penalización del BMS para colisiones/decisiones (no es el control del laboratorio libre).
+  const handleSimulatorGameBatteryLoss = useCallback((points: number) => {
+    setBattery(prev => {
+      const nextLevel = Math.max(0, prev.level - Math.max(0, points));
+      return makeBattery(nextLevel, prev.isLowBatteryMode || nextLevel <= 10);
+    });
+  }, []);
+
+  const handleSimulatorGameEvent = useCallback((message: string, severity: 'info' | 'warning' | 'critical') => {
+    setSimState((prev) => simEvent(prev, `[MINIJUEGO] ${message}`, severity));
+  }, []);
+
   const handleSimulatorWeather = useCallback((weather: Weather) => {
     setDriveWeather(weather);
     setDevices((prev) => applyWeather(prev, weather));
@@ -1683,6 +1698,8 @@ export default function App() {
           onFault={handleSimulatorFault}
           onCpuStress={handleSimulatorStress}
           onWeather={handleSimulatorWeather}
+          onGameBatteryLoss={handleSimulatorGameBatteryLoss}
+          onGameEvent={handleSimulatorGameEvent}
         />
       </main>
 

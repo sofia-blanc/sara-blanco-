@@ -1,5 +1,5 @@
 /**
- * AUTOOS V18 · escena jugable refinada.
+ * AUTOOS V20 · juego de conducción continua con selección de rutas por carril.
  *
  * Corrige dos puntos visuales de V17:
  * 1) el vehículo deja de ser un PNG suelto y vuelve a dibujarse dentro del SVG,
@@ -7,22 +7,26 @@
  *
  * La lógica de CPU, RAM, batería, permisos y Caja Negra permanece en React/App.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, BatteryCharging, CheckCircle2, ChevronRight, Cpu,
   Gauge, HardDrive, MapPin, Pause, Play, RotateCcw, Radio, ShieldAlert,
   ShieldCheck, Signal, Zap } from 'lucide-react';
 import type { MissionStageV16Props } from './MissionStageV16';
-import { canChoosePathV17, minutesUntilForkV17, missionViewV17, routePathsV17 } from '../simulation/missionGameV17';
+import { missionViewV17, routePathsV17 } from '../simulation/missionGameV17';
+import { routeIndexFromLane } from '../simulation/routeDrivingV20'; // AUTOOS_V20_RUTAS_AL_VOLANTE
+import { forkVisibleWhileDrivingV21, minutesToDrivingForkV21 } from '../simulation/routeDrivingV21'; // AUTOOS_V21_MENOS_CRUCES
 import { maySimulate } from '../simulation/missionGameV16';
+import { lanePosition, hazardCaption, type DrivingGameState, type DrivingLane } from '../simulation/drivingGameV19';
 
 function isRiskChoiceLabel(label?: string) {
   return /sin cambios|sin gps|mantener|ignorar/i.test(label ?? '');
 }
 
-function VehicleVector({ stopped, critical, compact }: { stopped: boolean; critical: boolean; compact: boolean }) {
-  const scale = compact ? 0.78 : 1;
-  const y = compact ? 640 : 645;
-  return <g transform={`translate(720 ${y}) scale(${scale})`}>
+function VehicleVector({ stopped, critical, compact, lane }: { stopped: boolean; critical: boolean; compact: boolean; lane: DrivingLane }) {
+  const scale = compact ? 0.68 : 0.68;
+  const y = compact ? 655 : 645;
+  const x = lanePosition(lane, .82);
+  return <g className="v19-driver" transform={`translate(${x} ${y}) scale(${scale})`}>
     <ellipse cy="104" rx="170" ry="25" fill="#00091d" opacity=".55"/>
     <path d="M-158 83Q0 108 158 83L142-15Q124-96 85-126Q45-149 0-149Q-48-149-88-126Q-126-96-143-15Z"
       fill="#0a2452" stroke="#95ecff" strokeWidth="6"/>
@@ -49,7 +53,7 @@ function VehicleVector({ stopped, critical, compact }: { stopped: boolean; criti
 }
 
 /** Escenario vectorial estático. El carro forma parte del SVG, no es un PNG flotando encima. */
-function RoadWorldV17({fork, moving, weather, count, stopped, critical}:{fork:boolean; moving:boolean; weather:string; count:number; stopped:boolean; critical:boolean}) {
+function RoadWorldV17({approaching, moving, weather, count, stopped, critical, game}:{approaching:boolean; moving:boolean; weather:string; count:number; stopped:boolean; critical:boolean; game:DrivingGameState}) {
   const paths = count === 2 ? [455, 985] : [300,720,1145];
   return <svg className="v17-world" viewBox="0 0 1440 810" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <defs>
@@ -62,37 +66,97 @@ function RoadWorldV17({fork, moving, weather, count, stopped, critical}:{fork:bo
     <path d="M0 390 155 241 315 384 492 208 690 393 878 273 1040 376 1227 213 1440 402V810H0Z" fill="#315b83"/>
     <path d="M0 445 185 328 377 412 610 306 820 445 1088 310 1440 427V810H0Z" fill="url(#v18Hills)"/>
     <path d="M0 498Q370 444 735 481T1440 475V810H0Z" fill="#0f3546"/>
-    {fork ? <>
-      {paths.map((x)=><path key={`road-${x}`} d={`M720 820 Q${720+(x-720)*.13} 615 ${x} 375`}
-        stroke="#08172f" strokeWidth="148" fill="none"/>) }
-      {paths.map((x,i)=><g key={x}>
-        <path d={`M720 810 Q${720+(x-720)*.13} 615 ${x} 375`} fill="none" stroke="#9fe7fb" strokeWidth="5" opacity=".9" strokeDasharray="17 22"/>
-        <circle cx={x} cy="360" r="22" fill="#071b46" stroke={i===1?'#ff5da6':'#66e9ff'} strokeWidth="6"/>
+    {/* V20: la carretera principal nunca desaparece; las bifurcaciones llegan desde el horizonte. */}
+    <path d="M630 420H800L1440 810H0Z" fill="url(#v18Road)"/>
+    <path d="M630 420 0 810M800 420 1440 810" stroke="#8bcce0" strokeWidth="6"/>
+    <path className={moving?'v17-world__lane--active':''} d="M686 423L470 810M746 423L970 810" stroke="#d5f3ff" strokeWidth="9" strokeDasharray="28 45" opacity=".8"/>
+    {approaching && <g className="v20-horizon-fork" opacity=".96">
+      {paths.map((x,i)=><g key={`fork-${x}`}>
+        <path d={`M${670+i*(100/(paths.length-1))} 418 Q${720+(x-720)*.18} 383 ${x} 335`}
+          fill="none" stroke="#061733" strokeWidth="45" strokeLinecap="round"/>
+        <path d={`M${670+i*(100/(paths.length-1))} 418 Q${720+(x-720)*.18} 383 ${x} 335`}
+          fill="none" stroke="#93e7ff" strokeWidth="4" strokeDasharray="10 12"/>
+        <circle cx={x} cy="320" r="21" fill="#0a2854" stroke="#75eaff" strokeWidth="4"/>
+        <text x={x} y="327" textAnchor="middle" fontSize="22" fontWeight="900" fill="white">{i+1}</text>
       </g>)}
-    </> : <>
-      <path d="M630 420H800L1440 810H0Z" fill="url(#v18Road)"/>
-      <path d="M630 420 0 810M800 420 1440 810" stroke="#8bcce0" strokeWidth="6"/>
-      <path className={moving?'v17-world__lane--active':''} d="M718 433V900" stroke="#d5f3ff" strokeWidth="9" strokeDasharray="28 45" opacity=".8"/>
-    </>}
+    </g>}
     {weather==='lluvia'&&Array.from({length:14},(_,i)=><path key={i} d={`M${i*107} ${110+(i*51)%380}l-13 37`} stroke="#e7f7ff" opacity=".4" strokeWidth="3"/>)}
     {weather==='niebla'&&<rect width="1440" height="810" fill="#e1f1ff" opacity=".21"/>}
-    <VehicleVector stopped={stopped} critical={critical} compact={fork}/>
+    {game.hazards.map(h=> {
+      const x=lanePosition(h.lane,h.progress);
+      const y=430 + h.progress * 340;
+      const k=.38+h.progress*.75;
+      return <g key={h.id} transform={`translate(${x} ${y}) scale(${k})`} aria-label={hazardCaption(h.kind)}>
+        {h.kind==='obstacle' ? <>
+          <path d="M-33 25L-10-43H10L33 25Z" fill="#ff7e29" stroke="#fff5d0" strokeWidth="5"/>
+          <path d="M-23 -1H23M-14 -23H14" stroke="#fff" strokeWidth="9"/>
+          <rect x="-42" y="24" width="84" height="13" rx="5" fill="#101b33"/>
+        </>:h.kind==='energy'? <>
+          <rect x="-36" y="-47" width="72" height="84" rx="12" fill="#2d183d" stroke="#ff76ab" strokeWidth="6"/>
+          <path d="M7-36L-15 0H1L-9 27 23-12H6Z" fill="#ffdd69"/>
+        </>:h.kind==='camera'?<>
+          <rect x="-45" y="-25" width="90" height="64" rx="11" fill="#202e5e" stroke="#7aeaff" strokeWidth="6"/>
+          <circle cx="0" cy="7" r="21" fill="#09132a" stroke="#76f5ff" strokeWidth="6"/>
+          <circle cx="0" cy="7" r="9" fill="#ff6b9b"/>
+          <rect x="-18" y="-41" width="36" height="16" rx="5" fill="#40dbea"/>
+        </>:<>
+          <path d="M0-48L44-24V24L0 48-44 24V-24Z" fill="#152d65" stroke="#ffe09a" strokeWidth="5"/>
+          <path d="M-22-18H22V18H-22ZM-33-10H-24M-33 10H-24M24-10H33M24 10H33" fill="none" stroke="#ffe09a" strokeWidth="6"/>
+        </>}
+      </g>;
+    })}
+    <VehicleVector stopped={stopped} critical={critical} compact={false} lane={game.lane}/>
   </svg>;
 }
 
-export function MissionStageV17(p: MissionStageV16Props) {
+interface GameExtrasV19 {
+  game: DrivingGameState;
+  incidentNotice: string | null;
+  onSteer: (direction: -1|1) => void;
+  onRecover: () => void;
+  junctionIndex: number;
+  powerSaveActive: boolean;
+}
+
+export function MissionStageV17(p: MissionStageV16Props & GameExtrasV19) {
+  const stageRef=useRef<HTMLElement>(null);
+  // V20: captura el teclado en la ventana, incluso tras pulsar los controles con ratón.
+  // Usa ref para no re-registrar el listener 8 veces por segundo con los frames SVG.
+  const controlsRef = useRef(p);
+  controlsRef.current = p;
+  useEffect(()=>{ if(p.active) stageRef.current?.focus({preventScroll:true}); },[p.active]);
+  useEffect(()=>{
+    if (!p.active) return;
+    const handleKey=(e:KeyboardEvent)=>{
+      const current=controlsRef.current;
+      if (!current.running || current.finished || !maySimulate(current.role) || current.battery.level<=0 || current.incidentNotice) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const target=e.target as HTMLElement | null;
+      // El slider de velocidad no bloquea el volante; sí los campos de texto.
+      if (target && (target.isContentEditable || ['SELECT','TEXTAREA'].includes(target.tagName) || (target.tagName==='INPUT' && (target as HTMLInputElement).type!=='range'))) return;
+      if (e.key==='ArrowLeft'||e.key==='ArrowRight') {
+        e.preventDefault(); current.onSteer(e.key==='ArrowLeft'?-1:1);
+      } else if (e.key==='ArrowUp'||e.key==='ArrowDown') {
+        e.preventDefault(); current.onSpeed(Math.max(0,Math.min(120,current.speed+(e.key==='ArrowUp'?5:-5))));
+      }
+    };
+    window.addEventListener('keydown',handleKey);
+    return ()=>window.removeEventListener('keydown',handleKey);
+  },[p.active]);
   const allowed = maySimulate(p.role);
-  const viewInput = {active:p.active,finished:p.finished,checkpointDue:p.checkpointDue,running:p.running,batteryPct:p.battery.level};
+  const viewInput = {active:p.active,finished:p.finished,checkpointDue:false,running:p.running,batteryPct:p.battery.level};
   const view = missionViewV17(viewInput);
-  const fork = view === 'fork';
+  // La pantalla de selección por clic desaparece: el carril decide sin pausar.
   const paths = routePathsV17(p.scenario);
+  const routeIndex = routeIndexFromLane(p.game.lane, paths.length);
+  const approaching = Boolean(p.active && !p.finished && p.battery.level>0 && !p.incidentNotice && forkVisibleWhileDrivingV21(p.elapsed,p.junctionIndex,p.running));
   const gps = p.devices.find(d=>d.code==='DEV_GPS_01');
   const v2x = p.devices.find(d=>d.code==='DEV_COM_V2X');
   const latest = p.decisions.at(-1);
-  const nextIn = minutesUntilForkV17(p.elapsed,p.decisions.length);
-  const riskStop = Boolean(latest && isRiskChoiceLabel(latest.choice) && !fork && !p.finished && p.active && !p.running && p.speed === 0);
-  return <section className={`v17-stage v17-stage--${view}`} aria-label="Simulación jugable con decisiones de ruta">
-    <div className="v17-stage__world" aria-hidden="true"><RoadWorldV17 fork={fork} moving={p.running} weather={p.weather} count={paths.length} stopped={riskStop} critical={p.risk==='CRÍTICO'}/></div>
+  const nextIn = minutesToDrivingForkV21(p.elapsed,p.junctionIndex);
+  const riskStop = Boolean(latest && !(p.scenario.id === 'battery' && p.powerSaveActive) && isRiskChoiceLabel(latest.choice) && !p.finished && p.active && !p.running && p.speed === 0);
+  return <section ref={stageRef} tabIndex={0} className={`v17-stage v17-stage--${view}`} aria-label="Minijuego de conducción: mueve el vehículo con flechas izquierda y derecha">
+    <div className="v17-stage__world" aria-hidden="true"><RoadWorldV17 approaching={approaching} moving={p.running} weather={p.weather} count={paths.length} stopped={riskStop||Boolean(p.incidentNotice)} critical={p.risk==='CRÍTICO'} game={p.game}/></div>
     <header className="v17-stage__heading">
       <div><span className="v17-stage__eyebrow">SIMULACIÓN EN TIEMPO REAL · AUTOOS RTOS</span>
         <h2>MISIÓN <em>{p.scenario.title.toUpperCase()}</em></h2><p>{p.scenario.cause}</p></div>
@@ -106,6 +170,19 @@ export function MissionStageV17(p: MissionStageV16Props) {
       <div><HardDrive size={18}/><span>MEMORIA RAM</span><strong>{Math.round(p.resources.ramPhysicalMb)}<small> MB</small></strong></div>
     </div>
     <div className="v17-stage__space">
+      {p.active && view!=='finished' && view!=='exhausted' && <aside className="v19-steering" aria-label="Controles del minijuego">
+        <p>CONDUCCIÓN ACTIVA · CARRIL {p.game.lane+1}/3</p>
+        {p.powerSaveActive && <span className="v21-saving-status">AHORRO EXTREMO ACTIVO · SIGUE PROTEGIENDO LA MISIÓN</span>}
+        <div><button type="button" disabled={!p.running||!allowed||p.game.lane===0} onClick={()=>p.onSteer(-1)} aria-label="Mover coche a la izquierda">←</button>
+          <span>← → MOVER · ↑ ↓ VELOCIDAD</span>
+          <button type="button" disabled={!p.running||!allowed||p.game.lane===2} onClick={()=>p.onSteer(1)} aria-label="Mover coche a la derecha">→</button></div>
+        <small>OBJETIVO 20 MIN · {p.elapsed}/20 MIN · Esquivados {p.game.avoided} · Impactos {p.game.collisions}/3</small>
+      </aside>}
+      {p.incidentNotice && view!=='exhausted' && <div className="v19-incident" role="alert">
+        <span><AlertTriangle size={18}/> INTERRUPCIÓN DE SEGURIDAD DEL SO</span>
+        <h3>{p.game.collisions>=3?'FIN DE PARTIDA':'VEHÍCULO DETENIDO'}</h3><p>{p.incidentNotice}</p>
+        <button type="button" disabled={!allowed||p.battery.level<=0||p.game.collisions>=3} onClick={p.onRecover}><Play size={16}/> REANUDAR CONDUCCIÓN A 30 KM/H</button>
+      </div>}
       {view==='ready' && <div className="v17-stage__prompt v17-stage__prompt--ready">
         <span>01 / PREPARAR MISIÓN</span><h3>INICIAR RECORRIDO</h3>
         <p>Se cargará el escenario y comenzarán los ticks de CPU, batería y procesos.</p>
@@ -115,25 +192,24 @@ export function MissionStageV17(p: MissionStageV16Props) {
       {(view==='driving'||view==='paused')&&<div className="v17-stage__progress" role="status">
         <span className="v17-stage__progress-icon">{view==='driving'?<Signal size={24}/>:<Pause size={24}/>}</span>
         <div><strong>{view==='driving'?'TRAYECTO EN CURSO':'SIMULACIÓN EN PAUSA'}</strong>
-          <span>{view==='driving'?`Próxima bifurcación en ${nextIn} min virtual${nextIn===1?'':'es'}`:'Reanuda para llegar al siguiente punto de decisión'}</span></div>
+          <span>{view==='driving'?(nextIn===null?'Ruta definida · conduce hasta la meta evitando obstáculos':`Próximo cruce en ${nextIn} min: elige carril con ← →`):'Conducción detenida: usa REANUDAR si no hay una parada de seguridad'}</span></div>
       </div>}
-      {fork&&<div className="v17-stage__fork" role="group" aria-label="Bifurcación, elige una ruta">
-        <div className="v17-stage__fork-title"><span>CHECKPOINT · {p.elapsed} MIN</span><h3>¿QUÉ CAMINO TOMAS?</h3>
-          <p>La conducción está pausada. Elige una vía; AutoOS aplicará las consecuencias sobre los recursos y continuará.</p></div>
-        <div className={`v17-stage__paths v17-stage__paths--${paths.length}`}>
-          {paths.map((option,i)=><button type="button" key={option.id}
-            className="v17-stage__path" disabled={!canChoosePathV17(viewInput,allowed)}
-            onClick={()=>p.onSelect(option.id)} aria-label={`Camino ${i+1}: ${option.label}. ${option.detail}`}>
-            <span className="v17-stage__path-number">RUTA 0{i+1}</span>
-            <strong>{option.label}</strong><small>{option.detail}</small><span className="v17-stage__path-go">ELEGIR <ChevronRight size={15}/></span>
-          </button>)}
+      {/* AUTOOS_V21_CRUCES_LIMITADOS: solo dos cruces, sin botones ni pausas. */}
+      {approaching && nextIn!==null && paths.length>0 && <aside className="v20-route-preview" role="status" aria-label="Próximo cruce, rutas según el carril del vehículo">
+        <div className="v20-route-preview__header"><strong>CRUCE EN {nextIn} MIN VIRTUAL{nextIn===1?'':'ES'}</strong><span>SELECCIÓN AUTOMÁTICA POR CARRIL</span></div>
+        <div className="v20-route-preview__options">
+          {paths.map((option,i)=><div key={option.id} className={`v20-route-option ${i===routeIndex?'v20-route-option--active':''}`}>
+            <span>{paths.length===2?(i===0?'← IZQUIERDA / CENTRO':'→ DERECHA'):i===0?'← IZQUIERDA':i===1?'↑ CENTRO':'→ DERECHA'}</span>
+            <strong>{option.label}</strong>
+            {i===routeIndex&&<small>RUTA ACTUAL DEL VEHÍCULO</small>}
+          </div>)}
         </div>
-        {!allowed&&<p className="v17-stage__access">El perfil actual no tiene autorización para tomar decisiones técnicas.</p>}
-      </div>}
+        <p>Usa ← → para posicionarte. Al llegar al cruce, el SO ejecutará la ruta indicada sin pausar la conducción.</p>
+      </aside>}
       {riskStop && <div className="v18-stage__consequence" role="status">
         <span>RIESGO SOSTENIDO</span>
         <h3>AUTOOS DETUVO EL VEHÍCULO</h3>
-        <p>La elección de continuar sin corregir la anomalía produjo una detención preventiva. Debes reanudar manualmente o reiniciar el escenario.</p>
+        <p>Ignorar el riesgo activó una parada preventiva. Reinicia la misión o genera el informe de fallas; no puedes continuar por esa ruta.</p>
       </div>}
       {(view==='exhausted'||view==='finished')&&<div className="v17-stage__prompt v17-stage__prompt--end" role="status">
         <span>{view==='exhausted'?'BMS / 0 %':'MISIÓN COMPLETADA'}</span>
@@ -149,11 +225,11 @@ export function MissionStageV17(p: MissionStageV16Props) {
       {latest&&<span className="v17-stage__last"><CheckCircle2 size={15}/> {latest.choice}</span>}
     </div>
     <footer className="v17-stage__controls">
-      <div><button type="button" disabled={!p.active||p.finished||!allowed||fork||view==='exhausted'} onClick={p.onTogglePause}>
+      <div><button type="button" disabled={!p.active||p.finished||!allowed||view==='exhausted'||Boolean(p.incidentNotice)||riskStop} onClick={p.onTogglePause}>
         {p.running?<Pause size={16}/>:<Play size={16}/>} {p.running?'PAUSAR':'REANUDAR'}</button>
         <button type="button" disabled={!p.active||!allowed} onClick={p.onRestart}><RotateCcw size={16}/> REINICIAR</button></div>
       <label>VELOCIDAD VIRTUAL <input type="range" min={0} max={120} step={5} value={p.speed}
-        onChange={e=>p.onSpeed(Number(e.target.value))} disabled={!p.active||p.finished||!allowed||fork}/><b>{p.speed} km/h</b></label>
+        onChange={e=>p.onSpeed(Number(e.target.value))} disabled={!p.active||p.finished||!allowed}/><b>{p.speed} km/h</b></label>
       <small><AlertTriangle size={14}/> Modelo didáctico: 1 s = 1 min virtual</small>
     </footer>
   </section>;

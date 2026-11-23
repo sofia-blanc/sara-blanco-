@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, AlertTriangle, Battery, Camera, CheckCircle, ClipboardList, CloudRain,
   Cpu, Download, Gauge, HardDrive, Navigation, Pause, Play, Radio, RotateCcw,
@@ -15,7 +15,10 @@ import {
 } from '../simulation/report';
 import { isSupabaseConfigured } from '../supabaseClient';
 import { MissionStageV17 } from './MissionStageV17'; // AUTOOS_V17_BIFURCACIONES
-import { maySimulate, decisionCheckpoint, canRunMission } from '../simulation/missionGameV16';
+import { maySimulate, canRunMission } from '../simulation/missionGameV16';
+import { advanceDrivingGame, hazardCaption, newDrivingGame, steerDrivingGame, GAME_FRAME_MS } from '../simulation/drivingGameV19'; // AUTOOS_V19_MINIJUEGO
+import { routeIndexFromLane } from '../simulation/routeDrivingV20'; // AUTOOS_V20_CRUCES_SIN_PAUSA
+import { nextJunctionMinute, isRouteJunctionDue, preserveEnergySavingOnIgnore } from '../simulation/routeDrivingV21'; // AUTOOS_V21_POLITICAS_PERSISTENTES
 
 interface Props {
   battery: BatteryState;
@@ -32,12 +35,14 @@ interface Props {
   onFault: (deviceCode: string) => void;
   onCpuStress: () => void;
   onWeather: (value: Weather) => void;
+  onGameBatteryLoss: (points: number) => void;
+  onGameEvent: (message: string, severity: 'info' | 'warning' | 'critical') => void;
 }
 
 const readClock = () => new Date().toLocaleTimeString('es-CO', { hour12: false });
 const formatNum = (value: number) => Math.round(value).toLocaleString('es-CO');
 
-export function SimulationCenter({ battery, devices, state, resources, resourceHistory, onOpenScheduler, userRole, onStart, onAction, onDriveTick, onBattery, onFault, onCpuStress, onWeather }: Props) {
+export function SimulationCenter({ battery, devices, state, resources, resourceHistory, onOpenScheduler, userRole, onStart, onAction, onDriveTick, onBattery, onFault, onCpuStress, onWeather, onGameBatteryLoss, onGameEvent }: Props) {
   const [selected, setSelected] = useState<ScenarioId>('battery');
   const [activeId, setActiveId] = useState<ScenarioId | null>(null);
   const [running, setRunning] = useState(false);
@@ -54,6 +59,13 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
   const [faultTarget, setFaultTarget] = useState('DEV_CAM_FRONT');
   const [showHistory, setShowHistory] = useState(false);
   const [decisionHint, setDecisionHint] = useState('');
+  // V19: el juego tiene un estado de carriles/obstáculos propio, no duplica CPU/BMS.
+  const [game, setGame] = useState(newDrivingGame);
+  const gameRef = useRef(game);
+  const autoCheckpointRef = useRef(-1); // V21: protege frente a efectos duplicados
+  const [routeChoices, setRouteChoices] = useState(0); // cruces reales, NO longitud del informe
+  const [powerSaveActive, setPowerSaveActive] = useState(false); // proteccion elegida en esta mision
+  const [incidentNotice, setIncidentNotice] = useState<string | null>(null);
 
   const definition = scenarioById(activeId || selected);
   const activeProcesses = state.processes.filter((p) => p.state === 'LISTO' || p.state === 'EJECUTANDO' || p.state === 'BLOQUEADO');
@@ -83,7 +95,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
 
   const selectedDefinition = useMemo(() => scenarioById(selected), [selected]);
   const latestEvents = state.events.slice(0, 6);
-  const checkpointDue = Boolean(activeId && !report && decisionCheckpoint(elapsed, decisions.length));
+  const checkpointDue = Boolean(activeId && !report && isRouteJunctionDue(elapsed, routeChoices));
   const allowed = maySimulate(userRole);
 
   useEffect(() => {
@@ -97,8 +109,55 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     return () => window.clearInterval(timer);
   }, [activeId, running, report, speed, weather, onDriveTick, battery.level]);
 
-  // V16: cada 5 ticks de viaje se congela la escena hasta elegir una respuesta.
-  useEffect(() => { if (checkpointDue && running) setRunning(false); }, [checkpointDue, running]);
+  // AUTOOS V19: motor determinista, 120 ms/frame solo mientras el vehículo avanza.
+  // Procesa resultados FUERA del updater de React: evita ejecutar efectos dos veces en StrictMode.
+  useEffect(() => {
+    if (!activeId || !running || report || !allowed || battery.level <= 0 || speed <= 0) return;
+    const timer = window.setInterval(() => {
+      const result = advanceDrivingGame(gameRef.current, speed);
+      gameRef.current = result.state;
+      setGame(result.state);
+      for (const incident of result.incidents) {
+        if (incident.collision) {
+          const label = hazardCaption(incident.kind);
+          const penalty = incident.kind === 'energy' ? 8 : incident.kind === 'obstacle' ? 5 : 3;
+          setIncidentNotice(result.state.collisions >= 3
+            ? `LÍMITE DE IMPACTOS ALCANZADO (3). Reinicia la misión o genera el informe de fallos.`
+            : `${label}. El RTOS activa parada de seguridad: penalización BMS de ${penalty} puntos, velocidad 0 km/h y evento crítico.`);
+          setSpeed(0);
+          setRunning(false);
+          onGameBatteryLoss(penalty);
+          if (incident.kind === 'camera') onFault('DEV_CAM_FRONT');
+          if (incident.kind === 'cpu') onCpuStress();
+          onGameEvent(`COLISIÓN en carril ${incident.lane + 1}: ${label}; parada de seguridad y penalización BMS ${penalty} puntos.`, 'critical');
+          break;
+        }
+        onGameEvent(`Obstáculo esquivado en carril ${incident.lane + 1}: ${hazardCaption(incident.kind)}.`, 'info');
+      }
+    }, GAME_FRAME_MS);
+    return () => window.clearInterval(timer);
+  }, [activeId, running, report, allowed, speed, battery.level, onGameBatteryLoss, onFault, onCpuStress, onGameEvent]);
+
+  /** Movimiento lateral entre tres carriles, validado y registrado en Caja Negra. */
+  const steer = (direction: -1 | 1) => {
+    if (!activeId || !running || report || !allowed || battery.level <= 0) return;
+    const next = steerDrivingGame(gameRef.current, direction);
+    if (next === gameRef.current) return;
+    gameRef.current = next;
+    setGame(next);
+    onGameEvent(`Cambio de carril: vehículo en carril ${next.lane + 1} de 3.`, 'info');
+  };
+
+  /** Tras una colisión el conductor debe confirmar la recuperación manual. */
+  const recoverDriving = () => {
+    if (!incidentNotice || !activeId || report || battery.level <= 0 || !allowed || gameRef.current.collisions >= 3) return;
+    setIncidentNotice(null);
+    setSpeed(30);
+    setRunning(true);
+    onGameEvent('Conducción reanudada manualmente a 30 km/h después de la parada de seguridad.', 'warning');
+  };
+
+  // V20: NO detenemos el reloj al llegar al cruce. La ruta se toma por carril automáticamente.
   useEffect(() => { if (activeId && battery.level <= 0 && running) { setRunning(false); setSpeed(0); } }, [activeId, battery.level, running]);
 
   // La instantánea se obtiene cuando React termina de renderizar el estado de arranque del SO.
@@ -120,6 +179,13 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     setDistance(0);
     setOfflineMode(false);
     setDecisions([]);
+    const freshGame = newDrivingGame();
+    gameRef.current = freshGame;
+    autoCheckpointRef.current = -1;
+    setRouteChoices(0);
+    setPowerSaveActive(false);
+    setGame(freshGame);
+    setIncidentNotice(null);
     setStartedAt(new Date().toISOString());
     setInitial(null);
     setReport(null);
@@ -132,6 +198,18 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     if (!activeId || report || !maySimulate(userRole) || !checkpointDue) return;
     const option = definition.options.find((a) => a.id === id);
     if (!option) return;
+    if (id === 'power_save') setPowerSaveActive(true);
+    // V21: "no intervenir" conserva una política previa; NO equivale a
+    // apagarla, penalizar batería ni inmovilizar el vehículo.
+    if (preserveEnergySavingOnIgnore(activeId, id, powerSaveActive,
+        battery.isLowBatteryMode, battery.level)) {
+      onAction(id); // mantiene trazabilidad de la decisión en el motor del SO
+      const retained = 'Ahorro extremo previamente activado: sigue vigente, sin nueva intervención ni parada forzada.';
+      setDecisions((old) => [...old, { time: readClock(), choice: option.label, effect: retained }]);
+      setDecisionHint(`Decisión ejecutada: ${option.label}. ${retained}`);
+      onGameEvent(`Continuar sin cambios: se conserva el modo de ahorro extremo ya activo (BMS ${battery.level.toFixed(1)}%).`, 'info');
+      return;
+    }
     onAction(id);
     let effect = option.explanation;
     let autoResume = true; // AUTOOS_V18_CONSECUENCIAS
@@ -141,7 +219,7 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     if (id === 'ignore') {
       setSpeed(0);
       setRunning(false);
-      onBattery(Math.max(0, battery.level - 6));
+      onGameBatteryLoss(6);
       effect = `${option.explanation} AutoOS detuvo el vehículo para evitar que el riesgo siguiera aumentando.`;
       setDecisionHint(`Decisión ejecutada: ${option.label}. El vehículo quedó detenido por riesgo sostenido.`);
       autoResume = false;
@@ -151,6 +229,24 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     setDecisions((old) => [...old, { time: readClock(), choice: option.label, effect }]);
     if (autoResume && canRunMission(true, false, battery.level)) setRunning(true);
   };
+
+  // V21: solo dos cruces por misión (minuto 8 y 16).
+  // Ninguna intervención auxiliar del informe adelanta la ruta siguiente.
+  useEffect(() => {
+    if (!activeId || !running || report || !checkpointDue || !allowed ||
+        battery.level <= 0 || speed <= 0 || incidentNotice) return;
+    const junctionMinute = nextJunctionMinute(routeChoices);
+    if (junctionMinute === null || autoCheckpointRef.current === junctionMinute) return;
+    const routeIndex = routeIndexFromLane(gameRef.current.lane, definition.options.length);
+    const selectedRoute = definition.options[routeIndex];
+    if (!selectedRoute) return;
+    autoCheckpointRef.current = junctionMinute; // ref antes de ejecutar acciones
+    choose(selectedRoute.id);
+    setRouteChoices((count) => count + 1);
+    onGameEvent(`CRUCE t=${junctionMinute} min: carril ${gameRef.current.lane+1}/3, opción ${selectedRoute.label}.`, 'info');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, elapsed, routeChoices, running, report, checkpointDue, allowed,
+      battery.level, speed, incidentNotice]);
 
   const addIntervention = (name: string, effect: string) => {
     setDecisions((old) => [...old, { time: readClock(), choice: name, effect }]);
@@ -185,6 +281,12 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
     setReport(generated);
     setHistory(readReports());
   };
+
+  // V21: la misión termina al minuto 20, después de dos cruces.
+  useEffect(() => {
+    if (activeId && elapsed >= 20 && routeChoices >= 2 && initial && !report && running) finish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, elapsed, routeChoices, initial, report, running]);
 
   const dangerClass = risk === 'CRÍTICO' ? 'text-red-400' : risk === 'PRECAUCIÓN' ? 'text-amber-400' : 'text-emerald-400';
   // V16: el laboratorio modifica el kernel simulado; solo técnicos autorizados.
@@ -255,9 +357,11 @@ export function SimulationCenter({ battery, devices, state, resources, resourceH
         checkpointDue={checkpointDue} battery={battery} devices={devices} resources={resources} weather={weather}
         speed={speed} elapsed={elapsed} distance={distance} offline={offlineMode} risk={risk}
         decisions={decisions} role={userRole} onStart={()=>start(selected)}
-        onTogglePause={()=>setRunning(v=> !v && canRunMission(!!activeId,!!report,battery.level) && !checkpointDue)}
+        onTogglePause={()=>setRunning(v=> !v && canRunMission(!!activeId,!!report,battery.level))}
         onRestart={()=>{if(activeId)start(activeId);}} onSelect={choose}
-        onSpeed={v=>setSpeed(v)} />
+        onSpeed={v=>setSpeed(v)} game={game} incidentNotice={incidentNotice}
+        onSteer={steer} onRecover={recoverDriving}
+        junctionIndex={routeChoices} powerSaveActive={powerSaveActive && battery.isLowBatteryMode} />
       <div className="v16-stage-feedback" role="status">{decisionHint || 'La Caja Negra registra las decisiones a través de los eventos del planificador.'}</div>
       {/* Monitor completo conservado como panel técnico desplegable; el HUD de la escena usa los mismos datos. */}
       <details className="v16-aux-monitor autoos-card rounded-xl p-3">
